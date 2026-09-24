@@ -1,0 +1,70 @@
+# generated: 2026-03-26T09:06:46
+# last_updated: 2026-03-26T09:19:44+01:00
+# project: BMAD CY
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status: backlog | in-progress | done
+# Story Status: backlog | ready-for-dev | in-progress | review | done
+# Retrospective Status: optional | done
+
+generated: 2026-03-26T09:06:46
+last_updated: 2026-09-24T12:45:00+02:00
+project: BMAD CY
+project_key: NOKEY
+tracking_system: file-system
+story_location: {project-root}/_bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-1-initialiser-le-projet-pwa-vite-react-typescript: done
+  1-2-ajouter-tailwind-et-une-base-visuelle-sobre-utilitaire: done
+  1-3-mettre-en-place-le-routing-et-la-navigation-3-onglets: done
+  1-4-cr-er-la-base-de-donn-es-locale-dexie-avec-migrations: in-progress
+  1-5-activer-le-mode-pwa-manifest-service-worker: done
+  1-6-mettre-en-place-les-tests-unitaires-vitest: done
+  epic-1-retrospective: optional
+  epic-2: in-progress
+  2-1-s-lecteur-de-sous-jours-date-r-elle-semaine-courante: done
+  2-2-afficher-la-liste-compl-te-des-patients-dans-journ-e: done
+  2-3-r-organiser-l-ordre-des-patients-et-persister-au-drop: done
+  2-4-ajouter-3-s-parateurs-d-pla-ables-par-sous-jour: done
+  2-5-ligne-patient-dense-conforme-triangle-nom-priorit-poign-e: in-progress
+  epic-2-retrospective: optional
+  epic-3: in-progress
+  3-1-mod-le-de-donn-es-journ-e-dailyrecords-reset-quotidien: done
+  3-2-pointage-a-b-exclusif-et-sauvegarde-imm-diate: done
+  3-3-notes-patient-du-jour-via-tiroir-triangle-autosave: in-progress
+  3-4-h-global-commentaire-g-n-ral-de-journ-e-autosave: done
+  epic-3-retrospective: optional
+  epic-4: backlog
+  4-1-enregistrer-transmission-faite-aujourd-hui-sur-la-fiche-patient: backlog
+  4-2-afficher-l-indicateur-transmission-couleur-dans-journ-e: backlog
+  epic-4-retrospective: optional
+  epic-5: in-progress
+  5-1-cr-ation-patient-nom-pr-nom-obligatoires-ajout-aux-sous-jours: done
+  5-2-fiche-patient-en-t-te-administratif-avec-dition-directe: backlog
+  5-3-ant-c-dents-en-texte-libre-autosave: backlog
+  5-4-priorit-patient-1-3-visible-dans-journ-e: in-progress
+  5-5-archiver-et-supprimer-un-patient: done
+  5-6-conserver-les-traces-quotidiennes-apr-s-suppression-patient: done
+  5-7-historique-patient-des-seances-et-notes: done
+  epic-5-retrospective: optional
+  epic-6: in-progress
+  6-1-liste-g-n-rale-patients-alpha-minimaliste: done
+  6-2-panneau-de-filtres-validable-incluant-archiv-s: backlog
+  6-3-filtre-prescriptions-proches-de-fin: backlog
+  epic-6-retrospective: optional
+  epic-7: done
+  7-1-g-n-ration-txt-jour-par-jour-tests-golden: done
+  7-2-ui-d-export-txt-par-p-riode-preview-partage: done
+  7-3-consulter-et-corriger-toute-journee-passee: done
+  epic-7-retrospective: optional
+  epic-8: backlog
+  8-1-export-tableau-patient-r-importable-csv: backlog
+  8-2-import-csv-patient-en-replace-all-app-vide: backlog
+  8-3-purge-manuelle-des-journaux-quotidiens-apr-s-export: backlog
+  epic-8-retrospective: optional
