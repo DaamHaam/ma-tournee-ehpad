@@ -2,6 +2,8 @@
 
 PWA iPhone-first pour préparer et tracer une tournée de kinésithérapie en EHPAD. La version actuelle fonctionne sans compte ni serveur : patients, journées, notes et ordres sont enregistrés dans IndexedDB sur l’appareil.
 
+Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
+
 ## Parcours disponible
 
 - `Journée` : ouverture d’une date, raccourcis lundi/jeudi/vendredi, ordre tactile ou clavier, trois séparateurs, pointage A/B exclusif, notes, niveau H et commentaire.

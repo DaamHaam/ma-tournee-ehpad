@@ -4,16 +4,17 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -45,21 +46,34 @@ jobs:
         run: npm run build
         working-directory: bmad-cy
 
-      - name: Configurer GitHub Pages
-        uses: actions/configure-pages@v5
+      - name: Installer les navigateurs Playwright
+        run: npx playwright install --with-deps webkit chromium
+        working-directory: bmad-cy
+
+      - name: Vérifier les parcours de production
+        run: npm run test:e2e
+        working-directory: bmad-cy
 
       - name: Préparer l'artefact GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: bmad-cy/dist
 
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Publier sur GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
