@@ -1,6 +1,6 @@
 ---
 title: Publication GitHub Pages et configuration Claude Code
-status: in-review
+status: done
 baseline_commit: 3272288697a6109c847a1315daf5be8f1c1f2316
 context:
   - ../planning-artifacts/architecture.md
@@ -36,3 +36,12 @@ Rendre la première version utilisable accessible en ligne depuis GitHub Pages e
 - `cd bmad-cy && npm run build`
 - `cd bmad-cy && npm run test:e2e`
 - vérification du workflow GitHub Actions et ouverture de l’URL Pages
+
+## Résultat
+
+- Dépôt créé sur `https://github.com/DaamHaam/ma-tournee-ehpad`.
+- Le forfait GitHub du compte ne prenant pas en charge Pages depuis un dépôt privé, le dépôt a été rendu public conformément au choix de repli validé par l’utilisateur.
+- Workflow GitHub Actions `35992170697` réussi : tests unitaires, lint, build, E2E et déploiement Pages.
+- URL `https://daamhaam.github.io/ma-tournee-ehpad/` vérifiée en HTTPS avec une réponse HTTP 200.
+- Tag `v0.1.0` poussé sur le commit de release `d730f9b`.
+- `CLAUDE.md` et `AGENTS.md` sont versionnés et disponibles pour Claude Code et Codex.
