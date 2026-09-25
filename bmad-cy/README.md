@@ -2,13 +2,14 @@
 
 PWA iPhone-first pour préparer et tracer une tournée de kinésithérapie en EHPAD. La version actuelle fonctionne sans compte ni serveur : patients, journées, notes et ordres sont enregistrés dans IndexedDB sur l’appareil.
 
-Version actuelle : 0.4.0 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
+Version actuelle : 0.5.0 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
 
 ## Parcours disponible
 
 - `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des trois repères par appui long, pointage A/B exclusif, note ouverte par le triangle, niveau H et commentaire.
 - `Patients` : ajout, liste alphabétique, fiche modifiable, historique, archivage et suppression confirmée. Une suppression conserve les snapshots nécessaires aux anciennes journées et aux exports.
 - `Réglages / Export` : plage de dates (jour même par défaut), aperçu TXT, copie, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace tous les patients, sans toucher aux journées).
+- Sauvegarde : fichier JSON complet (patients, fiches, journées, ordres) enregistrable dans Fichiers et restaurable sur l’app ou un autre iPhone.
 - Fiche patient : couverture, séances et IFD (L/J/V), pointé, facturé, fin d’ordonnance, médecin traitant, cotation ; cases Éval et Trans datées du jour qui colorent le triangle de la Journée.
 - PWA : ressources mises en cache après un premier chargement complet pour permettre le rechargement hors ligne.
 
@@ -51,7 +52,8 @@ Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son prop
 
 ## Limites de cette version
 
-- aucune synchronisation, sauvegarde cloud ou compte ; effacer les données du site Safari efface la base locale ;
+- aucune synchronisation, sauvegarde cloud ou compte ; effacer les données du site, ou supprimer l’icône de l’écran d’accueil, efface la base locale : sauvegarder régulièrement ;
+- l’app installée sur l’écran d’accueil a un stockage distinct de Safari ;
 - pas d’export du tableau patient, de purge des journées ni de bilans ;
 - Safari/iPhone physique reste à valider avant usage réel avec des données sensibles ;
 - l’icône PWA est fournie en SVG, à compléter par des variantes PNG si la cible iOS déployée l’exige.

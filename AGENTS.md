@@ -66,6 +66,7 @@ npm run test:e2e
 - Avant une première publication publique, contrôler tous les fichiers suivis et l’historique Git pour détecter données patient, exports, captures et secrets.
 - Ne pas ajouter de synchronisation, télémétrie, analytics ou service cloud sans demande explicite.
 - Une modification du schéma IndexedDB exige une version Dexie supérieure et une migration explicite préservant les données existantes.
+- La sauvegarde JSON `ma-tournee-sauvegarde` est un format public versionné : toute évolution doit rester capable de restaurer les sauvegardes antérieures.
 - L’application n’est ni un dossier patient partagé ni un dispositif médical. Conserver cette limite visible dans la documentation.
 
 ## Travail et validation

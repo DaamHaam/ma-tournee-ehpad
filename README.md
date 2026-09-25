@@ -8,6 +8,7 @@ Version testable : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamha
 - Spécification du premier jalon : [`_bmad-output/implementation-artifacts/tech-spec-premiere-tournee-utilisable.md`](./_bmad-output/implementation-artifacts/tech-spec-premiere-tournee-utilisable.md)
 - Version 0.2.0 (interface épurée) : [`_bmad-output/implementation-artifacts/tech-spec-v0-2-interface-epuree.md`](./_bmad-output/implementation-artifacts/tech-spec-v0-2-interface-epuree.md)
 - Import de patients et suivi éval/trans : [`_bmad-output/implementation-artifacts/tech-spec-import-patients-suivi.md`](./_bmad-output/implementation-artifacts/tech-spec-import-patients-suivi.md)
+- Sauvegarde complète : [`_bmad-output/implementation-artifacts/tech-spec-sauvegarde-complete.md`](./_bmad-output/implementation-artifacts/tech-spec-sauvegarde-complete.md)
 - Suivi du sprint : [`_bmad-output/implementation-artifacts/sprint-status.yaml`](./_bmad-output/implementation-artifacts/sprint-status.yaml)
 
 ## Lancer l'application

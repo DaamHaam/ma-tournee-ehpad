@@ -1,5 +1,6 @@
-import { db, type TourDatabase } from './database'
+import { db, type OrderTemplate, type Setting, type TourDatabase } from './database'
 import { careDefaults, hasTrace, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & PatientCare
 type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating'
 export class TourRepository {
@@ -84,6 +85,23 @@ export class TourRepository {
   }
   async archivePatient(id: string, archived: boolean): Promise<void> { if (await this.database.patients.update(id, { archived }) === 0) throw new Error('Ce patient n’existe plus.') }
   async deletePatient(id: string): Promise<void> { await this.database.patients.delete(id) }
+  async snapshot(): Promise<BackupData> {
+    return this.database.transaction('r', this.database.patients, this.database.days, this.database.orders, this.database.settings, async () => ({
+      patients: await this.database.patients.toArray(), days: await this.database.days.toArray(),
+      orders: await this.database.orders.toArray(), settings: await this.database.settings.toArray(),
+    }))
+  }
+  // Restauration complète : remplace patients, journées, ordres et réglages ; jamais de réinjection des fictifs ensuite.
+  async restore(data: BackupData): Promise<void> {
+    await this.database.transaction('rw', this.database.patients, this.database.days, this.database.orders, this.database.settings, async () => {
+      await Promise.all([this.database.patients.clear(), this.database.days.clear(), this.database.orders.clear(), this.database.settings.clear()])
+      await this.database.patients.bulkPut(data.patients)
+      await this.database.days.bulkPut(data.days)
+      await this.database.orders.bulkPut(data.orders)
+      await this.database.settings.bulkPut([...data.settings.filter(item => item.key !== 'initialized'), { key: 'initialized', value: 'yes' }])
+    })
+  }
+  async setSetting(key: string, value: string): Promise<void> { await this.database.settings.put({ key, value }) }
   async daysBetween(start: string, end: string): Promise<Day[]> {
     if (!validDate(start) || !validDate(end) || start > end) throw new Error('La date de début doit précéder ou être égale à la date de fin.')
     return this.database.days.where('date').between(start, end, true, true).toArray()

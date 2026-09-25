@@ -17,3 +17,5 @@ export class TourDatabase extends Dexie {
   }
 }
 export const db = new TourDatabase()
+// Demande à l’appareil de ne pas effacer la base sous pression d’espace (Safari 17+, Chromium). Sans effet ailleurs.
+export function requestPersistentStorage(): void { void navigator.storage?.persist?.().catch(() => false) }

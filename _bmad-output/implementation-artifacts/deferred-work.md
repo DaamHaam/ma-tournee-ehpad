@@ -8,7 +8,7 @@
 
 ## Après la v0.2.0
 
-- Le choix du stockage des données (IndexedDB seul, sauvegarde, autre) sera rediscuté ; ne rien engager avant cette discussion.
+- Stockage décidé le 2026-09-25 : IndexedDB local et sauvegarde complète manuelle (`tech-spec-sauvegarde-complete.md`), sans service externe.
 - Les patients fictifs du premier lancement ne portent plus de mention visible depuis la v0.2.0 ; ils restent marqués `demo` en base.
 
 ## Après l’import de patients
