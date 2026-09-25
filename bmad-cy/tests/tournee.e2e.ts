@@ -59,7 +59,7 @@ test('import de patients par copier-coller puis suivi éval/trans', async ({ pag
 
   await page.getByRole('link', { name: /Journée/ }).click()
   await expect(page.getByText('Martin Alice')).toHaveCount(0)
-  await expect(page.getByRole('img', { name: 'Éval ou trans : date inconnue' })).toHaveCount(2)
+  await expect(page.getByRole('button', { name: /éval ou trans : date inconnue$/ })).toHaveCount(2)
   await page.getByRole('button', { name: 'A pour EXEMPLE COMPOSE Beta' }).click()
   await page.getByRole('button', { name: 'B pour FICTIF', exact: true }).click()
 
@@ -72,8 +72,41 @@ test('import de patients par copier-coller puis suivi éval/trans', async ({ pag
   await page.getByLabel('Trans').click()
   await expect(page.getByLabel('Trans')).toBeChecked()
   await page.getByRole('link', { name: /Journée/ }).click()
-  await expect(page.getByRole('img', { name: /^Dernière éval ou trans/ })).toHaveClass(/recent/)
+  await expect(page.getByRole('button', { name: /^Note pour EXEMPLE COMPOSE Beta, dernière éval ou trans le/ })).toHaveClass(/recent/)
 
   await page.getByRole('link', { name: /Réglages/ }).click()
   await expect(page.locator('pre')).toContainText('Exemple fictif')
+})
+
+test('journée épurée : appui long pour réordonner, note au triangle, sans zoom', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-21')
+  await expect(page.getByRole('button', { name: 'Aujourd’hui' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Réorganiser' })).toHaveCount(0)
+  await expect(page.locator('.bottom-nav')).toHaveText('')
+  await expect(page.getByRole('link', { name: 'Patients' })).toBeVisible()
+  await expect(page.getByText('Repère')).toHaveCount(0)
+  await expect(page.getByRole('separator')).toHaveCount(3)
+
+  const note = page.getByRole('textbox', { name: 'Note du jour pour Martin Alice' })
+  await expect(note).toHaveCount(0)
+  await page.getByRole('button', { name: /^Note pour Martin Alice/ }).click()
+  await expect(note).toBeFocused()
+  expect(await note.evaluate(element => getComputedStyle(element).fontSize)).toBe('16px')
+  await note.fill('essai')
+  await page.getByRole('button', { name: /^Note pour Martin Alice/ }).click()
+  await expect(note).toHaveCount(0)
+
+  const rows = page.locator('.tour-list > .sortable-row')
+  const last = rows.filter({ hasText: 'Robert Paul' })
+  const lastBox = (await last.boundingBox())!
+  const topBox = (await rows.first().boundingBox())!
+  await page.mouse.move(lastBox.x + lastBox.width / 2, lastBox.y + 20)
+  await page.mouse.down()
+  await page.waitForTimeout(500)
+  await page.mouse.move(topBox.x + topBox.width / 2, topBox.y + 4, { steps: 20 })
+  await page.mouse.up()
+  await expect(rows.first()).toContainText('Robert Paul')
+  await expect(page).toHaveURL(/#\/\?date=2026-09-21$/)
+  await page.reload()
+  await expect(page.locator('.tour-list > .sortable-row').first()).toContainText('Robert Paul')
 })

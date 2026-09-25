@@ -32,12 +32,12 @@ development_status:
   2-2-afficher-la-liste-compl-te-des-patients-dans-journ-e: done
   2-3-r-organiser-l-ordre-des-patients-et-persister-au-drop: done
   2-4-ajouter-3-s-parateurs-d-pla-ables-par-sous-jour: done
-  2-5-ligne-patient-dense-conforme-triangle-nom-priorit-poign-e: in-progress
+  2-5-ligne-patient-dense-conforme-triangle-nom-priorit-poign-e: done
   epic-2-retrospective: optional
   epic-3: in-progress
   3-1-mod-le-de-donn-es-journ-e-dailyrecords-reset-quotidien: done
   3-2-pointage-a-b-exclusif-et-sauvegarde-imm-diate: done
-  3-3-notes-patient-du-jour-via-tiroir-triangle-autosave: in-progress
+  3-3-notes-patient-du-jour-via-tiroir-triangle-autosave: done
   3-4-h-global-commentaire-g-n-ral-de-journ-e-autosave: done
   epic-3-retrospective: optional
   epic-4: done
