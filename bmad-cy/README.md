@@ -8,7 +8,7 @@ Version actuelle : 0.3.0 (affichée en bas de `Réglages / Export`). Version tes
 
 - `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des trois repères par appui long, pointage A/B exclusif, note ouverte par le triangle, niveau H et commentaire.
 - `Patients` : ajout, liste alphabétique, fiche modifiable, historique, archivage et suppression confirmée. Une suppression conserve les snapshots nécessaires aux anciennes journées et aux exports.
-- `Réglages / Export` : plage de dates, aperçu TXT, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace tous les patients, sans toucher aux journées).
+- `Réglages / Export` : plage de dates (jour même par défaut), aperçu TXT, copie, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace tous les patients, sans toucher aux journées).
 - Fiche patient : couverture, séances et IFD (L/J/V), pointé, facturé, fin d’ordonnance, médecin traitant, cotation ; cases Éval et Trans datées du jour qui colorent le triangle de la Journée.
 - PWA : ressources mises en cache après un premier chargement complet pour permettre le rechargement hors ligne.
 

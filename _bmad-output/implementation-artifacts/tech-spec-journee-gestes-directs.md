@@ -35,3 +35,9 @@ context:
 - `npm test` 19/19, `npm run lint`, `npm run build` réussis.
 - `npm run test:e2e` 4/4, dont un parcours WebKit iPhone : absence des boutons retirés, barre sans texte, trois repères sans libellé visible, note ouverte et fermée par le triangle avec police 16 px, appui long réordonnant un patient en tête sans ouvrir sa fiche, ordre conservé après rechargement.
 - Contrôle visuel à 375 px. Le geste tactile réel reste à confirmer sur iPhone.
+
+## Export TXT (retour du 2026-09-25)
+
+- Période par défaut : du jour même au jour même ; la plage reste modifiable pour les longues périodes.
+- Bouton « Copier » à côté de « Télécharger .txt » : presse-papiers asynchrone, avec repli par sélection si indisponible. Retour « Copié. » ou « Copie impossible. ».
+- Vérifié par le parcours WebKit iPhone (dates par défaut et message de copie).

@@ -4,11 +4,17 @@ import { repository } from '../../storage/repository'
 import { exportTxt } from './exportTxt'
 import { PatientImportPanel } from './PatientImportPanel'
 
-function firstDayOfMonth(date: string) { return `${date.slice(0, 7)}-01` }
+// Repli pour les navigateurs sans presse-papiers asynchrone (contexte non sécurisé, ancien Safari).
+function copyWithSelection(text: string): boolean {
+  const area = document.createElement('textarea')
+  area.value = text; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0'
+  document.body.appendChild(area); area.select()
+  try { return document.execCommand('copy') } finally { area.remove() }
+}
 
 export function ExportPage() {
   const today = localDate()
-  const [start, setStart] = useState(firstDayOfMonth(today))
+  const [start, setStart] = useState(today)
   const [end, setEnd] = useState(today)
   const [preview, setPreview] = useState('')
   const [previewRange, setPreviewRange] = useState({ start, end })
@@ -46,6 +52,10 @@ export function ExportPage() {
     link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(preview); setMessage('Copié.') }
+    catch { setMessage(copyWithSelection(preview) ? 'Copié.' : 'Copie impossible.') }
+  }
   const share = async () => {
     if (!file || !navigator.share) return
     try {
@@ -60,7 +70,7 @@ export function ExportPage() {
   return <>
     <div className="page-heading"><h1>Réglages / Export</h1></div>
     <section className="card export-controls"><h2>Période</h2><div className="date-range"><label>Du <input type="date" value={start} onChange={event => { setPreview(''); setStart(event.target.value) }} /></label><label>Au <input type="date" value={end} onChange={event => { setPreview(''); setEnd(event.target.value) }} /></label></div><button className="primary" disabled={busy} onClick={() => void generate()}>Actualiser</button><p className={message.startsWith('La date') || message.startsWith('Impossible') ? 'field-error' : 'save-hint'} role="status">{message}</p></section>
-    {preview && <section className="card export-preview"><div className="section-heading"><h2>Aperçu TXT</h2></div>{preview && <pre>{preview}</pre>}<div className="action-row"><button disabled={!preview} onClick={download}>Télécharger .txt</button>{typeof navigator.share === 'function' && <button className="primary" disabled={!preview} onClick={() => void share()}>Partager</button>}</div></section>}
+    {preview && <section className="card export-preview"><div className="section-heading"><h2>Aperçu TXT</h2></div>{preview && <pre>{preview}</pre>}<div className="action-row"><button disabled={!preview} onClick={() => void copy()}>Copier</button><button disabled={!preview} onClick={download}>Télécharger .txt</button>{typeof navigator.share === 'function' && <button className="primary" disabled={!preview} onClick={() => void share()}>Partager</button>}</div></section>}
     <PatientImportPanel />
     <p className="app-version">Version {__APP_VERSION__}</p>
   </>
