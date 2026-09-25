@@ -1,5 +1,7 @@
 import { db, type TourDatabase } from './database'
-import { hasTrace, localDate, parseDate, SEPARATORS, toggleSession, validDate, type Day, type Identity, type Mood, type Patient } from '../domain/model'
+import { careDefaults, hasTrace, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & PatientCare
+type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating'
 export class TourRepository {
   private database: TourDatabase
   constructor(database = db) { this.database = database }
@@ -8,7 +10,7 @@ export class TourRepository {
       if (await this.database.settings.get('initialized')) return
       const samples = [ ['Martin', 'Alice', '12'], ['Bernard', 'Louis', '18'], ['Petit', 'Jeanne', '24'], ['Robert', 'Paul', '31'] ]
       // Never seed a database that already contains user patients.
-      if (await this.database.patients.count() === 0) await this.database.patients.bulkAdd(samples.map(([lastName, firstName, room]) => ({ id: crypto.randomUUID(), lastName, firstName, room, priority: '', demo: true, archived: false, createdAt: localDate() })))
+      if (await this.database.patients.count() === 0) await this.database.patients.bulkAdd(samples.map(([lastName, firstName, room]) => ({ ...careDefaults(), id: crypto.randomUUID(), lastName, firstName, room, priority: '', demo: true, archived: false, createdAt: localDate() })))
       await this.database.settings.put({ key: 'initialized', value: 'yes' })
     })
   }
@@ -52,15 +54,33 @@ export class TourRepository {
     })
   }
   async addPatient(input: Pick<Identity, 'lastName' | 'firstName' | 'room' | 'priority'>): Promise<string> {
-    if (!input.lastName.trim() || !input.firstName.trim()) throw new Error('Le nom et le prénom sont obligatoires.')
+    if (!input.lastName.trim()) throw new Error('Le nom est obligatoire.')
     const id = crypto.randomUUID()
-    await this.database.patients.add({ ...input, lastName: input.lastName.trim(), firstName: input.firstName.trim(), id, demo: false, archived: false, createdAt: localDate() })
+    await this.database.patients.add({ ...careDefaults(), ...input, lastName: input.lastName.trim(), firstName: input.firstName.trim(), id, demo: false, archived: false, createdAt: localDate() })
     return id
   }
-  async updatePatient(id: string, patch: Partial<Pick<Patient, 'lastName' | 'firstName' | 'room' | 'priority'>>): Promise<void> {
-    if ((patch.lastName !== undefined && !patch.lastName.trim()) || (patch.firstName !== undefined && !patch.firstName.trim())) throw new Error('Le nom et le prénom sont obligatoires.')
-    const normalized = Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, value?.trim()]))
+  async updatePatient(id: string, patch: Partial<Pick<Patient, EditableField>>): Promise<void> {
+    if (patch.lastName !== undefined && !patch.lastName.trim()) throw new Error('Le nom est obligatoire.')
+    if (patch.prescriptionEnd && !validDate(patch.prescriptionEnd)) throw new Error('Date de fin d’ordonnance invalide.')
+    const normalized = Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])) as Partial<Patient>
     if (await this.database.patients.update(id, normalized) === 0) throw new Error('Ce patient n’existe plus.')
+  }
+  async toggleFollowUp(id: string, kind: 'evalDates' | 'transDates', date: string): Promise<void> {
+    await this.database.transaction('rw', this.database.patients, async () => {
+      const patient = await this.database.patients.get(id)
+      if (!patient) throw new Error('Ce patient n’existe plus.')
+      await this.database.patients.put({ ...patient, [kind]: toggleDate(patient[kind] ?? [], date) })
+    })
+  }
+  // Remplace tous les patients ; les journées gardent leurs snapshots, l’ordre repart alphabétique sous les repères.
+  async replacePatients(imported: ImportedPatient[]): Promise<void> {
+    if (!imported.length || imported.some(patient => !patient.lastName.trim())) throw new Error('Import vide ou nom manquant.')
+    await this.database.transaction('rw', this.database.patients, this.database.orders, this.database.settings, async () => {
+      await this.database.patients.clear()
+      await this.database.orders.clear()
+      await this.database.patients.bulkAdd(imported.map(patient => ({ ...careDefaults(), ...patient, id: crypto.randomUUID(), room: '', priority: '', demo: false, archived: false, createdAt: localDate() })))
+      await this.database.settings.put({ key: 'initialized', value: 'yes' })
+    })
   }
   async archivePatient(id: string, archived: boolean): Promise<void> { if (await this.database.patients.update(id, { archived }) === 0) throw new Error('Ce patient n’existe plus.') }
   async deletePatient(id: string): Promise<void> { await this.database.patients.delete(id) }

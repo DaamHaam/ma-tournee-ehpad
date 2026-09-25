@@ -29,4 +29,14 @@ describe('export TXT', () => {
     const empty: Day = { date: '2026-09-26', mood: 0, comment: '', order: ['a'], entries: { a: entry(patient, null) } }
     expect(exportTxt([empty])).toBe('26/09/2026')
   })
+
+  it('n’exporte que le premier mot d’un nom composé', () => {
+    const day: Day = { date: '2026-09-27', mood: null, comment: '', order: ['a', 'b', 'c', 'd'], entries: {
+      a: entry(identity('a', 'EXEMPLE COMPOSE', 'Beta Gamma'), 'A'),
+      b: entry(identity('b', 'Fictif', 'Alpha'), 'B'),
+      c: entry(identity('c', 'Essai', 'Delta Epsilon'), 'A'),
+      d: entry(identity('d', 'Essai', ''), 'B'),
+    } }
+    expect(exportTxt([day])).toBe('27/09/2026\nExemple fictif Essai_delta essai')
+  })
 })

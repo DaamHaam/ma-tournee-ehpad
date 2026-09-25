@@ -8,8 +8,11 @@ Version actuelle : 0.2.0 (affichée en bas de `Réglages / Export`). Version tes
 
 - `Journée` : ouverture d’une date, raccourcis lundi/jeudi/vendredi, ordre tactile ou clavier, trois séparateurs, pointage A/B exclusif, notes, niveau H et commentaire.
 - `Patients` : ajout, liste alphabétique, fiche modifiable, historique, archivage et suppression confirmée. Une suppression conserve les snapshots nécessaires aux anciennes journées et aux exports.
-- `Réglages / Export` : plage de dates, aperçu TXT, téléchargement et partage système lorsque le navigateur le permet.
+- `Réglages / Export` : plage de dates, aperçu TXT, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace tous les patients, sans toucher aux journées).
+- Fiche patient : couverture, séances et IFD (L/J/V), pointé, facturé, fin d’ordonnance, médecin traitant, cotation ; cases Éval et Trans datées du jour qui colorent le triangle de la Journée.
 - PWA : ressources mises en cache après un premier chargement complet pour permettre le rechargement hors ligne.
+
+L’import attend, dans cet ordre : `nom`, `prenom`, `couverture`, `seances`, `ifd`, `pointe`, `facture`, `eval`, `trans`, `fin_ordo` (`JJ/MM/AAAA`), `medecin`, `cotation`. En-tête, lignes vides et colonnes supplémentaires sont ignorés.
 
 Au premier lancement seulement, quatre patients explicitement fictifs sont créés. Une fois archivés ou supprimés, ils ne sont jamais réinjectés.
 
@@ -49,8 +52,7 @@ Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son prop
 ## Limites de cette version
 
 - aucune synchronisation, sauvegarde cloud ou compte ; effacer les données du site Safari efface la base locale ;
-- pas d’import/export CSV du socle patient, de purge automatisée, de bilans ou de suivi actif des transmissions ;
-- le triangle de transmission reste gris avec le libellé accessible « date inconnue » ;
+- pas d’export du tableau patient, de purge des journées ni de bilans ;
 - Safari/iPhone physique reste à valider avant usage réel avec des données sensibles ;
 - l’icône PWA est fournie en SVG, à compléter par des variantes PNG si la cible iOS déployée l’exige.
 

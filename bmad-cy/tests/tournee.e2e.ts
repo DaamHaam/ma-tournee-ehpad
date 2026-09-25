@@ -42,3 +42,38 @@ test('la version de production se recharge hors ligne', async ({ page, context }
   await page.getByRole('link', { name: /Réglages/ }).click()
   await expect(page.locator('pre')).toContainText('Martin')
 })
+
+test('import de patients par copier-coller puis suivi éval/trans', async ({ page }) => {
+  // Données fictives au format tableur : en-tête, ligne vide et colonne « groupe » ignorés.
+  const pasted = [
+    'prenom\tcouverture\tseances\tifd\tpointe\tfacture\teval\ttrans\tfin_ordo\tmedecin\tcotation\tgroupe',
+    'EXEMPLE COMPOSE\tBeta\tALD\tLV\tnon\toui\toui\tnon\tnon\t19/05/2027\tDr Test\tRPE 8.5\t1',
+    '\t\t\t\t\t\t\t\t\t\t\t',
+    'FICTIF\t\tMutuelle\tLJV\tLJ\toui\toui\tnon\tnon\t07/11/2026\t?\tAMC 8,5\t4',
+  ].join('\n')
+  await page.goto('/#/settings')
+  await page.getByLabel('Données patients').fill(pasted)
+  page.once('dialog', dialog => void dialog.accept())
+  await page.getByRole('button', { name: 'Importer' }).click()
+  await expect(page.getByText('2 patients importés.')).toBeVisible()
+
+  await page.getByRole('link', { name: /Journée/ }).click()
+  await expect(page.getByText('Martin Alice')).toHaveCount(0)
+  await expect(page.getByRole('img', { name: 'Éval ou trans : date inconnue' })).toHaveCount(2)
+  await page.getByRole('button', { name: 'A pour EXEMPLE COMPOSE Beta' }).click()
+  await page.getByRole('button', { name: 'B pour FICTIF', exact: true }).click()
+
+  await page.getByRole('link', { name: /EXEMPLE COMPOSE/ }).click()
+  await expect(page.getByLabel('Couverture')).toHaveValue('ALD')
+  await expect(page.getByLabel('Fin d’ordonnance')).toHaveValue('2027-05-19')
+  await expect(page.getByLabel('Médecin traitant')).toHaveValue('Dr Test')
+  await expect(page.getByRole('button', { name: 'Séances V' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Séances J' })).toHaveAttribute('aria-pressed', 'false')
+  await page.getByLabel('Trans').click()
+  await expect(page.getByLabel('Trans')).toBeChecked()
+  await page.getByRole('link', { name: /Journée/ }).click()
+  await expect(page.getByRole('img', { name: /^Dernière éval ou trans/ })).toHaveClass(/recent/)
+
+  await page.getByRole('link', { name: /Réglages/ }).click()
+  await expect(page.locator('pre')).toContainText('Exemple fictif')
+})

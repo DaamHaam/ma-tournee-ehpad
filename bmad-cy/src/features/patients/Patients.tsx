@@ -5,6 +5,7 @@ import { dateLabel, fullName, hasTrace, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
+import { PatientCare } from './PatientCare'
 
 function byName(a: Patient, b: Patient) {
   return a.lastName.localeCompare(b.lastName, 'fr', { sensitivity: 'base' }) || a.firstName.localeCompare(b.firstName, 'fr', { sensitivity: 'base' })
@@ -47,7 +48,7 @@ export function Patients() {
     {formOpen && <form className="card patient-form" onSubmit={event => void add(event)}>
       <div className="form-grid">
         <label>Nom <input name="lastName" autoComplete="off" required /></label>
-        <label>Prénom <input name="firstName" autoComplete="off" required /></label>
+        <label>Prénom <input name="firstName" autoComplete="off" /></label>
         <label>Chambre <input name="room" autoComplete="off" inputMode="text" /></label>
         <label>Priorité <input name="priority" autoComplete="off" /></label>
       </div>
@@ -75,7 +76,7 @@ function EditableIdentity({ patient }: { patient: Patient }) {
   return <section className="card">
     <div className="form-grid">
       <label>Nom <input key={`${patient.id}-lastName-${patient.lastName}`} autoComplete="off" defaultValue={patient.lastName} required onBlur={event => void save('lastName', event.currentTarget)} /></label>
-      <label>Prénom <input key={`${patient.id}-firstName-${patient.firstName}`} autoComplete="off" defaultValue={patient.firstName} required onBlur={event => void save('firstName', event.currentTarget)} /></label>
+      <label>Prénom <input key={`${patient.id}-firstName-${patient.firstName}`} autoComplete="off" defaultValue={patient.firstName} onBlur={event => void save('firstName', event.currentTarget)} /></label>
       <label>Chambre <input key={`${patient.id}-room-${patient.room}`} autoComplete="off" defaultValue={patient.room} onBlur={event => void save('room', event.currentTarget)} /></label>
       <label>Priorité <input key={`${patient.id}-priority-${patient.priority}`} autoComplete="off" defaultValue={patient.priority} onBlur={event => void save('priority', event.currentTarget)} /></label>
     </div>
@@ -100,6 +101,7 @@ export function PatientDetail() {
     <Link className="back-link" to="/patients">← Patients</Link>
     <div className="page-heading patient-title"><div><h1>{fullName(patient)}</h1>{(patient.room || patient.archived) && <p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}</div></div>
     <EditableIdentity patient={patient} />
+    <PatientCare patient={patient} />
     {!!history?.length && <section className="card history" aria-label="Séances et notes">
       <ol>{history.map(day => {
         const entry = day.entries[id]

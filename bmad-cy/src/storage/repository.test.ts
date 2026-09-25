@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
+import Dexie from 'dexie'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { SEPARATORS } from '../domain/model'
+import { careDefaults, SEPARATORS } from '../domain/model'
 import { TourDatabase } from './database'
 import { TourRepository } from './repository'
 
@@ -52,5 +53,41 @@ describe('stockage local', () => {
 
   it('refuse une plage inversée', async () => {
     await expect(repository.daysBetween('2026-10-01', '2026-09-01')).rejects.toThrow('date de début')
+  })
+
+  it('remplace les patients par un import sans toucher aux journées passées', async () => {
+    await repository.initialize()
+    await repository.ensureDay('2026-09-24')
+    const old = (await database.patients.toArray())[0]
+    await repository.setSession('2026-09-24', old.id, 'A')
+    await repository.replacePatients([{ ...careDefaults(), lastName: 'FICTIF', firstName: '', days: 'LV' }])
+    const patients = await database.patients.toArray()
+    expect(patients).toHaveLength(1)
+    expect(patients[0]).toMatchObject({ lastName: 'FICTIF', days: 'LV', demo: false, archived: false })
+    expect((await database.days.get('2026-09-24'))?.entries[old.id]).toMatchObject({ session: 'A', patient: { lastName: old.lastName } })
+    expect(await database.orders.count()).toBe(0)
+    await repository.initialize()
+    expect(await database.patients.count()).toBe(1)
+    await repository.ensureDay('2026-10-01')
+    expect((await database.days.get('2026-10-01'))?.order).toEqual([...SEPARATORS, patients[0].id])
+  })
+
+  it('coche et décoche la trans du jour en conservant la précédente', async () => {
+    const id = await repository.addPatient({ lastName: 'FICTIF', firstName: '', room: '', priority: '' })
+    await repository.toggleFollowUp(id, 'transDates', '2026-09-01')
+    await repository.toggleFollowUp(id, 'transDates', '2026-09-25')
+    await repository.toggleFollowUp(id, 'transDates', '2026-09-25')
+    expect((await database.patients.get(id))?.transDates).toEqual(['2026-09-01'])
+  })
+
+  it('migre une base v1 en ajoutant les champs de prise en charge', async () => {
+    const name = `test-migration-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(1).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    await legacy.table('patients').add({ id: 'p1', lastName: 'Fictif', firstName: 'Alpha', room: '3', priority: '', demo: false, archived: false, createdAt: '2026-09-01' })
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect(await migrated.patients.get('p1')).toMatchObject({ lastName: 'Fictif', room: '3', ...careDefaults() })
+    migrated.close(); await migrated.delete()
   })
 })

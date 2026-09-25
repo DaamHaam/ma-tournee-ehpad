@@ -1,5 +1,5 @@
 # generated: 2026-03-26T09:06:46
-# last_updated: 2026-03-26T09:19:44+01:00
+# last_updated: 2026-09-25T09:00:00+02:00
 # project: BMAD CY
 # project_key: NOKEY
 # tracking_system: file-system
@@ -40,13 +40,13 @@ development_status:
   3-3-notes-patient-du-jour-via-tiroir-triangle-autosave: in-progress
   3-4-h-global-commentaire-g-n-ral-de-journ-e-autosave: done
   epic-3-retrospective: optional
-  epic-4: backlog
-  4-1-enregistrer-transmission-faite-aujourd-hui-sur-la-fiche-patient: backlog
-  4-2-afficher-l-indicateur-transmission-couleur-dans-journ-e: backlog
+  epic-4: done
+  4-1-enregistrer-transmission-faite-aujourd-hui-sur-la-fiche-patient: done
+  4-2-afficher-l-indicateur-transmission-couleur-dans-journ-e: done
   epic-4-retrospective: optional
   epic-5: in-progress
   5-1-cr-ation-patient-nom-pr-nom-obligatoires-ajout-aux-sous-jours: done
-  5-2-fiche-patient-en-t-te-administratif-avec-dition-directe: backlog
+  5-2-fiche-patient-en-t-te-administratif-avec-dition-directe: in-progress
   5-3-ant-c-dents-en-texte-libre-autosave: backlog
   5-4-priorit-patient-1-3-visible-dans-journ-e: in-progress
   5-5-archiver-et-supprimer-un-patient: done
@@ -63,8 +63,8 @@ development_status:
   7-2-ui-d-export-txt-par-p-riode-preview-partage: done
   7-3-consulter-et-corriger-toute-journee-passee: done
   epic-7-retrospective: optional
-  epic-8: backlog
+  epic-8: in-progress
   8-1-export-tableau-patient-r-importable-csv: backlog
-  8-2-import-csv-patient-en-replace-all-app-vide: backlog
+  8-2-import-csv-patient-en-replace-all-app-vide: done  # import collé (tech-spec-import-patients-suivi)
   8-3-purge-manuelle-des-journaux-quotidiens-apr-s-export: backlog
   epic-8-retrospective: optional

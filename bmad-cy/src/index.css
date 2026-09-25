@@ -58,6 +58,10 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .patient-row { overflow:hidden; border:1px solid var(--line); border-radius:11px; background:#fff; }
 .patient-top { display:grid; grid-template-columns:30px minmax(0,1fr) auto; align-items:center; gap:.35rem; min-height:55px; padding:.35rem .42rem; }
 .transmission { color:#98a2aa; text-align:center; }
+.transmission.recent { color:#7dc48c; }
+.transmission.month { color:#2e7a4b; }
+.transmission.late { color:#e08a1e; }
+.transmission.overdue { color:#c43b33; }
 .patient-name { min-width:0; display:grid; text-decoration:none; }
 .patient-name strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; }
 .patient-meta { color:var(--muted); font-size:.71rem; }
@@ -107,3 +111,15 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .date-heading { position:relative; display:block; min-width:0; }
 .date-heading h1 { margin:0; text-decoration:underline dotted #9aa7b2; text-underline-offset:.25em; }
 .date-heading input { position:absolute; inset:0; width:100%; height:100%; min-height:0; padding:0; border:0; opacity:0; cursor:pointer; }
+select { width:100%; min-height:44px; border:1px solid #cbd3da; border-radius:9px; background:#fff; padding:.6rem .72rem; color:var(--ink); font:inherit; }
+.check-row { display:grid; grid-template-columns:repeat(4,auto); justify-content:start; gap:0 1.1rem; margin-bottom:.8rem; }
+@media (max-width:390px) { .check-row { grid-template-columns:repeat(2,1fr); } }
+.check-field { display:flex; align-items:center; gap:.45rem; min-height:44px; }
+.check-field input { width:22px; min-height:22px; accent-color:var(--accent); }
+.check-field .subtle { font-weight:500; }
+.letter-field { margin:0; border:0; padding:0; min-width:0; }
+.letter-field legend { margin-bottom:.35rem; padding:0; color:#43515f; font-size:.86rem; font-weight:650; }
+.letter-buttons { display:grid; grid-template-columns:repeat(3,1fr); gap:.3rem; }
+.letter-buttons button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.patient-import textarea { font-family:ui-monospace,Menlo,monospace; font-size:.75rem; white-space:pre; }
+.patient-import ul { margin:.5rem 0 0; padding-left:1.1rem; }
