@@ -131,3 +131,8 @@ select { width:100%; min-height:44px; border:1px solid #cbd3da; border-radius:9p
 .patient-import ul { margin:.5rem 0 0; padding-left:1.1rem; }
 .action-row button.copied { border-color:#2e7a4b; color:#2e7a4b; }
 .page-heading.end { justify-content:flex-end; }
+.bilan-toggle { min-width:44px; padding:.35rem; color:var(--muted); font-size:1.2rem; line-height:1; }
+.bilan-toggle.filled { border-color:var(--accent); color:var(--accent); }
+.bilan { padding:.5rem .6rem .6rem; border-top:1px solid #edf0f2; background:#fafbfc; -webkit-user-select:text; user-select:text; }
+.bilan textarea { -webkit-user-select:text; user-select:text; margin-bottom:.4rem; }
+.history-bilan { margin:.3rem 0 0; color:var(--ink); font-size:.82rem; white-space:pre-wrap; }

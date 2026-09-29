@@ -6,7 +6,7 @@ export interface Patient extends Identity, PatientCare { archived: boolean; crea
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '' } }
-export interface Entry { patient: Identity; session: SessionType; note: string }
+export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
@@ -25,7 +25,7 @@ export function weekDate(date: string, weekday: number): string {
 export function dateLabel(date: string): string { return parseDate(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }
 export function fullName(patient: Identity): string { return [patient.lastName, patient.firstName].filter(Boolean).join(' ') }
 export function moodSigns(mood: Mood): string { return mood === null || mood === 0 ? '' : (mood > 0 ? '+' : '-').repeat(Math.abs(mood)) }
-export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' }
+export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' }
 export function toggleSession(current: SessionType, next: Exclude<SessionType, null>): SessionType { return current === next ? null : next }
 export function toggleLetter(value: string, letter: string): string {
   const letters = new Set(value.toUpperCase().split('').filter(char => (WEEKDAY_LETTERS as readonly string[]).includes(char)))

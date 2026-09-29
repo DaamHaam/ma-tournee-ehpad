@@ -80,9 +80,22 @@ npm run test:e2e
 
 ## Git et déploiement
 
-- `main` contient les versions testables et déclenche `.github/workflows/ci-pages.yml`.
+- Exception au bloc commun : ce projet n'a pas encore de branche `dev` ; `main` contient les versions testables et déclenche `.github/workflows/ci-pages.yml`.
 - Le workflow vérifie tests, lint et build avant de publier `bmad-cy/dist` sur GitHub Pages.
 - Ne jamais committer `node_modules/`, `dist/`, les rapports Playwright, les fichiers `.env` ou des exports patients.
 - Utiliser des commits conventionnels et des tags `vX.Y.Z` pour les versions testables.
 - Ne pousser et ne publier qu’après réussite des vérifications adaptées au changement.
 - Pour une release : mettre à jour `package.json` et son lockfile, valider le projet, committer la version, pousser `main`, attendre la CI verte, taguer ce commit exact, pousser le tag, puis contrôler l’URL Pages.
+
+## Règles communes (catalogue WORKFLOW)
+
+- **Instructions** : ce fichier est l'unique source des règles ; `CLAUDE.md` se limite à `@AGENTS.md`. Ne jamais dupliquer une règle ailleurs.
+- **Comptes et services** : voir `ACCOUNTS.md` (GitHub, hébergement, base de données, API, emplacement des secrets). Le mettre à jour dès qu'un compte, un service ou un secret change. Aucune valeur secrète dedans.
+- **Avant de coder** : pour une demande non triviale, reformuler ce qui a été compris et poser les questions utiles avant de coder.
+- **Git** : développer sur `dev` (commit et push selon les règles du projet ci-dessus). `main` ne reçoit `dev` que sur demande explicite. Pas de pull request. Ne jamais réécrire l'historique de `dev` ou `main`.
+- **Trace de l'agent** : terminer chaque message de commit par une ligne `Agent: Claude` ou `Agent: Codex`, selon l'agent qui a réellement fait le travail.
+- **GitHub** : le compte est fixé par la configuration git (voir `ACCOUNTS.md`). Ne pas utiliser `gh auth switch` ; en cas d'erreur d'accès, le signaler.
+- **Notification de fin** : si la tâche a demandé plus de 2 minutes, lancer juste avant la réponse finale `tg-notify "<résumé en quelques phrases>"`, ou `tg-notify --bloque "<raison>"` en cas de blocage après un travail significatif. Le script détecte l'agent et choisit le bon bot. Une seule notification par tâche, sans donnée sensible. Si l'envoi échoue, le signaler sans considérer la tâche comme échouée. (Chemin complet si besoin : `/opt/homebrew/bin/tg-notify` ; absent dans les environnements cloud : ne rien envoyer.)
+- **Revue de code** (demande « revue », sans PR) : examiner en lecture seule les commits déjà poussés sur `dev` depuis le tag `revue-ok` (à défaut depuis `origin/main`), ou le commit / la plage indiqués. Rendre : résumé des fonctionnalités couvertes, problèmes classés par gravité avec `fichier:ligne` et correction proposée, plan de correction. Ne rien corriger sans accord.
+- **Clôture** (demande « clôture », une fois les corrections validées et poussées) : déplacer le tag `revue-ok` sur `origin/dev` (`git tag -f revue-ok origin/dev`, `git push origin :refs/tags/revue-ok`, `git push origin revue-ok`), faire un récapitulatif et envoyer la notification. Si l'environnement (cloud) ne peut pas pousser le tag, donner ces commandes à lancer en local.
+- Maintenir ce fichier quand les commandes, l'architecture, les invariants ou le déploiement évoluent.

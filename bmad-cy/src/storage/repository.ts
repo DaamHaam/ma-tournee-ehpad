@@ -44,6 +44,7 @@ export class TourRepository {
   }
   async setSession(date: string, id: string, session: 'A' | 'B'): Promise<void> { await this.changeDay(date, day => { day.entries[id].session = toggleSession(day.entries[id].session, session) }) }
   async setNote(date: string, id: string, note: string): Promise<void> { await this.changeDay(date, day => { day.entries[id].note = note }) }
+  async setBilan(date: string, id: string, bilan: string): Promise<void> { await this.changeDay(date, day => { day.entries[id].bilan = bilan }) }
   async setMood(date: string, mood: Mood): Promise<void> { await this.changeDay(date, day => { day.mood = mood }) }
   async setComment(date: string, comment: string): Promise<void> { await this.changeDay(date, day => { day.comment = comment }) }
   async reorder(date: string, order: string[]): Promise<void> {

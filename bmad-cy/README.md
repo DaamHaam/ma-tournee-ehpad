@@ -2,11 +2,11 @@
 
 PWA iPhone-first pour préparer et tracer une tournée de kinésithérapie en EHPAD. La version actuelle fonctionne sans compte ni serveur : patients, journées, notes et ordres sont enregistrés dans IndexedDB sur l’appareil.
 
-Version actuelle : 0.6.0 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
+Version actuelle : 0.7.0 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
 
 ## Parcours disponible
 
-- `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des quatre repères (le rouge pour les patients sans séance prévue) par appui long, cartes au format « NOM P. », pointage A/B exclusif, note ouverte par le triangle, niveau H et commentaire.
+- `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des quatre repères (le rouge pour les patients sans séance prévue) par appui long, cartes au format « NOM P. », pointage A/B exclusif, note ouverte par le triangle, bilan libre du jour ouvert par « + » (copiable, visible dans l’historique, hors export TXT), niveau H et commentaire.
 - `Patients` : ajout, liste alphabétique, fiche modifiable, historique, archivage et suppression confirmée. Une suppression conserve les snapshots nécessaires aux anciennes journées et aux exports.
 - `Réglages / Export` : plage de dates (jour même par défaut), aperçu TXT, copie, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace tous les patients, sans toucher aux journées).
 - Sauvegarde : fichier JSON complet (patients, fiches, journées, ordres) enregistrable dans Fichiers et restaurable sur l’app ou un autre iPhone.

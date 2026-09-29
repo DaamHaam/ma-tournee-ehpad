@@ -5,14 +5,8 @@ import { exportTxt } from './exportTxt'
 import { PatientImportPanel } from './PatientImportPanel'
 import { BackupPanel } from './BackupPanel'
 import { downloadFile } from './saveFile'
+import { copyText } from './clipboard'
 
-// Repli pour les navigateurs sans presse-papiers asynchrone (contexte non sécurisé, ancien Safari).
-function copyWithSelection(text: string): boolean {
-  const area = document.createElement('textarea')
-  area.value = text; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0'
-  document.body.appendChild(area); area.select()
-  try { return document.execCommand('copy') } finally { area.remove() }
-}
 
 export function ExportPage() {
   const today = localDate()
@@ -47,9 +41,7 @@ export function ExportPage() {
 
   const download = () => { if (file) downloadFile(file) }
   const copy = async () => {
-    let ok = true
-    try { await navigator.clipboard.writeText(preview) } catch { ok = copyWithSelection(preview) }
-    if (!ok) { setMessage('Copie impossible.'); return }
+    if (!await copyText(preview)) { setMessage('Copie impossible.'); return }
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1500)
   }

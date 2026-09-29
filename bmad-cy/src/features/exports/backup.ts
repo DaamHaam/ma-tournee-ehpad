@@ -25,7 +25,7 @@ function checkPatient(value: unknown): Patient {
 }
 function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)
-  for (const entry of Object.values(value.entries)) if (!isObject(entry) || !isObject(entry.patient) || !isString(entry.note) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
+  for (const entry of Object.values(value.entries)) if (!isObject(entry) || !isObject(entry.patient) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
   return { mood: null, comment: '', ...value } as Day
 }
 function checkOrder(value: unknown): OrderTemplate {

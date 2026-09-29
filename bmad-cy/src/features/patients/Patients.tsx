@@ -105,7 +105,7 @@ export function PatientDetail() {
     {!!history?.length && <section className="card history" aria-label="Séances et notes">
       <ol>{history.map(day => {
         const entry = day.entries[id]
-        return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}</span></Link></li>
+        return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}</span>{entry.bilan?.trim() && <p className="history-bilan">{entry.bilan}</p>}</Link></li>
       })}</ol>
     </section>}
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>

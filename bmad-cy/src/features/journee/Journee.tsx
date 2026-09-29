@@ -8,6 +8,7 @@ import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { dateLabel, followUpLevel, fullName, lastFollowUp, localDate, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, weekDate, type Mood, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
+import { BilanEditor } from './BilanEditor'
 // Toute la carte se déplace après un appui long (toucher ou souris) ; les appuis courts restent aux boutons.
 function SortableRow({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -27,6 +28,7 @@ export function Journee() {
   const rawDate = params.get('date')
   const date = rawDate && validDate(rawDate) ? rawDate : localDate()
   const [noteOverrides, setNoteOverrides] = useState<Record<string, boolean>>({})
+  const [openBilans, setOpenBilans] = useState<Record<string, boolean>>({})
   const { run } = useSave()
   const patients = useLiveQuery(() => db.patients.toArray(), [])
   const day = useLiveQuery(() => db.days.get(date), [date])
@@ -54,8 +56,9 @@ export function Journee() {
         const noteKey = `${date}:${id}`
         const noteOpen = entry ? noteOverrides[noteKey] ?? entry.note.trim() !== '' : false
         return <SortableRow key={id} id={id} label={label}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className="patient-row">
-          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`}><strong>{shortName(patient!)}</strong>{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}</div></div>
+          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`}><strong>{shortName(patient!)}</strong>{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<button type="button" className={`bilan-toggle${entry.bilan?.trim() ? ' filled' : ''}`} aria-expanded={!!openBilans[noteKey]} aria-label={`Bilan pour ${fullName(patient!)}`} onClick={() => setOpenBilans(current => ({ ...current, [noteKey]: !current[noteKey] }))}>+</button></div></div>
  {noteOpen && <input key={`${date}-${id}-note`} className="day-note" onMouseDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} autoFocus={noteOverrides[noteKey] === true} aria-label={`Note du jour pour ${fullName(patient!)}`} placeholder="Note" defaultValue={entry.note} onChange={e => { const value = e.target.value; void run(() => repository.setNote(date, id, value)) }} />}
+          {openBilans[noteKey] && <BilanEditor key={`${date}-${id}-bilan`} date={date} id={id} name={fullName(patient!)} initial={entry.bilan ?? ''} />}
         </article>}</SortableRow>
       })}</div></SortableContext></DndContext>
       <section className="card day-summary"><fieldset><legend className="sr-only">Niveau H</legend><div className="mood-options">{([-3, -2, -1, 0, 1, 2, 3] as const).map(mood => <button key={mood} aria-pressed={day.mood === mood} onClick={() => void run(() => repository.setMood(date, day.mood === mood ? null : mood as Mood))}>H{moodSigns(mood)}</button>)}</div></fieldset><textarea key={date} aria-label="Commentaire général" rows={2} defaultValue={day.comment} placeholder="Commentaire" onChange={e => { const value = e.target.value; void run(() => repository.setComment(date, value)) }} /></section>

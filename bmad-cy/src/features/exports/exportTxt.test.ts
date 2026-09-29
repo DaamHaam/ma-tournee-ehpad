@@ -20,7 +20,7 @@ describe('export TXT', () => {
       a: entry(identity('a', 'Martin', 'Alice'), 'A'),
       b: entry(identity('b', 'Martin', 'Anne'), 'B'),
     } }
-    expect(exportTxt([day])).toContain('Martin_alice martin_anne')
+    expect(exportTxt([day])).toContain('Martin Alice martin Anne')
     expect(exportTxt([day]).split('\n')[1]).toBe('relève')
   })
 
@@ -37,6 +37,17 @@ describe('export TXT', () => {
       c: entry(identity('c', 'Essai', 'Delta Epsilon'), 'A'),
       d: entry(identity('d', 'Essai', ''), 'B'),
     } }
-    expect(exportTxt([day])).toBe('27/09/2026\nExemple fictif Essai_delta essai')
+    expect(exportTxt([day])).toBe('27/09/2026\nExemple fictif Essai D. essai')
+  })
+
+  it('différencie les homonymes par « Nom P. » et n’exporte jamais le bilan', () => {
+    const day: Day = { date: '2026-09-29', mood: null, comment: '', order: ['a', 'b', 'c', 'd', 'e'], entries: {
+      a: { ...entry(identity('a1b2c3d4', 'FICTIF', 'Marie-Anne'), 'A'), bilan: 'marche 10 m' },
+      b: entry(identity('b', 'FICTIF', 'jean'), 'B'),
+      c: entry(identity('ccc111', 'Essai', ''), 'A'),
+      d: entry(identity('ddd222', 'Essai', ''), 'B'),
+      e: { ...entry(identity('e', 'Seul', 'Zoé'), null), bilan: 'bilan sans séance' },
+    } }
+    expect(exportTxt([day])).toBe('29/09/2026\nFictif M. fictif J. Essai_ccc111 essai_ddd222')
   })
 })
