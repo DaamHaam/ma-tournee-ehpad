@@ -1,4 +1,4 @@
-import { careDefaults, SEPARATORS, validDate, type Day, type Patient } from '../../domain/model'
+import { careDefaults, validDate, type Day, type Patient } from '../../domain/model'
 import type { OrderTemplate, Setting } from '../../storage/database'
 import type { BackupData } from '../../storage/repository'
 
@@ -29,7 +29,7 @@ function checkDay(value: unknown): Day {
   return { mood: null, comment: '', ...value } as Day
 }
 function checkOrder(value: unknown): OrderTemplate {
-  if (!isObject(value) || typeof value.weekday !== 'number' || !isStringList(value.order) || !SEPARATORS.every(id => (value.order as string[]).includes(id))) throw new Error(INVALID)
+  if (!isObject(value) || typeof value.weekday !== 'number' || !isStringList(value.order)) throw new Error(INVALID)
   return value as unknown as OrderTemplate
 }
 

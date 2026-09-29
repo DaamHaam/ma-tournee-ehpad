@@ -108,4 +108,13 @@ describe('stockage local', () => {
     expect((await other.days.get('2026-09-21'))?.entries[first.id]).toMatchObject({ session: 'B', note: 'essai' })
     other.close(); await other.delete()
   })
+
+  it('ajoute le repère rouge aux ordres enregistrés avec trois repères', async () => {
+    await repository.initialize()
+    await database.orders.put({ weekday: 1, order: ['separator:1', 'separator:2', 'separator:3'] })
+    await repository.ensureDay('2026-10-05')
+    const day = await database.days.get('2026-10-05')
+    expect(day?.order.slice(0, 4)).toEqual(SEPARATORS)
+    expect(day?.order).toHaveLength(8)
+  })
 })

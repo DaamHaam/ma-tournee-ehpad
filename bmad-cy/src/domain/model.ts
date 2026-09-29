@@ -8,7 +8,10 @@ export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '' } }
 export interface Entry { patient: Identity; session: SessionType; note: string }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
-export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3']
+// Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
+export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
+export const OFF_DAY_SEPARATOR = 'separator:4'
+export function shortName(patient: Identity): string { return [patient.lastName, patient.firstName.trim() && `${patient.firstName.trim()[0]}.`].filter(Boolean).join(' ') }
 export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { followUpLevel, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate } from './model'
+import { followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate } from './model'
 
 describe('règles du domaine', () => {
   it('bascule A/B de façon exclusive et réversible', () => {
@@ -40,5 +40,12 @@ describe('règles du domaine', () => {
     expect(followUpLevel('2026-08-11', '2026-09-25')).toBe('late')
     expect(followUpLevel('2026-07-27', '2026-09-25')).toBe('late')
     expect(followUpLevel('2026-07-26', '2026-09-25')).toBe('overdue')
+  })
+
+  it('affiche le nom suivi de l’initiale du prénom', () => {
+    const base = { id: 'x', room: '', priority: '', demo: false }
+    expect(shortName({ ...base, lastName: 'FICTIF', firstName: 'alpha' })).toBe('FICTIF a.')
+    expect(shortName({ ...base, lastName: 'Essai', firstName: 'Beta Gamma' })).toBe('Essai B.')
+    expect(shortName({ ...base, lastName: 'EXEMPLE', firstName: ' ' })).toBe('EXEMPLE')
   })
 })

@@ -41,8 +41,8 @@ export function Patients() {
   }
 
   return <>
-    <div className="page-heading">
-      <h1>Patients</h1>
+    <div className="page-heading end">
+      <h1 className="sr-only">Patients</h1>
       <button className="primary" onClick={() => setFormOpen(value => !value)}>{formOpen ? 'Fermer' : 'Ajouter'}</button>
     </div>
     {formOpen && <form className="card patient-form" onSubmit={event => void add(event)}>

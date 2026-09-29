@@ -23,6 +23,7 @@ export class TourRepository {
       const template = await this.database.orders.get(parseDate(date).getDay())
       const day: Day = existing ?? { date, entries: {}, order: template?.order.slice() ?? [...SEPARATORS], mood: null, comment: '' }
       let changed = !existing
+      for (const separator of SEPARATORS) if (!day.order.includes(separator)) { day.order.push(separator); changed = true }
       for (const patient of patients) {
         if (!day.entries[patient.id]) { day.entries[patient.id] = { patient: { ...patient }, session: null, note: '' }; changed = true }
         if (!day.order.includes(patient.id)) { day.order.push(patient.id); changed = true }

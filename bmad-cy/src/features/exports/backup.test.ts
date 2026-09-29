@@ -26,4 +26,10 @@ describe('sauvegarde complète', () => {
     expect(() => parseBackup(JSON.stringify(broken))).toThrow('pas une sauvegarde')
     expect(() => parseBackup(JSON.stringify({ ...JSON.parse(buildBackup(data, '')), version: 99 }))).toThrow('plus récente')
   })
+
+  it('restaure une sauvegarde antérieure au quatrième repère', () => {
+    const old = JSON.parse(buildBackup(data, ''))
+    old.orders = [{ weekday: 1, order: ['separator:1', 'separator:2', 'separator:3', 'p1'] }]
+    expect(parseBackup(JSON.stringify(old)).orders[0].order).toHaveLength(4)
+  })
 })

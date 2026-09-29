@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { dateLabel, followUpLevel, fullName, lastFollowUp, localDate, moodSigns, parseDate, SEPARATORS, validDate, weekDate, type Mood, type Patient } from '../../domain/model'
+import { dateLabel, followUpLevel, fullName, lastFollowUp, localDate, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, weekDate, type Mood, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 // Toute la carte se déplace après un appui long (toucher ou souris) ; les appuis courts restent aux boutons.
 function SortableRow({ id, label, children }: { id: string; label: string; children: ReactNode }) {
@@ -53,8 +53,8 @@ export function Journee() {
         const label = isSeparator ? `Repère ${SEPARATORS.indexOf(id) + 1}` : fullName(patient!)
         const noteKey = `${date}:${id}`
         const noteOpen = entry ? noteOverrides[noteKey] ?? entry.note.trim() !== '' : false
-        return <SortableRow key={id} id={id} label={label}>{isSeparator ? <div className="separator" role="separator" aria-label={label} /> : <article className="patient-row">
-          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`}><strong>{patient!.lastName} {patient!.firstName}{patient!.priority && <span className="priority"> {patient!.priority}</span>}</strong>{(patient!.room || !active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{[patient!.room && `Ch. ${patient!.room}`, !active.has(id) ? 'Supprimé' : active.get(id)?.archived ? 'Archivé' : ''].filter(Boolean).join(' · ')}</span>}</Link><div className="session-buttons">{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}</div></div>
+        return <SortableRow key={id} id={id} label={label}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className="patient-row">
+          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`}><strong>{shortName(patient!)}</strong>{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}</div></div>
  {noteOpen && <input key={`${date}-${id}-note`} className="day-note" onMouseDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} autoFocus={noteOverrides[noteKey] === true} aria-label={`Note du jour pour ${fullName(patient!)}`} placeholder="Note" defaultValue={entry.note} onChange={e => { const value = e.target.value; void run(() => repository.setNote(date, id, value)) }} />}
         </article>}</SortableRow>
       })}</div></SortableContext></DndContext>

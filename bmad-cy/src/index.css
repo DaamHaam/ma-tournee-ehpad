@@ -13,6 +13,10 @@ button.danger { color:var(--danger); border-color:#e4bbc0; }
 a { color:inherit; }
 :focus-visible { outline:3px solid #78a9bd; outline-offset:2px; }
 input,textarea,select { font-size:16px!important; }
+/* Safari iOS impose une largeur minimale aux champs date : ils débordaient du cadre. */
+input[type="date"] { display:block; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; text-align:left; }
+input[type="date"]::-webkit-date-and-time-value { text-align:left; }
+label { min-width:0; }
 input,textarea { width:100%; min-height:44px; border:1px solid #cbd3da; border-radius:9px; background:#fff; padding:.68rem .72rem; color:var(--ink); }
 textarea { resize:vertical; }
 label { display:grid; gap:.35rem; color:#43515f; font-size:.86rem; font-weight:650; }
@@ -54,6 +58,7 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .dragging { position:relative; z-index:10; opacity:.88; box-shadow:0 8px 24px rgba(32,42,54,.18); border-radius:11px; }
 .separator { display:flex; align-items:center; min-height:28px; cursor:grab; }
 .separator::after { content:""; flex:1; height:2px; border-radius:2px; background:#b8c1c8; }
+.separator.off-day::after { height:4px; background:#c43b33; }
 .patient-row { overflow:hidden; border:1px solid var(--line); border-radius:11px; background:#fff; }
 .patient-top { display:grid; grid-template-columns:44px minmax(0,1fr) auto; align-items:center; gap:.35rem; min-height:55px; padding:.35rem .42rem; }
 .transmission { display:grid; place-items:center; width:44px; min-width:44px; height:44px; min-height:44px; padding:0; border:0; background:transparent; color:#98a2aa; font-size:1.2rem; }
@@ -98,7 +103,7 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .action-row { justify-content:flex-start; flex-wrap:wrap; }
 
 .export-controls .primary { margin-top:.85rem; }
-.date-range { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+.date-range { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:.7rem; }
 .export-preview pre { overflow:auto; max-height:46vh; margin:0 0 .9rem; border-radius:9px; background:#202a36; padding:.9rem; color:#eef4f6; font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; font-size:.76rem; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
 
 @media (max-width:390px) { main { padding-inline:.72rem; } .form-grid { grid-template-columns:1fr; } .patient-top { grid-template-columns:44px minmax(0,1fr) auto; } .session-buttons { gap:.2rem; } .session-buttons button{ min-width:44px; } .date-range { grid-template-columns:1fr; } }
@@ -124,3 +129,5 @@ select { width:100%; min-height:44px; border:1px solid #cbd3da; border-radius:9p
 .letter-buttons button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
 .patient-import textarea { font-family:ui-monospace,Menlo,monospace; font-size:.75rem; white-space:pre; }
 .patient-import ul { margin:.5rem 0 0; padding-left:1.1rem; }
+.action-row button.copied { border-color:#2e7a4b; color:#2e7a4b; }
+.page-heading.end { justify-content:flex-end; }

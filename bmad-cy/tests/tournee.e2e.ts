@@ -12,7 +12,7 @@ test('première tournée, ajout patient et export', async ({ page }) => {
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Durand Camille')).toBeVisible()
   await page.getByRole('link', { name: /Journée/ }).click()
-  await expect(page.getByText('Durand Camille')).toBeVisible()
+  await expect(page.getByText('Durand C.')).toBeVisible()
   await page.getByRole('button', { name: 'A pour Durand Camille' }).click()
   await page.getByRole('link', { name: /Réglages/ }).click()
   await expect(page.locator('pre')).toContainText('Durand')
@@ -20,7 +20,11 @@ test('première tournée, ajout patient et export', async ({ page }) => {
   await expect(page.getByLabel('Du', { exact: true })).toHaveValue(today)
   await expect(page.getByLabel('Au', { exact: true })).toHaveValue(today)
   await page.getByRole('button', { name: 'Copier' }).click()
-  await expect(page.getByText('Copié.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copié ✓' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copier' })).toBeVisible()
+  expect((await page.getByRole('heading', { name: 'Réglages / Export' }).boundingBox())!.width).toBeLessThanOrEqual(1)
+  const overflow = await page.evaluate(() => [...document.querySelectorAll('input[type=date]')].some(input => { const box = input.getBoundingClientRect(); const card = input.closest('.card')!.getBoundingClientRect(); return box.right > card.right }))
+  expect(overflow).toBe(false)
   await expect(page.getByText(/^Version \d+\.\d+\.\d+$/)).toBeVisible()
   await expect(page.getByText('Sur cet appareil')).toHaveCount(0)
   await page.getByRole('link', { name: /Patients/ }).click()
@@ -90,7 +94,9 @@ test('journée épurée : appui long pour réordonner, note au triangle, sans zo
   await expect(page.locator('.bottom-nav')).toHaveText('')
   await expect(page.getByRole('link', { name: 'Patients' })).toBeVisible()
   await expect(page.getByText('Repère')).toHaveCount(0)
-  await expect(page.getByRole('separator')).toHaveCount(3)
+  await expect(page.getByRole('separator')).toHaveCount(4)
+  await expect(page.locator('.separator.off-day')).toHaveCount(1)
+  await expect(page.locator('.patient-name strong').filter({ hasText: 'Martin A.' })).toBeVisible()
 
   const note = page.getByRole('textbox', { name: 'Note du jour pour Martin Alice' })
   await expect(note).toHaveCount(0)
@@ -102,7 +108,7 @@ test('journée épurée : appui long pour réordonner, note au triangle, sans zo
   await expect(note).toHaveCount(0)
 
   const rows = page.locator('.tour-list > .sortable-row')
-  const last = rows.filter({ hasText: 'Robert Paul' })
+  const last = rows.filter({ hasText: 'Robert P.' })
   const lastBox = (await last.boundingBox())!
   const topBox = (await rows.first().boundingBox())!
   await page.mouse.move(lastBox.x + lastBox.width / 2, lastBox.y + 20)
@@ -110,10 +116,10 @@ test('journée épurée : appui long pour réordonner, note au triangle, sans zo
   await page.waitForTimeout(500)
   await page.mouse.move(topBox.x + topBox.width / 2, topBox.y + 4, { steps: 20 })
   await page.mouse.up()
-  await expect(rows.first()).toContainText('Robert Paul')
+  await expect(rows.first()).toContainText('Robert P.')
   await expect(page).toHaveURL(/#\/\?date=2026-09-21$/)
   await page.reload()
-  await expect(page.locator('.tour-list > .sortable-row').first()).toContainText('Robert Paul')
+  await expect(page.locator('.tour-list > .sortable-row').first()).toContainText('Robert P.')
 })
 
 test('sauvegarde complète puis restauration sur un appareil vierge', async ({ browser, page }) => {

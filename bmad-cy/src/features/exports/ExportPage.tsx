@@ -22,6 +22,7 @@ export function ExportPage() {
   const [previewRange, setPreviewRange] = useState({ start, end })
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
   const requestRef = useRef(0)
   const file = useMemo(() => preview ? new File([preview], `tournee-${previewRange.start}-${previewRange.end}.txt`, { type: 'text/plain;charset=utf-8' }) : null, [preview, previewRange])
 
@@ -46,8 +47,11 @@ export function ExportPage() {
 
   const download = () => { if (file) downloadFile(file) }
   const copy = async () => {
-    try { await navigator.clipboard.writeText(preview); setMessage('Copié.') }
-    catch { setMessage(copyWithSelection(preview) ? 'Copié.' : 'Copie impossible.') }
+    let ok = true
+    try { await navigator.clipboard.writeText(preview) } catch { ok = copyWithSelection(preview) }
+    if (!ok) { setMessage('Copie impossible.'); return }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
   }
   const share = async () => {
     if (!file || !navigator.share) return
@@ -61,9 +65,9 @@ export function ExportPage() {
   }
 
   return <>
-    <div className="page-heading"><h1>Réglages / Export</h1></div>
+    <h1 className="sr-only">Réglages / Export</h1>
     <section className="card export-controls"><h2>Période</h2><div className="date-range"><label>Du <input type="date" value={start} onChange={event => { setPreview(''); setStart(event.target.value) }} /></label><label>Au <input type="date" value={end} onChange={event => { setPreview(''); setEnd(event.target.value) }} /></label></div><button className="primary" disabled={busy} onClick={() => void generate()}>Actualiser</button><p className={message.startsWith('La date') || message.startsWith('Impossible') ? 'field-error' : 'save-hint'} role="status">{message}</p></section>
-    {preview && <section className="card export-preview"><div className="section-heading"><h2>Aperçu TXT</h2></div>{preview && <pre>{preview}</pre>}<div className="action-row"><button disabled={!preview} onClick={() => void copy()}>Copier</button><button disabled={!preview} onClick={download}>Télécharger .txt</button>{typeof navigator.share === 'function' && <button className="primary" disabled={!preview} onClick={() => void share()}>Partager</button>}</div></section>}
+    {preview && <section className="card export-preview"><div className="section-heading"><h2>Aperçu TXT</h2></div>{preview && <pre>{preview}</pre>}<div className="action-row"><button className={copied ? 'copied' : ''} disabled={!preview} onClick={() => void copy()}>{copied ? 'Copié ✓' : 'Copier'}</button><button disabled={!preview} onClick={download}>Télécharger .txt</button>{typeof navigator.share === 'function' && <button className="primary" disabled={!preview} onClick={() => void share()}>Partager</button>}</div></section>}
     <BackupPanel />
     <PatientImportPanel />
     <p className="app-version">Version {__APP_VERSION__}</p>
