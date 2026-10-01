@@ -82,7 +82,7 @@ npm run test:e2e
 
 ## Git et déploiement
 
-- Exception au bloc commun : ce projet n'a pas encore de branche `dev` ; `main` contient les versions testables et déclenche `.github/workflows/ci-pages.yml`.
+- Exception au bloc commun : ce projet n'a pas encore de branche `dev` ; `main` contient les versions testables et déclenche `.github/workflows/ci-pages.yml` Choix assumé : on développe directement sur `main`, testé sur iPhone après publication. En conséquence, la revue part du tag `revue-ok` sur `main` et la clôture déplace `revue-ok` sur `origin/main` (et non `origin/dev`).
 - Le workflow vérifie tests, lint, build et parcours Playwright (WebKit iPhone et Chromium hors ligne) avant de publier `bmad-cy/dist` sur GitHub Pages.
 - Ne jamais committer `node_modules/`, `dist/`, les rapports Playwright, les fichiers `.env` ou des exports patients.
 - Utiliser des commits conventionnels et des tags `vX.Y.Z` pour les versions testables.
