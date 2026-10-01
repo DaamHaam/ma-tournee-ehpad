@@ -113,7 +113,8 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .date-title { font-size:1.25rem; letter-spacing:-.02em; }
 .date-title::first-letter { text-transform:uppercase; }
 .danger-zone { margin-top:1.2rem; }
-.app-version { margin:1.5rem 0 0; color:var(--muted); font-size:.75rem; text-align:center; font-variant-numeric:tabular-nums; }
+/* Numéro de version discret, dans le coin bas droit de la barre de navigation, sur tous les écrans. */
+.app-version { position:absolute; right:max(.45rem,env(safe-area-inset-right)); bottom:calc(.12rem + env(safe-area-inset-bottom)); color:#a3adb8; font-size:.58rem; line-height:1; letter-spacing:.02em; font-variant-numeric:tabular-nums; pointer-events:none; user-select:none; }
 .date-heading { position:relative; display:block; min-width:0; }
 .date-heading h1 { margin:0; text-decoration:underline dotted #9aa7b2; text-underline-offset:.25em; }
 .date-heading input { position:absolute; inset:0; width:100%; height:100%; min-height:0; padding:0; border:0; opacity:0; cursor:pointer; }
