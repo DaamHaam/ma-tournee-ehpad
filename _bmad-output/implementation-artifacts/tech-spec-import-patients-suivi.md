@@ -28,7 +28,7 @@ Damien veut importer sa base de patients en collant un tableau dans l’applicat
 - Éval et Trans : cases cochées seulement le jour même. Cocher enregistre la date du jour, décocher le même jour la retire et restaure la précédente. À l’import, `oui` = date du jour, une date `JJ/MM/AAAA` est reprise.
 - Triangle de la Journée coloré selon la dernière date d’éval ou de trans, indifféremment : < 30 j vert clair, 30–44 j vert foncé, 45–60 j orange, > 60 j rouge, gris si inconnue.
 - Tous les patients restent visibles dans la Journée ; les séances ne filtrent rien.
-- Export TXT : un nom composé n’exporte que son premier mot (« ABREU GOMES » → `abreu`).
+- Export TXT : le nom s’exporte en entier, particule comprise (« LE GALL » → `Le Gall` en A, `le gall` en B) ; le prénom n’apparaît que pour départager des homonymes. (Règle révisée en v0.8.1 ; elle n’exportait auparavant que le premier mot.)
 
 ## Invariants
 

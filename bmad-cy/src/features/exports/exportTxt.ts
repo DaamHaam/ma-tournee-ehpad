@@ -1,15 +1,17 @@
 import { moodSigns, parseDate, type Day, type Entry } from '../../domain/model'
 function compact(text: string): string { return text.trim().replace(/\s+/g, ' ').replace(/[()]/g, '') }
-// Un nom composé n'exporte que son premier mot, pour garder un séparateur espace entre patients.
 function firstWord(text: string): string { return compact(text).split(' ')[0].toLocaleLowerCase('fr') }
+// Le nom s'exporte en entier, particule comprise (« Le Gall ») ; le prénom n'apparaît que pour les homonymes.
+function fullLastName(text: string): string { return compact(text).toLocaleLowerCase('fr') }
+const capital = (word: string) => word.charAt(0).toLocaleUpperCase('fr') + word.slice(1)
 function exportName(entry: Entry, entries: Entry[]): string {
-  const lastName = firstWord(entry.patient.lastName)
+  const lastName = fullLastName(entry.patient.lastName)
   const firstName = firstWord(entry.patient.firstName)
-  const homonyms = entries.filter(other => firstWord(other.patient.lastName) === lastName)
-  const cased = entry.session === 'B' ? lastName : lastName.charAt(0).toLocaleUpperCase('fr') + lastName.slice(1)
+  const homonyms = entries.filter(other => fullLastName(other.patient.lastName) === lastName)
+  // A : chaque mot du nom prend une majuscule initiale ; B : tout en minuscules.
+  const cased = entry.session === 'B' ? lastName : lastName.split(' ').map(capital).join(' ')
   if (homonyms.length < 2) return cased
   // Homonymes : « Nom P. » ; prénom complet si l'initiale ne suffit pas ; identifiant en dernier recours.
-  const capital = (word: string) => word.charAt(0).toLocaleUpperCase('fr') + word.slice(1)
   const initial = (other: Entry) => firstWord(other.patient.firstName).charAt(0)
   if (!firstName && homonyms.filter(other => !initial(other)).length === 1) return cased
   if (firstName && homonyms.filter(other => initial(other) === firstName.charAt(0)).length === 1) return `${cased} ${firstName.charAt(0).toLocaleUpperCase('fr')}.`

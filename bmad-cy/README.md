@@ -48,7 +48,7 @@ Les tests unitaires couvrent les règles A/B et H, les dates, le format TXT, l�
 
 ## Format et stockage
 
-Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son propre ordre et une copie minimale de l’identité des patients présents (nom, prénom, chambre, priorité). Une fiche renommée met à jour cette copie pour aujourd’hui et les jours futurs seulement. Consulter une journée passée ne la modifie pas : elle n’est enregistrée qu’à la première saisie. L’export produit du texte brut : initiale majuscule pour A, minuscule pour B, notes entre parenthèses, puis les patients commentés mais non vus sur une ligne distincte. Le niveau H est exporté uniquement sous forme de signes ; H neutre et H non renseigné n’ajoutent aucun signe.
+Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son propre ordre et une copie minimale de l’identité des patients présents (nom, prénom, chambre, priorité). Une fiche renommée met à jour cette copie pour aujourd’hui et les jours futurs seulement. Consulter une journée passée ne la modifie pas : elle n’est enregistrée qu’à la première saisie. L’export produit du texte brut : nom complet, particule comprise (« Le Gall » pour A, « le gall » pour B, prénom ajouté seulement pour les homonymes), notes entre parenthèses, puis les patients commentés mais non vus sur une ligne distincte. Le niveau H est exporté uniquement sous forme de signes ; H neutre et H non renseigné n’ajoutent aucun signe.
 
 ## Limites de cette version
 

@@ -84,7 +84,7 @@ test('import de patients par copier-coller puis suivi éval/trans', async ({ pag
   await expect(page.getByRole('button', { name: /^Note pour EXEMPLE COMPOSE Beta, dernière éval ou trans le/ })).toHaveClass(/recent/)
 
   await page.getByRole('link', { name: /Réglages/ }).click()
-  await expect(page.locator('pre')).toContainText('Exemple fictif')
+  await expect(page.locator('pre')).toContainText('Exemple Compose fictif')
 })
 
 test('journée épurée : appui long pour réordonner, note au triangle, sans zoom', async ({ page }) => {

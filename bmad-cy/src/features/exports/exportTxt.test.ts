@@ -30,14 +30,16 @@ describe('export TXT', () => {
     expect(exportTxt([empty])).toBe('26/09/2026')
   })
 
-  it('n’exporte que le premier mot d’un nom composé', () => {
-    const day: Day = { date: '2026-09-27', mood: null, comment: '', order: ['a', 'b', 'c', 'd'], entries: {
-      a: entry(identity('a', 'EXEMPLE COMPOSE', 'Beta Gamma'), 'A'),
-      b: entry(identity('b', 'Fictif', 'Alpha'), 'B'),
-      c: entry(identity('c', 'Essai', 'Delta Epsilon'), 'A'),
-      d: entry(identity('d', 'Essai', ''), 'B'),
+  it('exporte le nom à particule en entier et sans le prénom', () => {
+    const day: Day = { date: '2026-09-27', mood: null, comment: '', order: ['a', 'b', 'c', 'd', 'e', 'f'], entries: {
+      a: entry(identity('a', 'LE GALL', 'Marie'), 'A'),
+      b: entry(identity('b', 'de la Tour', 'Jean'), 'B'),
+      c: entry(identity('c', 'Fictif', 'Alpha'), 'B'),
+      d: entry(identity('d', 'Essai', 'Delta Epsilon'), 'A'),
+      e: entry(identity('e', 'Essai', ''), 'B'),
+      f: entry(identity('f', 'Le  Gall', 'Paul'), null, 'absent'),
     } }
-    expect(exportTxt([day])).toBe('27/09/2026\nExemple fictif Essai D. essai')
+    expect(exportTxt([day])).toBe('27/09/2026\nLe Gall M. de la tour fictif Essai D. essai\nPas vus : Le Gall P. (absent)')
   })
 
   it('différencie les homonymes par « Nom P. » et n’exporte jamais le bilan', () => {
