@@ -8,7 +8,7 @@ Version actuelle : 0.7.0 (affichée en bas de `Réglages / Export`). Version tes
 
 - `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des quatre repères (le rouge pour les patients sans séance prévue) par appui long, cartes au format « NOM P. », pointage A/B exclusif, note ouverte par le triangle, bilan libre du jour ouvert par « + » (copiable, visible dans l’historique, hors export TXT), niveau H et commentaire.
 - `Patients` : ajout, liste alphabétique, fiche modifiable, historique, archivage et suppression confirmée. Une suppression conserve les snapshots nécessaires aux anciennes journées et aux exports.
-- `Réglages / Export` : plage de dates (jour même par défaut), aperçu TXT, copie, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace tous les patients, sans toucher aux journées).
+- `Réglages / Export` : plage de dates (jour même par défaut), aperçu TXT, copie, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace la liste des patients ; un patient déjà connu, même nom et prénom, garde sa fiche, son historique et ses dates d’éval/trans ; les journées passées ne changent pas).
 - Sauvegarde : fichier JSON complet (patients, fiches, journées, ordres) enregistrable dans Fichiers et restaurable sur l’app ou un autre iPhone.
 - Fiche patient : couverture, séances et IFD (L/J/V), pointé, facturé, fin d’ordonnance, médecin traitant, cotation ; cases Éval et Trans datées du jour qui colorent le triangle de la Journée.
 - PWA : ressources mises en cache après un premier chargement complet pour permettre le rechargement hors ligne.
@@ -48,7 +48,7 @@ Les tests unitaires couvrent les règles A/B et H, les dates, le format TXT, l�
 
 ## Format et stockage
 
-Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son propre ordre et une copie minimale de l’identité des patients présents. L’export produit du texte brut : initiale majuscule pour A, minuscule pour B, notes entre parenthèses, puis les patients commentés mais non vus sur une ligne distincte. Le niveau H est exporté uniquement sous forme de signes ; H neutre et H non renseigné n’ajoutent aucun signe.
+Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son propre ordre et une copie minimale de l’identité des patients présents (nom, prénom, chambre, priorité). Une fiche renommée met à jour cette copie pour aujourd’hui et les jours futurs seulement. Consulter une journée passée ne la modifie pas : elle n’est enregistrée qu’à la première saisie. L’export produit du texte brut : initiale majuscule pour A, minuscule pour B, notes entre parenthèses, puis les patients commentés mais non vus sur une ligne distincte. Le niveau H est exporté uniquement sous forme de signes ; H neutre et H non renseigné n’ajoutent aucun signe.
 
 ## Limites de cette version
 
@@ -56,6 +56,6 @@ Les dates sont des clés locales `YYYY-MM-DD`. Chaque journée conserve son prop
 - l’app installée sur l’écran d’accueil a un stockage distinct de Safari ;
 - pas d’export du tableau patient, de purge des journées ni de bilans ;
 - Safari/iPhone physique reste à valider avant usage réel avec des données sensibles ;
-- l’icône PWA est fournie en SVG, à compléter par des variantes PNG si la cible iOS déployée l’exige.
+- l’icône est fournie en SVG et en PNG (`apple-touch-icon.png` pour l’écran d’accueil iPhone, 192 et 512 px pour le manifeste).
 
 Cette application est un outil personnel de suivi et non un dispositif médical ni un dossier patient partagé.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { localDate } from '../../domain/model'
+import { useToday } from '../../app/useToday'
 import { repository } from '../../storage/repository'
 import { exportTxt } from './exportTxt'
 import { PatientImportPanel } from './PatientImportPanel'
@@ -9,9 +9,11 @@ import { copyText } from './clipboard'
 
 
 export function ExportPage() {
-  const today = localDate()
-  const [start, setStart] = useState(today)
-  const [end, setEnd] = useState(today)
+  const today = useToday()
+  // Tant qu’une borne n’est pas choisie, elle suit la date du jour, y compris après minuit.
+  const [chosen, setChosen] = useState<{ start?: string; end?: string }>({})
+  const start = chosen.start ?? today
+  const end = chosen.end ?? today
   const [preview, setPreview] = useState('')
   const [previewRange, setPreviewRange] = useState({ start, end })
   const [message, setMessage] = useState('')
@@ -58,7 +60,7 @@ export function ExportPage() {
 
   return <>
     <h1 className="sr-only">Réglages / Export</h1>
-    <section className="card export-controls"><h2>Période</h2><div className="date-range"><label>Du <input type="date" value={start} onChange={event => { setPreview(''); setStart(event.target.value) }} /></label><label>Au <input type="date" value={end} onChange={event => { setPreview(''); setEnd(event.target.value) }} /></label></div><button className="primary" disabled={busy} onClick={() => void generate()}>Actualiser</button><p className={message.startsWith('La date') || message.startsWith('Impossible') ? 'field-error' : 'save-hint'} role="status">{message}</p></section>
+    <section className="card export-controls"><h2>Période</h2><div className="date-range"><label>Du <input type="date" value={start} onChange={event => { const value = event.target.value; setPreview(''); setChosen(current => ({ ...current, start: value })) }} /></label><label>Au <input type="date" value={end} onChange={event => { const value = event.target.value; setPreview(''); setChosen(current => ({ ...current, end: value })) }} /></label></div><button className="primary" disabled={busy} onClick={() => void generate()}>Actualiser</button><p className={message.startsWith('La date') || message.startsWith('Impossible') ? 'field-error' : 'save-hint'} role="status">{message}</p></section>
     {preview && <section className="card export-preview"><div className="section-heading"><h2>Aperçu TXT</h2></div>{preview && <pre>{preview}</pre>}<div className="action-row"><button className={copied ? 'copied' : ''} disabled={!preview} onClick={() => void copy()}>{copied ? 'Copié ✓' : 'Copier'}</button><button disabled={!preview} onClick={download}>Télécharger .txt</button>{typeof navigator.share === 'function' && <button className="primary" disabled={!preview} onClick={() => void share()}>Partager</button>}</div></section>}
     <BackupPanel />
     <PatientImportPanel />

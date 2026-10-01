@@ -32,4 +32,15 @@ describe('sauvegarde complète', () => {
     old.orders = [{ weekday: 1, order: ['separator:1', 'separator:2', 'separator:3', 'p1'] }]
     expect(parseBackup(JSON.stringify(old)).orders[0].order).toHaveLength(4)
   })
+  it('refuse une identité de journée ou un patient mal formés et complète les champs anciens', () => {
+    const broken = JSON.parse(buildBackup(data, ''))
+    delete broken.days[0].entries.p1.patient.lastName
+    expect(() => parseBackup(JSON.stringify(broken))).toThrow('pas une sauvegarde')
+    const badPatient = JSON.parse(buildBackup(data, ''))
+    badPatient.patients[0].days = 5
+    expect(() => parseBackup(JSON.stringify(badPatient))).toThrow('pas une sauvegarde')
+    const legacy = JSON.parse(buildBackup(data, ''))
+    legacy.days[0].entries.p1.patient = { lastName: 'ESSAI' }
+    expect(parseBackup(JSON.stringify(legacy)).days[0].entries.p1.patient).toMatchObject({ id: 'p1', lastName: 'ESSAI', firstName: '' })
+  })
 })

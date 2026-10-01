@@ -55,7 +55,9 @@ npm run test:e2e
 - A et B sont exclusifs pour un patient et une journée. L’export utilise une initiale majuscule pour A et minuscule pour B.
 - Le niveau H va de `H---` à `H+++`. Seuls les signes sont exportés ; H neutre ou non renseigné n’ajoute rien.
 - Une journée conserve son ordre et un snapshot minimal de l’identité des patients. Archiver ou supprimer un patient ne doit pas altérer les journées passées ni leurs exports.
-- Un patient archivé ou supprimé ne doit plus apparaître dans les tournées actuelles ou futures.
+- Un patient archivé ou supprimé ne doit plus apparaître dans les tournées actuelles ou futures, sauf le jour même s’il y a déjà une trace (séance, note ou bilan) : il reste alors affiché avec sa mention pour rester corrigeable.
+- Consulter une journée passée ne la crée ni ne la modifie ; seule une saisie explicite l’enregistre.
+- L’import de patients conserve l’identifiant d’un patient déjà connu (même nom et prénom, sans tenir compte de la casse ni des accents).
 - Les quatre patients du premier lancement sont explicitement fictifs et ne doivent être injectés qu’une seule fois.
 - L’absence de réseau ne doit pas empêcher de rouvrir l’application après un premier chargement complet ni d’utiliser les fonctions locales.
 
@@ -81,7 +83,7 @@ npm run test:e2e
 ## Git et déploiement
 
 - Exception au bloc commun : ce projet n'a pas encore de branche `dev` ; `main` contient les versions testables et déclenche `.github/workflows/ci-pages.yml`.
-- Le workflow vérifie tests, lint et build avant de publier `bmad-cy/dist` sur GitHub Pages.
+- Le workflow vérifie tests, lint, build et parcours Playwright (WebKit iPhone et Chromium hors ligne) avant de publier `bmad-cy/dist` sur GitHub Pages.
 - Ne jamais committer `node_modules/`, `dist/`, les rapports Playwright, les fichiers `.env` ou des exports patients.
 - Utiliser des commits conventionnels et des tags `vX.Y.Z` pour les versions testables.
 - Ne pousser et ne publier qu’après réussite des vérifications adaptées au changement.

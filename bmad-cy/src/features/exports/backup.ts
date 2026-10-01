@@ -17,16 +17,34 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 const isString = (value: unknown): value is string => typeof value === 'string'
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString)
 
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
+const PATIENT_TEXT = ['firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionEnd', 'doctor', 'rating'] as const
+const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed'] as const
+
 function checkPatient(value: unknown): Patient {
   if (!isObject(value) || !isString(value.id) || !isString(value.lastName)) throw new Error(INVALID)
   const patient = { ...careDefaults(), firstName: '', room: '', priority: '', demo: false, archived: false, createdAt: '', ...value } as Patient
   if (!isStringList(patient.evalDates) || !isStringList(patient.transDates)) throw new Error(INVALID)
+  if (PATIENT_TEXT.some(key => !isString(patient[key])) || PATIENT_FLAGS.some(key => !isBoolean(patient[key]))) throw new Error(INVALID)
   return patient
+}
+// Identité retenue par une journée : le nom est exigé, les autres champs anciens ou absents sont complétés.
+function checkSnapshot(value: unknown, id: string): Day['entries'][string]['patient'] {
+  if (!isObject(value) || !isString(value.lastName)) throw new Error(INVALID)
+  const snapshot = { id, firstName: '', room: '', priority: '', demo: false, ...value }
+  if (!isString(snapshot.id) || !isString(snapshot.firstName) || !isString(snapshot.room) || !isString(snapshot.priority)) throw new Error(INVALID)
+  return snapshot as Day['entries'][string]['patient']
 }
 function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)
-  for (const entry of Object.values(value.entries)) if (!isObject(entry) || !isObject(entry.patient) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
-  return { mood: null, comment: '', ...value } as Day
+  const entries: Day['entries'] = {}
+  for (const [id, entry] of Object.entries(value.entries)) {
+    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
+    entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]
+  }
+  const day = { mood: null, comment: '', ...value, entries } as Day
+  if (!isString(day.comment) || !(day.mood === null || [-3, -2, -1, 0, 1, 2, 3].includes(day.mood))) throw new Error(INVALID)
+  return day
 }
 function checkOrder(value: unknown): OrderTemplate {
   if (!isObject(value) || typeof value.weekday !== 'number' || !isStringList(value.order)) throw new Error(INVALID)

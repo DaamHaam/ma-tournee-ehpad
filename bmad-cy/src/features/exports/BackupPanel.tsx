@@ -27,7 +27,8 @@ export function BackupPanel() {
     try {
       const backup = parseBackup(await file.text())
       const date = backup.createdAt ? ` du ${new Date(backup.createdAt).toLocaleDateString('fr-FR')}` : ''
-      if (!window.confirm(`Remplacer toutes les données par la sauvegarde${date} (${backup.patients.length} patients, ${backup.days.length} journées) ?`)) return
+      const previous = lastBackup ? `le ${parseDate(lastBackup).toLocaleDateString('fr-FR')}` : 'jamais'
+      if (!window.confirm(`Remplacer toutes les données par la sauvegarde${date} (${backup.patients.length} patients, ${backup.days.length} journées) ?\n\nLes données actuelles seront perdues. Dernière sauvegarde de cet appareil : ${previous}.`)) return
       if (await run(() => repository.restore(backup))) setMessage('Sauvegarde restaurée.')
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Restauration impossible.') }
     finally { if (input.current) input.current.value = '' }

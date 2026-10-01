@@ -25,6 +25,13 @@ export function weekDate(date: string, weekday: number): string {
 export function dateLabel(date: string): string { return parseDate(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }
 export function fullName(patient: Identity): string { return [patient.lastName, patient.firstName].filter(Boolean).join(' ') }
 export function moodSigns(mood: Mood): string { return mood === null || mood === 0 ? '' : (mood > 0 ? '+' : '-').repeat(Math.abs(mood)) }
+// Snapshot minimal gardé dans les journées : l'identité seule, sans les données de prise en charge.
+export function identityOf(patient: Identity): Identity { return { id: patient.id, lastName: patient.lastName, firstName: patient.firstName, room: patient.room, priority: patient.priority, demo: patient.demo } }
+// Clé de rapprochement « nom + prénom » insensible à la casse, aux accents et aux espaces superflus.
+export function identityKey(patient: Pick<Identity, 'lastName' | 'firstName'>): string {
+  const plain = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').replace(/\s+/g, ' ').trim()
+  return `${plain(patient.lastName)}|${plain(patient.firstName)}`
+}
 export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' }
 export function toggleSession(current: SessionType, next: Exclude<SessionType, null>): SessionType { return current === next ? null : next }
 export function toggleLetter(value: string, letter: string): string {
@@ -40,4 +47,9 @@ export function followUpLevel(last: string | null, today: string): FollowUpLevel
   if (!last) return 'unknown'
   const days = Math.round((parseDate(today).getTime() - parseDate(last).getTime()) / 86_400_000)
   return days < 30 ? 'recent' : days < 45 ? 'month' : days <= 60 ? 'late' : 'overdue'
+}
+// Un patient actif est toujours affiché ; archivé ou supprimé, il ne reste visible que là où une trace existe déjà, jamais sur une journée future.
+export function entryVisible(entry: Entry, patient: Pick<Patient, 'archived'> | undefined, date: string, today: string): boolean {
+  if (patient && !patient.archived) return true
+  return date <= today && hasTrace(entry)
 }

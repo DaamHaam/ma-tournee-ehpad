@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate } from './model'
+import { entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate } from './model'
 
 describe('règles du domaine', () => {
   it('bascule A/B de façon exclusive et réversible', () => {
@@ -47,5 +47,19 @@ describe('règles du domaine', () => {
     expect(shortName({ ...base, lastName: 'FICTIF', firstName: 'alpha' })).toBe('FICTIF a.')
     expect(shortName({ ...base, lastName: 'Essai', firstName: 'Beta Gamma' })).toBe('Essai B.')
     expect(shortName({ ...base, lastName: 'EXEMPLE', firstName: ' ' })).toBe('EXEMPLE')
+  })
+  it('rapproche les noms sans tenir compte de la casse, des accents ni des espaces', () => {
+    expect(identityKey({ lastName: ' DUPONT ', firstName: 'Zoé' })).toBe(identityKey({ lastName: 'dupont', firstName: 'zoe' }))
+    expect(identityKey({ lastName: 'Dupont', firstName: 'M' })).not.toBe(identityKey({ lastName: 'Dupont', firstName: 'J' }))
+  })
+
+  it('n’affiche un patient archivé ou supprimé que là où il a déjà une trace, jamais dans le futur', () => {
+    const empty = { patient: { id: 'p', lastName: 'Dupont', firstName: '', room: '', priority: '', demo: false }, session: null, note: '' }
+    const seen = { ...empty, session: 'A' as const }
+    expect(entryVisible(empty, { archived: false }, '2026-10-02', '2026-10-01')).toBe(true)
+    expect(entryVisible(seen, { archived: true }, '2026-10-01', '2026-10-01')).toBe(true)
+    expect(entryVisible(seen, undefined, '2026-09-30', '2026-10-01')).toBe(true)
+    expect(entryVisible(empty, { archived: true }, '2026-10-01', '2026-10-01')).toBe(false)
+    expect(entryVisible(seen, undefined, '2026-10-02', '2026-10-01')).toBe(false)
   })
 })

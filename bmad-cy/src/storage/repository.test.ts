@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { careDefaults, SEPARATORS } from '../domain/model'
 import { TourDatabase } from './database'
 import { TourRepository } from './repository'
+import { exportTxt } from '../features/exports/exportTxt'
+
+// Date du jour figée : les journées des tests sont aujourd’hui ou futures, sauf mention contraire.
+const TODAY = '2026-09-01'
 
 describe('stockage local', () => {
   let database: TourDatabase
@@ -11,7 +15,7 @@ describe('stockage local', () => {
 
   beforeEach(() => {
     database = new TourDatabase(`test-tournee-${crypto.randomUUID()}`)
-    repository = new TourRepository(database)
+    repository = new TourRepository(database, () => TODAY)
   })
   afterEach(async () => { database.close(); await database.delete() })
 
@@ -116,5 +120,57 @@ describe('stockage local', () => {
     const day = await database.days.get('2026-10-05')
     expect(day?.order.slice(0, 4)).toEqual(SEPARATORS)
     expect(day?.order).toHaveLength(8)
+  })
+  it('ne crée ni ne modifie une journée passée simplement consultée', async () => {
+    await repository.initialize()
+    await repository.ensureDay('2026-08-20')
+    expect(await database.days.get('2026-08-20')).toBeUndefined()
+    const draft = await repository.dayView('2026-08-20')
+    expect(Object.keys(draft.entries)).toHaveLength(4)
+    const [first] = await database.patients.toArray()
+    await repository.setSession('2026-08-20', first.id, 'A')
+    await repository.addPatient({ lastName: 'Nouveau', firstName: '', room: '', priority: '' })
+    await repository.ensureDay('2026-08-20')
+    const day = await database.days.get('2026-08-20')
+    expect(Object.keys(day!.entries)).toHaveLength(4)
+    expect(day!.entries[first.id].session).toBe('A')
+  })
+
+  it('garde dans les journées une identité minimale, mise à jour à partir d’aujourd’hui seulement', async () => {
+    await repository.initialize()
+    const [first] = await database.patients.toArray()
+    await repository.setSession('2026-08-31', first.id, 'A')
+    await repository.ensureDay(TODAY)
+    await repository.ensureDay('2026-09-03')
+    expect(Object.keys((await database.days.get(TODAY))!.entries[first.id].patient).sort()).toEqual(['demo', 'firstName', 'id', 'lastName', 'priority', 'room'])
+    await repository.updatePatient(first.id, { lastName: 'Renommé' })
+    expect((await database.days.get('2026-08-31'))!.entries[first.id].patient.lastName).toBe(first.lastName)
+    expect((await database.days.get(TODAY))!.entries[first.id].patient.lastName).toBe('Renommé')
+    expect((await database.days.get('2026-09-03'))!.entries[first.id].patient.lastName).toBe('Renommé')
+  })
+
+  it('remplace l’ancienne copie complète d’un patient par son identité à l’ouverture du jour', async () => {
+    await repository.initialize()
+    const [first] = await database.patients.toArray()
+    await repository.ensureDay(TODAY)
+    const day = (await database.days.get(TODAY))!
+    day.entries[first.id].patient = { ...first }
+    await database.days.put(day)
+    await repository.ensureDay(TODAY)
+    expect((await database.days.get(TODAY))!.entries[first.id].patient).not.toHaveProperty('evalDates')
+  })
+
+  it('reconnaît à l’import un patient déjà connu et n’en crée pas de doublon dans la journée', async () => {
+    await repository.initialize()
+    const martin = (await database.patients.toArray()).find(patient => patient.lastName === 'Martin')!
+    await repository.toggleFollowUp(martin.id, 'evalDates', '2026-08-15')
+    await repository.ensureDay(TODAY)
+    await repository.setSession(TODAY, martin.id, 'A')
+    await repository.replacePatients([{ ...careDefaults(), lastName: 'MARTIN', firstName: 'alice', evalDates: ['2026-08-30'] }, { ...careDefaults(), lastName: 'Fictif', firstName: 'Zoé' }])
+    const patients = await database.patients.toArray()
+    expect(patients).toHaveLength(2)
+    expect(patients.find(patient => patient.id === martin.id)).toMatchObject({ lastName: 'MARTIN', room: martin.room, evalDates: ['2026-08-15', '2026-08-30'] })
+    await repository.ensureDay(TODAY)
+    expect(exportTxt(await repository.daysBetween(TODAY, TODAY))).toBe('01/09/2026\nMartin')
   })
 })

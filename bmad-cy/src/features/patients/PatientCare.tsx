@@ -1,5 +1,6 @@
-import { COVERAGES, localDate, parseDate, toggleLetter, WEEKDAY_LETTERS, type Patient } from '../../domain/model'
+import { COVERAGES, parseDate, toggleLetter, WEEKDAY_LETTERS, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
+import { useToday } from '../../app/useToday'
 import { repository } from '../../storage/repository'
 
 type TextField = 'doctor' | 'rating'
@@ -7,7 +8,7 @@ function shortDate(date: string) { return parseDate(date).toLocaleDateString('fr
 
 export function PatientCare({ patient }: { patient: Patient }) {
   const { run } = useSave()
-  const today = localDate()
+  const today = useToday()
   const update = (patch: Parameters<typeof repository.updatePatient>[1]) => void run(() => repository.updatePatient(patient.id, patch))
   const saveText = async (field: TextField, input: HTMLInputElement) => {
     const value = input.value.trim()
