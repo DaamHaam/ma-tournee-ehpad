@@ -23,7 +23,7 @@ Tri de la base Notion « Idées développement » (projet BMAD CY). Ce lot couvr
 
 ## Second lot (v0.7.0, décisions de Damien du 2026-09-29)
 
-- **Homonymes dans le TXT** : « Nom P. » (initiale majuscule suivie d’un point, casse A/B portée par le nom), par exemple `Guillemois M. guillemois J.`. Si l’initiale ne suffit pas : prénom complet. Homonyme unique sans prénom : nom seul. En dernier recours : identifiant court. L’espace interne est accepté par Damien.
+- **Homonymes dans le TXT** : « Nom P. » (initiale majuscule suivie d’un point, casse A/B portée par le nom), par exemple `Dupont M. dupont J.`. Si l’initiale ne suffit pas : prénom complet. Homonyme unique sans prénom : nom seul. En dernier recours : identifiant court. L’espace interne est accepté par Damien.
 - **Bilan du jour** : bouton « + » à côté de A/B. Il ouvre un champ libre (dictée par le micro du clavier iPhone) avec « Copier ». Il est stocké dans la journée (`entry.bilan`, champ facultatif sans changement de schéma Dexie), visible dans l’historique de la fiche, jamais exporté dans le TXT. Le « + » est coloré quand un bilan existe.
 
 ## Pour plus tard
