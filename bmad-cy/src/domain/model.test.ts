@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate } from './model'
+import { daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
 
 describe('règles du domaine', () => {
   it('bascule A/B de façon exclusive et réversible', () => {
@@ -61,5 +61,22 @@ describe('règles du domaine', () => {
     expect(entryVisible(seen, undefined, '2026-09-30', '2026-10-01')).toBe(true)
     expect(entryVisible(empty, { archived: true }, '2026-10-01', '2026-10-01')).toBe(false)
     expect(entryVisible(seen, undefined, '2026-10-02', '2026-10-01')).toBe(false)
+  })
+
+  it('compte les semaines entières depuis la dernière éval ou trans', () => {
+    expect(weeksSince(null, '2026-10-02')).toBeNull()
+    expect(weeksSince('2026-10-02', '2026-10-02')).toBe(0)
+    expect(weeksSince('2026-09-26', '2026-10-02')).toBe(0)
+    expect(weeksSince('2026-09-25', '2026-10-02')).toBe(1)
+    expect(weeksSince('2026-08-01', '2026-10-02')).toBe(8)
+  })
+
+  it('compte les jours depuis la dernière séance A antérieure à la journée affichée', () => {
+    const day = (date: string, session: 'A' | 'B' | null): Pick<Day, 'date' | 'entries'> => ({ date, entries: { p1: { patient: { id: 'p1', lastName: 'Fictif', firstName: '', room: '', priority: '', demo: false }, session, note: '' } } })
+    const days = [day('2026-09-21', 'A'), day('2026-09-24', 'B'), day('2026-09-25', 'A'), day('2026-10-02', 'A')]
+    expect(daysSinceLastA(days, 'p1', '2026-10-02')).toBe(7)
+    expect(daysSinceLastA(days, 'p1', '2026-09-24')).toBe(3)
+    expect(daysSinceLastA(days, 'p1', '2026-09-21')).toBeNull()
+    expect(daysSinceLastA(days, 'autre', '2026-10-02')).toBeNull()
   })
 })

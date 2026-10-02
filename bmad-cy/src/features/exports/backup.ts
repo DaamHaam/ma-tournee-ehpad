@@ -19,7 +19,7 @@ const isStringList = (value: unknown): value is string[] => Array.isArray(value)
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
 const PATIENT_TEXT = ['firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionEnd', 'doctor', 'rating'] as const
-const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed'] as const
+const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group'] as const
 
 function checkPatient(value: unknown): Patient {
   if (!isObject(value) || !isString(value.id) || !isString(value.lastName)) throw new Error(INVALID)

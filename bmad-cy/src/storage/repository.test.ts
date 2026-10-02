@@ -173,4 +173,27 @@ describe('stockage local', () => {
     await repository.ensureDay(TODAY)
     expect(exportTxt(await repository.daysBetween(TODAY, TODAY))).toBe('01/09/2026\nMartin')
   })
+
+  it('migre une base v2 en désactivant le groupe des patients existants', async () => {
+    const name = `test-migration-v3-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(2).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    const { group: _ignored, ...v2Care } = careDefaults()
+    void _ignored
+    await legacy.table('patients').add({ ...v2Care, id: 'p1', lastName: 'Fictif', firstName: 'Beta', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', days: 'LV' })
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect(await migrated.patients.get('p1')).toMatchObject({ lastName: 'Fictif', days: 'LV', group: false })
+    migrated.close(); await migrated.delete()
+  })
+
+  it('garde le réglage GRP d’un patient reconnu à l’import', async () => {
+    await repository.initialize()
+    const martin = (await database.patients.toArray()).find(patient => patient.lastName === 'Martin')!
+    await repository.updatePatient(martin.id, { group: true })
+    await repository.replacePatients([{ ...careDefaults(), lastName: 'Martin', firstName: 'Alice' }, { ...careDefaults(), lastName: 'Fictif', firstName: 'Zoé' }])
+    const patients = await database.patients.toArray()
+    expect(patients.find(patient => patient.id === martin.id)?.group).toBe(true)
+    expect(patients.find(patient => patient.lastName === 'Fictif')?.group).toBe(false)
+  })
 })

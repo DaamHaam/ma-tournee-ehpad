@@ -1,11 +1,11 @@
 export type SessionType = 'A' | 'B' | null
 export type Mood = -3 | -2 | -1 | 0 | 1 | 2 | 3 | null
 export interface Identity { id: string; lastName: string; firstName: string; room: string; priority: string; demo: boolean }
-export interface PatientCare { coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionEnd: string; doctor: string; rating: string }
+export interface PatientCare { coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionEnd: string; doctor: string; rating: string; group: boolean }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
-export function careDefaults(): PatientCare { return { coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '' } }
+export function careDefaults(): PatientCare { return { coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '', group: false } }
 export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
@@ -41,11 +41,20 @@ export function toggleLetter(value: string, letter: string): string {
 }
 export function toggleDate(dates: string[], date: string): string[] { return dates.includes(date) ? dates.filter(value => value !== date) : [...dates, date].sort() }
 export function lastFollowUp(care: Pick<PatientCare, 'evalDates' | 'transDates'>): string | null { return [...care.evalDates, ...care.transDates].sort().at(-1) ?? null }
+function daysBetween(from: string, to: string): number { return Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 86_400_000) }
+// Semaines entières écoulées depuis la dernière éval ou trans, affichées dans le triangle.
+export function weeksSince(last: string | null, today: string): number | null { return last ? Math.max(0, Math.floor(daysBetween(last, today) / 7)) : null }
+// Jours écoulés depuis la dernière séance A strictement antérieure à la journée affichée : cocher A ce jour-là ne change pas le chiffre.
+export function daysSinceLastA(days: Pick<Day, 'date' | 'entries'>[], id: string, date: string): number | null {
+  let last: string | null = null
+  for (const day of days) if (day.date < date && day.entries[id]?.session === 'A' && (!last || day.date > last)) last = day.date
+  return last ? daysBetween(last, date) : null
+}
 export type FollowUpLevel = 'unknown' | 'recent' | 'month' | 'late' | 'overdue'
 // Seuils NFR25 en jours : < 1 mois (30 j), 1 à 1,5 mois (45 j), 1,5 à 2 mois (60 j), au-delà.
 export function followUpLevel(last: string | null, today: string): FollowUpLevel {
   if (!last) return 'unknown'
-  const days = Math.round((parseDate(today).getTime() - parseDate(last).getTime()) / 86_400_000)
+  const days = daysBetween(last, today)
   return days < 30 ? 'recent' : days < 45 ? 'month' : days <= 60 ? 'late' : 'overdue'
 }
 // Un patient actif est toujours affiché ; archivé ou supprimé, il ne reste visible que là où une trace existe déjà, jamais sur une journée future.

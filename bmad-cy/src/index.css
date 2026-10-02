@@ -60,10 +60,14 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .separator::after { content:""; flex:1; height:2px; border-radius:2px; background:#b8c1c8; }
 .separator.off-day::after { height:4px; background:#c43b33; }
 .patient-row { overflow:hidden; border:1px solid var(--line); border-radius:11px; background:#fff; }
+/* GRP : liseré en pointillé léger, seul repère visuel d’un patient pouvant travailler en groupe. */
+.patient-row.group, .patient-list .group a { border-style:dashed; border-color:#c9d0d8; }
 .patient-top { display:grid; grid-template-columns:44px minmax(0,1fr) auto; align-items:center; gap:.35rem; min-height:55px; padding:.35rem .42rem; }
-.transmission { display:grid; place-items:center; width:44px; min-width:44px; height:44px; min-height:44px; padding:0; border:0; background:transparent; color:#98a2aa; font-size:1.2rem; }
-.transmission span { display:inline-block; transition:transform .15s; }
-.transmission.open span { transform:rotate(90deg); }
+.transmission { position:relative; display:grid; place-items:center; width:44px; min-width:44px; height:44px; min-height:44px; padding:0; border:0; background:transparent; color:#98a2aa; }
+.transmission .triangle { width:22px; height:24px; background:currentColor; clip-path:polygon(0 0,100% 50%,0 100%); transition:transform .15s; }
+.transmission.open .triangle { transform:rotate(90deg); }
+.transmission .weeks { position:absolute; top:50%; left:50%; transform:translate(-75%,-50%); color:#fff; font-size:.6rem; font-weight:800; line-height:1; transition:transform .15s; }
+.transmission.open .weeks { transform:translate(-50%,-80%); }
 .transmission.recent { color:#7dc48c; }
 .transmission.month { color:#2e7a4b; }
 .transmission.late { color:#e08a1e; }
@@ -72,7 +76,8 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .patient-name strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; }
 .patient-meta { color:var(--muted); font-size:.71rem; }
 .priority { color:#885a00; }
-.session-buttons { display:flex; gap:.3rem; }
+.session-buttons { display:flex; align-items:center; gap:.3rem; }
+.since-a { min-width:1.1rem; color:#98a2aa; font-size:.68rem; font-variant-numeric:tabular-nums; text-align:right; }
 .session-buttons button { min-width:44px; padding:.35rem; color:var(--accent); }
 .session-buttons button.selected { border-color:var(--accent); background:var(--accent); color:#fff; }
 .day-note { min-height:42px; border:0; border-top:1px solid #edf0f2; border-radius:0; background:#fafbfc; }
@@ -137,3 +142,10 @@ select { width:100%; min-height:44px; border:1px solid #cbd3da; border-radius:9p
 .bilan { padding:.5rem .6rem .6rem; border-top:1px solid #edf0f2; background:#fafbfc; -webkit-user-select:text; user-select:text; }
 .bilan textarea { -webkit-user-select:text; user-select:text; margin-bottom:.4rem; }
 .history-bilan { margin:.3rem 0 0; color:var(--ink); font-size:.82rem; white-space:pre-wrap; }
+
+.follow-ups { display:flex; gap:2.2rem; margin:.1rem 0 .9rem; }
+.follow-up { display:grid; gap:.15rem; }
+.follow-up-check { display:flex; align-items:center; gap:.5rem; min-height:44px; font-size:1.15rem; font-weight:750; }
+.follow-up-check input { width:26px; min-height:26px; accent-color:var(--accent); }
+.follow-up .subtle { padding-left:2.1rem; font-size:.78rem; }
+.history-toggle { display:inline-flex; align-items:center; gap:.4rem; min-height:44px; margin-bottom:.9rem; color:var(--accent); }

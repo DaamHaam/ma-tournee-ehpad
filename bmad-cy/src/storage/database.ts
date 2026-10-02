@@ -14,6 +14,10 @@ export class TourDatabase extends Dexie {
     this.version(2).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       for (const [key, value] of Object.entries(careDefaults())) if (patient[key] === undefined) patient[key] = value
     }))
+    // v3 : indicateur « travail en groupe » (GRP), désactivé par défaut pour les patients existants.
+    this.version(3).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.group === undefined) patient.group = false
+    }))
   }
 }
 export const db = new TourDatabase()

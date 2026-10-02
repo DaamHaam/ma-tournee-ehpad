@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { dateLabel, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, weekDate, type Mood, type Patient } from '../../domain/model'
+import { dateLabel, daysSinceLastA, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, weekDate, weeksSince, type Mood, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { useToday } from '../../app/useToday'
 import { BilanEditor } from './BilanEditor'
@@ -18,7 +18,9 @@ function SortableRow({ id, label, children }: { id: string; label: string; child
 function NoteToggle({ patient, name, open, today, onToggle }: { patient?: Patient; name: string; open: boolean; today: string; onToggle: () => void }) {
   const last = patient ? lastFollowUp(patient) : null
   const followUp = last ? `dernière éval ou trans le ${parseDate(last).toLocaleDateString('fr-FR')}` : 'éval ou trans : date inconnue'
-  return <button type="button" className={`transmission ${followUpLevel(last, today)}${open ? ' open' : ''}`} aria-expanded={open} aria-label={`Note pour ${name}, ${followUp}`} title={followUp} onClick={onToggle}><span aria-hidden="true">▶</span></button>
+  const weeks = weeksSince(last, today)
+  // Le triangle porte le nombre de semaines depuis la dernière éval ou trans ; seule la forme pivote à l’ouverture de la note.
+  return <button type="button" className={`transmission ${followUpLevel(last, today)}${open ? ' open' : ''}`} aria-expanded={open} aria-label={`Note pour ${name}, ${followUp}`} title={followUp} onClick={onToggle}><span className="triangle" aria-hidden="true" />{weeks !== null && <span className="weeks" aria-hidden="true">{weeks}</span>}</button>
 }
 // Le clic natif émis au relâchement ouvrirait la fiche : il est bloqué pendant le glisser et juste après.
 function stopClick(event: MouseEvent) { event.preventDefault(); event.stopPropagation() }
@@ -34,6 +36,7 @@ export function Journee() {
   const { run } = useSave()
   const patients = useLiveQuery(() => db.patients.toArray(), [])
   const day = useLiveQuery(() => repository.dayView(date), [date])
+  const allDays = useLiveQuery(() => db.days.toArray(), [])
   const patientSignature = patients?.map(p => `${p.id}:${p.archived}`).sort().join(',')
   useEffect(() => { void run(() => repository.ensureDay(date)) }, [date, today, patientSignature, run])
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { delay: 350, tolerance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
@@ -57,8 +60,9 @@ export function Journee() {
         const label = isSeparator ? `Repère ${SEPARATORS.indexOf(id) + 1}` : fullName(patient!)
         const noteKey = `${date}:${id}`
         const noteOpen = entry ? noteOverrides[noteKey] ?? entry.note.trim() !== '' : false
-        return <SortableRow key={id} id={id} label={label}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className="patient-row">
-          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`}><strong>{shortName(patient!)}</strong>{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<button type="button" className={`bilan-toggle${entry.bilan?.trim() ? ' filled' : ''}`} aria-expanded={!!openBilans[noteKey]} aria-label={`Bilan pour ${fullName(patient!)}`} onClick={() => setOpenBilans(current => ({ ...current, [noteKey]: !current[noteKey] }))}>+</button></div></div>
+        const sinceA = !isSeparator && allDays ? daysSinceLastA(allDays, id, date) : null
+        return <SortableRow key={id} id={id} label={label}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className={`patient-row${active.get(id)?.group ? ' group' : ''}`}>
+          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><strong>{shortName(patient!)}</strong>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<button type="button" className={`bilan-toggle${entry.bilan?.trim() ? ' filled' : ''}`} aria-expanded={!!openBilans[noteKey]} aria-label={`Bilan pour ${fullName(patient!)}`} onClick={() => setOpenBilans(current => ({ ...current, [noteKey]: !current[noteKey] }))}>+</button></div></div>
  {noteOpen && <input key={`${date}-${id}-note`} className="day-note" onMouseDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} autoFocus={noteOverrides[noteKey] === true} aria-label={`Note du jour pour ${fullName(patient!)}`} placeholder="Note" defaultValue={entry.note} onChange={e => { const value = e.target.value; void run(() => repository.setNote(date, id, value)) }} />}
           {openBilans[noteKey] && <BilanEditor key={`${date}-${id}-bilan`} date={date} id={id} name={fullName(patient!)} initial={entry.bilan ?? ''} />}
         </article>}</SortableRow>
