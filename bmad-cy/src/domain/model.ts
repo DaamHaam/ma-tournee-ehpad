@@ -33,6 +33,13 @@ export function identityKey(patient: Pick<Identity, 'lastName' | 'firstName'>): 
   return `${plain(patient.lastName)}|${plain(patient.firstName)}`
 }
 export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' }
+// Range les éléments d’une journée selon un ordre modèle ; ceux que le modèle ignore gardent leur place relative, à la fin.
+export function applyOrder(template: string[], current: string[]): string[] {
+  const present = new Set(current)
+  const ordered = template.filter(id => present.has(id))
+  const placed = new Set(ordered)
+  return [...ordered, ...current.filter(id => !placed.has(id))]
+}
 export function toggleSession(current: SessionType, next: Exclude<SessionType, null>): SessionType { return current === next ? null : next }
 export function toggleLetter(value: string, letter: string): string {
   const letters = new Set(value.toUpperCase().split('').filter(char => (WEEKDAY_LETTERS as readonly string[]).includes(char)))

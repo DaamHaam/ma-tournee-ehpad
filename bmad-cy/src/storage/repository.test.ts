@@ -196,4 +196,17 @@ describe('stockage local', () => {
     expect(patients.find(patient => patient.id === martin.id)?.group).toBe(true)
     expect(patients.find(patient => patient.lastName === 'Fictif')?.group).toBe(false)
   })
+
+  it('applique un nouvel ordre aux journées suivantes du même jour déjà ouvertes, pas aux autres jours', async () => {
+    await repository.initialize()
+    await repository.ensureDay('2026-09-08')
+    await repository.ensureDay('2026-09-15')
+    await repository.ensureDay('2026-09-10')
+    const thursday = (await database.days.get('2026-09-10'))!.order
+    const reordered = [...(await database.days.get('2026-09-08'))!.order].reverse()
+    await repository.reorder('2026-09-08', reordered)
+    expect((await database.days.get('2026-09-15'))?.order).toEqual(reordered)
+    expect((await database.days.get('2026-09-10'))?.order).toEqual(thursday)
+    expect((await repository.dayView('2026-09-22')).order).toEqual(reordered)
+  })
 })

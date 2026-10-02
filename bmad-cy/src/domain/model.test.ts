@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
+import { applyOrder, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
 
 describe('règles du domaine', () => {
   it('bascule A/B de façon exclusive et réversible', () => {
@@ -78,5 +78,10 @@ describe('règles du domaine', () => {
     expect(daysSinceLastA(days, 'p1', '2026-09-24')).toBe(3)
     expect(daysSinceLastA(days, 'p1', '2026-09-21')).toBeNull()
     expect(daysSinceLastA(days, 'autre', '2026-10-02')).toBeNull()
+  })
+
+  it('applique un ordre modèle en gardant à la fin les éléments qu’il ne connaît pas', () => {
+    expect(applyOrder(['c', 'a', 'b'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
+    expect(applyOrder(['c', 'x', 'a'], ['a', 'b', 'c', 'd'])).toEqual(['c', 'a', 'b', 'd'])
   })
 })

@@ -1,5 +1,5 @@
 import { db, type OrderTemplate, type Setting, type TourDatabase } from './database'
-import { careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+import { applyOrder, careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 // GRP n’est pas importé : un patient déjà connu garde son réglage, un nouveau part sans groupe.
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, 'group'>
@@ -90,7 +90,12 @@ export class TourRepository {
       if (order.length !== day.order.length || new Set(order).size !== order.length || order.some(id => !day.order.includes(id))) throw new Error('L’ordre de la journée a changé. Réessayez.')
       day.order = order
       await this.database.days.put(day)
-      await this.database.orders.put({ weekday: parseDate(date).getDay(), order })
+      const weekday = parseDate(date).getDay()
+      await this.database.orders.put({ weekday, order })
+      // Les journées suivantes du même jour de semaine déjà enregistrées (ouvertes à l’avance) suivent le nouvel ordre.
+      await this.database.days.where('date').above(date).modify(later => {
+        if (parseDate(later.date).getDay() === weekday) later.order = applyOrder(order, later.order)
+      })
     })
   }
   async addPatient(input: Pick<Identity, 'lastName' | 'firstName' | 'room' | 'priority'>): Promise<string> {
