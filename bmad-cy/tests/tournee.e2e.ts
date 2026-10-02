@@ -217,11 +217,16 @@ test('fiche ouverte depuis la journée : retour à la même date, Éval/Trans en
   await page.getByRole('link', { name: '← jeudi 24 septembre' }).click()
   await expect(page).toHaveURL(/#\/\?date=2026-09-24$/)
 
-  const row = page.locator('.patient-row').filter({ hasText: 'Martin A.' })
+  const row = page.locator('.sortable-row').filter({ hasText: 'Martin A.' })
   await expect(row).toHaveClass(/group/)
-  expect(await row.evaluate(element => getComputedStyle(element).borderTopStyle)).toBe('dashed')
-  await expect(row.locator('.transmission .weeks')).toHaveText('0')
-  await expect(page.locator('.patient-row').filter({ hasText: 'Bernard L.' })).not.toHaveClass(/group/)
+  const card = (await row.locator('.patient-row').boundingBox())!
+  const stripe = await row.evaluate(element => { const style = getComputedStyle(element, '::before'); return { left: parseFloat(style.left), width: parseFloat(style.width) } })
+  expect(stripe.left + stripe.width).toBeLessThanOrEqual(0)
+  expect(card.x).toBeGreaterThan(-stripe.left)
+  const weeks = row.locator('.transmission .weeks')
+  await expect(weeks).toHaveText('0')
+  expect((await weeks.boundingBox())!.x).toBeLessThan((await row.locator('.transmission .triangle').boundingBox())!.x)
+  await expect(page.locator('.sortable-row').filter({ hasText: 'Bernard L.' })).not.toHaveClass(/group/)
 
   await page.getByRole('link', { name: 'Patients' }).click()
   await page.getByRole('link', { name: /Bernard Louis/ }).click()
