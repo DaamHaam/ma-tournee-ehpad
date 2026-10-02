@@ -4,7 +4,7 @@ Carte des comptes utilisés par le projet. **Aucune valeur secrète ici** : seul
 
 ## Code
 - GitHub : compte `DaamHaam`, dépôt `DaamHaam/ma-tournee-ehpad`
-- Branches : `main` uniquement pour l'instant (pas de `dev`)
+- Branches : `main` seule (voir « Façon de travailler sur ce projet » dans `AGENTS.md`)
 - Config git spécifique : aucune (compte par défaut)
 
 ## Hébergement
@@ -17,7 +17,7 @@ Carte des comptes utilisés par le projet. **Aucune valeur secrète ici** : seul
 - Aucun.
 
 ## Outils des agents
-- Notification : `tg-notify`
+- Notification : `tg-notify` en local ; secrets GitHub `TG_CLAUDE_TOKEN`, `TG_CODEX_TOKEN`, `TG_CHAT_ID` pour `.github/workflows/agents.yml` (clôtures et versions)
 
 ## À savoir
 - Données de santé sur l'appareil uniquement ; jamais de vraies données dans Git.

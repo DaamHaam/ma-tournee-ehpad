@@ -2,6 +2,13 @@
 
 Source de vérité pour Codex et Claude Code. `CLAUDE.md` importe ce fichier afin que les deux outils travaillent avec les mêmes règles.
 
+## Façon de travailler sur ce projet
+
+- **Branche de travail** : `main` seule. On développe directement sur `main`, testé sur iPhone après publication. Ne pas créer de branche `dev` (une session cloud l'avait fait par erreur le 2026-10-01 ; branche supprimée). La revue part de `revue-ok` sur `main`.
+- **Publication** : chaque push sur `main` lance `.github/workflows/ci-pages.yml` (tests, lint, build, Playwright) puis publie sur GitHub Pages.
+- **Tags de version** : `vX.Y.Z` posés automatiquement par `.github/workflows/agents.yml` depuis `bmad-cy/package.json`, une fois la CI verte. Il suffit d'incrémenter la version et de pousser.
+- **Particularités** : données de santé uniquement sur l'appareil ; vérification sur Safari/iPhone réel quand c'est possible.
+
 ## Projet et commandes
 
 PWA iPhone-first destinée à préparer et tracer une tournée personnelle de kinésithérapie en EHPAD. Elle fonctionne sans compte ni serveur : les patients, journées, notes et ordres restent dans IndexedDB sur l’appareil.
@@ -82,22 +89,33 @@ npm run test:e2e
 
 ## Git et déploiement
 
-- Exception au bloc commun : ce projet n'a pas encore de branche `dev` ; `main` contient les versions testables et déclenche `.github/workflows/ci-pages.yml` Choix assumé : on développe directement sur `main`, testé sur iPhone après publication. En conséquence, la revue part du tag `revue-ok` sur `main` et la clôture déplace `revue-ok` sur `origin/main` (et non `origin/dev`).
+- `main` est la branche de travail et déclenche `.github/workflows/ci-pages.yml` (voir « Façon de travailler sur ce projet »).
 - Le workflow vérifie tests, lint, build et parcours Playwright (WebKit iPhone et Chromium hors ligne) avant de publier `bmad-cy/dist` sur GitHub Pages.
 - Ne jamais committer `node_modules/`, `dist/`, les rapports Playwright, les fichiers `.env` ou des exports patients.
-- Utiliser des commits conventionnels et des tags `vX.Y.Z` pour les versions testables.
+- Utiliser des commits conventionnels ; les tags `vX.Y.Z` sont posés par GitHub (`agents.yml`).
 - Ne pousser et ne publier qu’après réussite des vérifications adaptées au changement.
-- Pour une release : mettre à jour `package.json` et son lockfile, valider le projet, committer la version, pousser `main`, attendre la CI verte, taguer ce commit exact, pousser le tag, puis contrôler l’URL Pages.
+- Pour une release : mettre à jour `package.json` et son lockfile, valider le projet, committer la version, pousser `main`, puis contrôler l’URL Pages. GitHub tague le commit et notifie sur Telegram quand la CI est verte (alerte ⚠️ sinon).
 
 ## Règles communes (catalogue WORKFLOW)
 
-- **Instructions** : ce fichier est l'unique source des règles ; `CLAUDE.md` se limite à `@AGENTS.md`. Ne jamais dupliquer une règle ailleurs.
+- **Instructions** : ce fichier est l'unique source des règles ; `CLAUDE.md` se limite à `@AGENTS.md`. Ne jamais dupliquer une règle ailleurs. Les singularités du projet (branche, publication, versions) sont dans « Façon de travailler sur ce projet » et priment sur ce bloc.
 - **Comptes et services** : voir `ACCOUNTS.md` (GitHub, hébergement, base de données, API, emplacement des secrets). Le mettre à jour dès qu'un compte, un service ou un secret change. Aucune valeur secrète dedans.
 - **Avant de coder** : pour une demande non triviale, reformuler ce qui a été compris et poser les questions utiles avant de coder.
-- **Git** : développer sur `dev` (commit et push selon les règles du projet ci-dessus). `main` ne reçoit `dev` que sur demande explicite. Pas de pull request. Ne jamais réécrire l'historique de `dev` ou `main`.
+- **Git** : travailler sur la **branche de travail** déclarée plus haut, sans créer d'autre branche durable ni changer ce modèle sans demande explicite. Pas de pull request. Ne jamais réécrire l'historique de la branche de travail ou de `main`. En cloud, si l'outil impose une branche de session, fusionner le travail dans la branche de travail et la pousser avant de terminer.
 - **Trace de l'agent** : terminer chaque message de commit par une ligne `Agent: Claude` ou `Agent: Codex`, selon l'agent qui a réellement fait le travail.
 - **GitHub** : le compte est fixé par la configuration git (voir `ACCOUNTS.md`). Ne pas utiliser `gh auth switch` ; en cas d'erreur d'accès, le signaler.
-- **Notification de fin** : si la tâche a demandé plus de 2 minutes, lancer juste avant la réponse finale `tg-notify "<résumé en quelques phrases>"`, ou `tg-notify --bloque "<raison>"` en cas de blocage après un travail significatif. Le script détecte l'agent et choisit le bon bot. Une seule notification par tâche, sans donnée sensible. Si l'envoi échoue, le signaler sans considérer la tâche comme échouée. (Chemin complet si besoin : `/opt/homebrew/bin/tg-notify` ; absent dans les environnements cloud : ne rien envoyer.)
-- **Revue de code** (demande « revue », sans PR) : examiner en lecture seule les commits déjà poussés sur `dev` depuis le tag `revue-ok` (à défaut depuis `origin/main`), ou le commit / la plage indiqués. Rendre : résumé des fonctionnalités couvertes, problèmes classés par gravité avec `fichier:ligne` et correction proposée, plan de correction. Ne rien corriger sans accord.
-- **Clôture** (demande « clôture », une fois les corrections validées et poussées) : déplacer le tag `revue-ok` sur `origin/dev` (`git tag -f revue-ok origin/dev`, `git push origin :refs/tags/revue-ok`, `git push origin revue-ok`), faire un récapitulatif et envoyer la notification. Si l'environnement (cloud) ne peut pas pousser le tag, donner ces commandes à lancer en local.
-- Maintenir ce fichier quand les commandes, l'architecture, les invariants ou le déploiement évoluent.
+- **Automatisations GitHub** (`.github/workflows/agents.yml`) : GitHub pose lui-même les tags (`revue-ok`, `vX.Y.Z`) et envoie les notifications Telegram de clôture et de version, ce qui fonctionne aussi depuis le cloud. Ne pas pousser ces tags soi-même : il suffit de pousser les commits.
+- **Notification de fin** : si la tâche a demandé plus de 2 minutes, lancer juste avant la réponse finale `tg-notify "<résumé en quelques phrases>"`, ou `tg-notify --bloque "<raison>"` en cas de blocage après un travail significatif. Une seule notification par tâche, sans donnée sensible. Si l'envoi échoue, le signaler sans considérer la tâche comme échouée. (Chemin complet : `/opt/homebrew/bin/tg-notify`.) En cloud, `tg-notify` n'existe pas : ne rien envoyer, la clôture et les versions sont notifiées par GitHub.
+- **Revue de code** (demande « revue », sans PR) : examiner en lecture seule les commits déjà poussés sur la branche de travail depuis le tag `revue-ok` (à défaut depuis `origin/main`), ou le commit / la plage indiqués. Rendre : résumé des fonctionnalités couvertes, problèmes classés par gravité avec `fichier:ligne` et correction proposée, plan de correction. Ne rien corriger sans accord.
+- **Clôture** (demande « clôture » ou « fin de session », une fois les corrections validées et poussées) : ajouter en tête de `JOURNAL.md` (titre `# Journal des clôtures` s'il n'existe pas) une entrée courte, sans donnée sensible :
+  ```
+  ## AAAA-MM-JJ — Claude|Codex · local|cloud
+  - Livré : <fonctionnalités revues et testées>
+  - Tests : <vérifications lancées et résultat>
+  - Corrigé à la revue : <corrections, ou « rien »>
+  - En attente : <points reportés, ou « rien »>
+  - Prochaine étape : <…>
+  ```
+  La commiter avec un message qui **commence par `Clôture`** (ex. `Clôture : journal`) et la pousser sur la branche de travail : l'Action GitHub déplace alors `revue-ok` sur ce commit et envoie l'entrée sur Telegram (pas de `tg-notify` en plus). Si le MCP Notion est disponible, mettre aussi à jour la ligne du projet dans la base Notion « État de reprise projets » (Branche, Dernier agent, Environnement, Dernier commit, Dernière session, Où on en est, Prochaine étape). Terminer par un récapitulatif et la ligne « ✅ CONVERSATION CLÔTURÉE — développé, testé, revu ».
+- **Reprise** (premier message d'une conversation) : `git fetch origin --tags`, puis donner l'état en une ligne avant de traiter la demande : « ✅ Tout est clôturé (dernière entrée de `JOURNAL.md` : date, agent, prochaine étape) » si `revue-ok` et `origin/<branche de travail>` pointent le même commit, sinon « ⚠️ N commits poussés depuis la dernière clôture, non revus » avec leur liste courte (`git log --oneline revue-ok..origin/<branche de travail>`). Sans tag `revue-ok` : « Aucune clôture enregistrée ». Rappeler la branche de travail et signaler les modifications locales non commitées.
+- Maintenir ce fichier quand les commandes, l'architecture, les invariants, la façon de travailler ou le déploiement évoluent.
