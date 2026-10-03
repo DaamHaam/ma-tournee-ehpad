@@ -181,56 +181,60 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await expect(page.getByText('Rien à exporter sur cette période.')).toBeVisible()
 })
 
-test('dictée OpenRouter simulée : clé testée, texte inséré au curseur, clé absente de la sauvegarde', async ({ page }) => {
-  // Micro et enregistreur factices : le navigateur de test n’a pas de micro ; OpenRouter est simulé.
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } })
-    class FakeRecorder {
-      static isTypeSupported(type: string) { return type === 'audio/mp4' }
-      state = 'inactive'; mimeType = 'audio/mp4'
-      ondataavailable: ((event: { data: Blob }) => void) | null = null
-      onstop: (() => void) | null = null
-      start() { this.state = 'recording' }
-      stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob(['son'], { type: 'audio/mp4' }) }); this.onstop?.() }
-    }
-    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeRecorder })
-  })
-  // Réponses simulées avec les en-têtes CORS du vrai service : WebKit les exige, préflight compris.
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
-  const sent: string[] = []
-  await page.route('https://openrouter.ai/api/v1/key', route => route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: cors }) : route.fulfill({ headers: cors, json: { data: { label: 'test' } } }))
-  await page.route('https://openrouter.ai/api/v1/audio/transcriptions', route => {
-    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
-    sent.push(route.request().headers().authorization ?? '')
-    return route.fulfill({ headers: cors, json: { text: sent.length === 1 ? 'Milieu dicté.' : 'Suite dictée.' } })
-  })
-  await page.goto('/#/settings')
-  await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test1234')
-  await page.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(page.getByText('Clé enregistrée sur cet appareil (…1234).')).toBeVisible()
-  await expect(page.getByLabel('Modèle')).toHaveValue('openai/whisper-large-v3')
-  await page.getByRole('button', { name: 'Tester la clé' }).click()
-  await expect(page.getByText('Clé valide.')).toBeVisible()
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Sauvegarder' }).click()])
-  expect(readFileSync((await download.path())!, 'utf8')).not.toContain('sk-or-v1-test1234')
+// En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.
+test.describe('dictée', () => {
+  test.use({ serviceWorkers: 'block' })
+  test('dictée OpenRouter simulée : clé testée, texte inséré au curseur, clé absente de la sauvegarde', async ({ page }) => {
+    // Micro et enregistreur factices : le navigateur de test n’a pas de micro ; OpenRouter est simulé.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } })
+      class FakeRecorder {
+        static isTypeSupported(type: string) { return type === 'audio/mp4' }
+        state = 'inactive'; mimeType = 'audio/mp4'
+        ondataavailable: ((event: { data: Blob }) => void) | null = null
+        onstop: (() => void) | null = null
+        start() { this.state = 'recording' }
+        stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob(['son'], { type: 'audio/mp4' }) }); this.onstop?.() }
+      }
+      Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeRecorder })
+    })
+    // Réponses simulées avec les en-têtes CORS du vrai service : WebKit les exige, préflight compris.
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
+    const sent: string[] = []
+    await page.route('https://openrouter.ai/api/v1/key', route => route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: cors }) : route.fulfill({ headers: cors, json: { data: { label: 'test' } } }))
+    await page.route('https://openrouter.ai/api/v1/audio/transcriptions', route => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+      sent.push(route.request().headers().authorization ?? '')
+      return route.fulfill({ headers: cors, json: { text: sent.length === 1 ? 'Milieu dicté.' : 'Suite dictée.' } })
+    })
+    await page.goto('/#/settings')
+    await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test1234')
+    await page.getByRole('button', { name: 'Enregistrer' }).click()
+    await expect(page.getByText('Clé enregistrée sur cet appareil (…1234).')).toBeVisible()
+    await expect(page.getByLabel('Modèle')).toHaveValue('openai/whisper-large-v3')
+    await page.getByRole('button', { name: 'Tester la clé' }).click()
+    await expect(page.locator('.dictation [role=status]')).toHaveText('Clé valide.')
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Sauvegarder' }).click()])
+    expect(readFileSync((await download.path())!, 'utf8')).not.toContain('sk-or-v1-test1234')
 
-  await page.goto('/#/?date=2026-09-22')
-  await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
-  const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })
-  await bilan.fill('Début. Fin.')
-  await bilan.press('Home')
-  for (let step = 0; step < 6; step++) await bilan.press('ArrowRight')
-  await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
-  await expect(page.getByText(/Enregistrement 0:0\d \/ 5:00/)).toBeVisible()
-  await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
-  await expect(bilan).toHaveValue('Début. Milieu dicté. Fin.')
-  await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
-  await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
-  await expect(bilan).toHaveValue('Début. Milieu dicté. Suite dictée. Fin.')
-  expect(sent).toEqual(['Bearer sk-or-v1-test1234', 'Bearer sk-or-v1-test1234'])
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
-  await expect(bilan).toHaveValue('Début. Milieu dicté. Suite dictée. Fin.')
+    await page.goto('/#/?date=2026-09-22')
+    await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
+    const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })
+    await bilan.fill('Début. Fin.')
+    await bilan.press('Home')
+    for (let step = 0; step < 6; step++) await bilan.press('ArrowRight')
+    await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
+    await expect(page.getByText(/Enregistrement 0:0\d \/ 5:00/)).toBeVisible()
+    await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
+    await expect(bilan).toHaveValue('Début. Milieu dicté. Fin.')
+    await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
+    await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
+    await expect(bilan).toHaveValue('Début. Milieu dicté. Suite dictée. Fin.')
+    expect(sent).toEqual(['Bearer sk-or-v1-test1234', 'Bearer sk-or-v1-test1234'])
+    await page.getByRole('link', { name: 'Retour à la journée' }).click()
+    await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
+    await expect(bilan).toHaveValue('Début. Milieu dicté. Suite dictée. Fin.')
+  })
 })
 
 test('patient pointé puis archivé le jour même : il reste visible et corrigeable, renommé dans l’export', async ({ page }) => {
