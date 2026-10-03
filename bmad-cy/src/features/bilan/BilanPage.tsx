@@ -20,6 +20,20 @@ function useOnline() {
   return online
 }
 
+// Zone réellement visible : sur iPhone, le clavier ouvert la réduit sans redimensionner la page.
+function useVisibleViewport() {
+  const [box, setBox] = useState<{ height: number; top: number } | null>(null)
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const update = () => setBox({ height: viewport.height, top: viewport.offsetTop })
+    update()
+    viewport.addEventListener('resize', update); viewport.addEventListener('scroll', update)
+    return () => { viewport.removeEventListener('resize', update); viewport.removeEventListener('scroll', update) }
+  }, [])
+  return box
+}
+
 // Bilan libre du jour en plein écran ; ne part pas dans l’export TXT.
 export function BilanPage() {
   const { date = '', id = '' } = useParams()
@@ -46,6 +60,9 @@ function BilanEditor({ date, id, name, initial }: { date: string; id: string; na
   // Dernière position du curseur dans le texte : toucher le micro retire le focus et certains navigateurs oublient alors la sélection.
   const caret = useRef({ start: initial.length, end: initial.length })
   const online = useOnline()
+  // Mode dictée par défaut : toucher le texte place le curseur sans ouvrir le clavier ; « Clavier » l’ouvre pour taper.
+  const [keyboard, setKeyboard] = useState(false)
+  const viewport = useVisibleViewport()
   const settings = useLiveQuery(async () => ({ key: (await db.settings.get(KEY_SETTING))?.value ?? '', model: (await db.settings.get(MODEL_SETTING))?.value || DEFAULT_MODEL }), [])
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   // Place le curseur après la dernière dictée (ou en fin de texte à l’ouverture) pour enchaîner les dictées.
@@ -72,16 +89,29 @@ function BilanEditor({ date, id, name, initial }: { date: string; id: string; na
     setError(''); setPending(null)
     try { await start() } catch (cause) { setError(cause instanceof Error ? cause.message : 'Enregistrement impossible.') }
   }
+  // Le changement de mode ne s’applique qu’au prochain focus : on retire puis redonne le focus dans le même geste.
+  const toggleKeyboard = () => {
+    const element = area.current
+    if (!element) return
+    const next = !keyboard
+    element.inputMode = next ? 'text' : 'none'
+    element.blur()
+    if (next) { element.focus(); element.setSelectionRange(caret.current.start, caret.current.end) }
+    setKeyboard(next)
+  }
   const copy = async () => { setCopied(await copyText(text)); window.setTimeout(() => setCopied(null), 1500) }
   const hint = !settings ? '' : !settings.key ? 'Pour dicter ici, ajoutez une clé OpenRouter dans Réglages. Le micro du clavier reste disponible.' : !online ? 'Hors ligne : utilisez le micro du clavier.' : ''
   const status = recording ? `Enregistrement ${formatDuration(elapsed)} / ${formatDuration(MAX_DICTATION_SECONDS)}` : transcribing ? 'Transcription…' : ''
-  return <div className="bilan-page">
+  return <div className="bilan-page" style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <header className="bilan-header">
       <Link className="bilan-back" to={`/?date=${date}`} aria-label="Retour à la journée">‹ Journée</Link>
       <div className="bilan-title"><h1>{name}</h1><span>{parseDate(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
+      <button type="button" className="keyboard-toggle" aria-pressed={keyboard} aria-label={keyboard ? 'Fermer le clavier' : 'Ouvrir le clavier'} onPointerDown={event => event.preventDefault()} onClick={toggleKeyboard}>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7.5 14h9" /></svg>
+      </button>
       <button type="button" className={copied ? 'copied' : ''} disabled={!text.trim()} onClick={() => void copy()}>{copied === null ? 'Copier' : copied ? 'Copié ✓' : 'Copie impossible'}</button>
     </header>
-    <textarea ref={area} className="bilan-text" aria-label={`Bilan du jour pour ${name}`} placeholder="Bilan" value={text} onChange={event => { save(event.target.value); track() }} onSelect={track} />
+    <textarea ref={area} className="bilan-text" inputMode={keyboard ? 'text' : 'none'} aria-label={`Bilan du jour pour ${name}`} placeholder="Bilan" value={text} onChange={event => { save(event.target.value); track() }} onSelect={track} />
     <footer className="bilan-dictation">
       {error && <p className="field-error" role="alert">{error}</p>}
       {pending && !transcribing && <div className="action-row"><button type="button" onClick={() => void send(pending)}>Réessayer la transcription</button><button type="button" onClick={() => { setPending(null); setError('') }}>Abandonner</button></div>}

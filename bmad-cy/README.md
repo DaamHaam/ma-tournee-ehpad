@@ -2,12 +2,12 @@
 
 PWA iPhone-first pour préparer et tracer une tournée de kinésithérapie en EHPAD. La version actuelle fonctionne sans compte ni serveur : patients, journées, notes et ordres sont enregistrés dans IndexedDB sur l’appareil. Seule la dictée facultative des bilans envoie l’audio à OpenRouter pour transcription.
 
-Version actuelle : 0.10.0 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
+Version actuelle : 0.10.1 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
 
 ## Parcours disponible
 
 - `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des quatre repères (le rouge pour les patients sans séance prévue) par appui long, cartes au format « NOM P. », pointage A/B exclusif, note ouverte par le triangle, bilan libre du jour ouvert en plein écran par « + » (copiable, visible dans l’historique, hors export TXT), niveau H et commentaire.
-- Dictée des bilans : bouton micro en bas du bilan, transcription par OpenRouter (Whisper) insérée à la position du curseur, 5 minutes au plus par dictée. Nécessite une clé OpenRouter saisie dans `Réglages` (gardée sur l’appareil, exclue de la sauvegarde) et le réseau ; sinon, le micro du clavier reste disponible. Ne prononcer aucun nom : l’audio part chez OpenRouter.
+- Dictée des bilans : bouton micro en bas du bilan, transcription par OpenRouter (Whisper) insérée à la position du curseur (toucher le texte place le curseur sans ouvrir le clavier ; bouton « Clavier » pour taper), 5 minutes au plus par dictée. Nécessite une clé OpenRouter saisie dans `Réglages` (gardée sur l’appareil, exclue de la sauvegarde) et le réseau ; sinon, le micro du clavier reste disponible. Ne prononcer aucun nom : l’audio part chez OpenRouter.
 - `Patients` : ajout, liste alphabétique, fiche modifiable, historique, archivage et suppression confirmée. Une suppression conserve les snapshots nécessaires aux anciennes journées et aux exports.
 - `Réglages / Export` : plage de dates (jour même par défaut), aperçu TXT, copie, téléchargement et partage système lorsque le navigateur le permet ; import de patients par copier-coller d’un tableau (remplace la liste des patients ; un patient déjà connu, même nom et prénom, garde sa fiche, son historique et ses dates d’éval/trans ; les journées passées ne changent pas).
 - Sauvegarde : fichier JSON complet (patients, fiches, journées, ordres) enregistrable dans Fichiers et restaurable sur l’app ou un autre iPhone.

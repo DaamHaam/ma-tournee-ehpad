@@ -11,6 +11,7 @@ Dicter le bilan du jour avec une transcription de meilleure qualité que le micr
 - La transcription est insérée à la position du curseur (ou à la place de la sélection), avec les espaces nécessaires ; le curseur se place après le texte inséré pour enchaîner les dictées.
 - Pas de clé ou pas de réseau : le micro est désactivé avec un message, le micro du clavier reste disponible.
 - Échec de transcription : message clair, « Réessayer la transcription » ou « Abandonner ». L’audio reste en mémoire jusque-là, jamais écrit sur l’appareil.
+- Mode dictée par défaut (v0.10.1) : le champ porte `inputmode="none"`, donc toucher le texte place le curseur sans ouvrir le clavier et le micro reste accessible. Le bouton « Clavier » en haut bascule en saisie (clavier ouvert) et le referme ; en saisie, la page suit la zone visible (`visualViewport`) pour garder le micro au-dessus du clavier. Chaque bilan s’ouvre en mode dictée.
 - Le micro n’existe que dans le bilan (ni notes patient, ni commentaire de journée).
 
 ## Réglages

@@ -165,6 +165,13 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Démarrer la dictée' })).toBeDisabled()
   await expect(page.getByText(/ajoutez une clé OpenRouter/)).toBeVisible()
+  // Mode dictée par défaut : le texte ne fait pas apparaître le clavier ; le bouton « Clavier » bascule en saisie.
+  await expect(bilan).toHaveAttribute('inputmode', 'none')
+  await page.getByRole('button', { name: 'Ouvrir le clavier' }).click()
+  await expect(bilan).toHaveAttribute('inputmode', 'text')
+  await expect(bilan).toBeFocused()
+  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+  await expect(bilan).toHaveAttribute('inputmode', 'none')
   await bilan.fill('Marche 10 m en 12 s.\nDouleur 2/10.')
   await page.getByRole('button', { name: 'Copier' }).click()
   await expect(page.getByRole('button', { name: 'Copié ✓' })).toBeVisible()
