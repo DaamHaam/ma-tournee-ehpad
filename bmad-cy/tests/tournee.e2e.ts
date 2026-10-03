@@ -195,11 +195,14 @@ test('dictée OpenRouter simulée : clé testée, texte inséré au curseur, cl�
     }
     Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeRecorder })
   })
+  // Réponses simulées avec les en-têtes CORS du vrai service : WebKit les exige, préflight compris.
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
   const sent: string[] = []
-  await page.route('https://openrouter.ai/api/v1/key', route => route.fulfill({ json: { data: { label: 'test' } } }))
+  await page.route('https://openrouter.ai/api/v1/key', route => route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: cors }) : route.fulfill({ headers: cors, json: { data: { label: 'test' } } }))
   await page.route('https://openrouter.ai/api/v1/audio/transcriptions', route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
     sent.push(route.request().headers().authorization ?? '')
-    return route.fulfill({ json: { text: sent.length === 1 ? 'Milieu dicté.' : 'Suite dictée.' } })
+    return route.fulfill({ headers: cors, json: { text: sent.length === 1 ? 'Milieu dicté.' : 'Suite dictée.' } })
   })
   await page.goto('/#/settings')
   await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test1234')
