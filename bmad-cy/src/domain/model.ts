@@ -51,12 +51,18 @@ export function lastFollowUp(care: Pick<PatientCare, 'evalDates' | 'transDates'>
 function daysBetween(from: string, to: string): number { return Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 86_400_000) }
 // Semaines entières écoulées depuis la dernière éval ou trans, affichées dans le triangle.
 export function weeksSince(last: string | null, today: string): number | null { return last ? Math.max(0, Math.floor(daysBetween(last, today) / 7)) : null }
-// Jours écoulés depuis la dernière séance A strictement antérieure à la journée affichée : cocher A ce jour-là ne change pas le chiffre.
-export function daysSinceLastA(days: Pick<Day, 'date' | 'entries'>[], id: string, date: string): number | null {
-  let last: string | null = null
-  for (const day of days) if (day.date < date && day.entries[id]?.session === 'A' && (!last || day.date > last)) last = day.date
-  return last ? daysBetween(last, date) : null
+// Date de la dernière séance A de chaque patient, strictement antérieure à la journée affichée : cocher A ce jour-là ne change pas le chiffre.
+export function lastSessionsA(days: Pick<Day, 'date' | 'entries'>[], date: string): Map<string, string> {
+  const last = new Map<string, string>()
+  for (const day of days) {
+    if (day.date >= date) continue
+    for (const [id, entry] of Object.entries(day.entries)) if (entry.session === 'A' && day.date > (last.get(id) ?? '')) last.set(id, day.date)
+  }
+  return last
 }
+export function daysSince(last: string | undefined, date: string): number | null { return last ? daysBetween(last, date) : null }
+// Jours écoulés depuis la dernière séance A antérieure à la journée affichée.
+export function daysSinceLastA(days: Pick<Day, 'date' | 'entries'>[], id: string, date: string): number | null { return daysSince(lastSessionsA(days, date).get(id), date) }
 export type FollowUpLevel = 'unknown' | 'recent' | 'month' | 'late' | 'overdue'
 // Seuils NFR25 en jours : < 1 mois (30 j), 1 à 1,5 mois (45 j), 1,5 à 2 mois (60 j), au-delà.
 export function followUpLevel(last: string | null, today: string): FollowUpLevel {

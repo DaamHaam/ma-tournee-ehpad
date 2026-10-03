@@ -75,10 +75,11 @@ jobs:
             for i in $(seq 1 90); do
               runs=$(gh run list -R "$repo" --commit "$sha" --json workflowName,status,conclusion \
                      --jq "[.[] | select(.workflowName != \"$GITHUB_WORKFLOW\")]")
-              [ "$(jq '[.[] | select(.status != "completed")] | length' <<<"$runs")" = 0 ] && break
+              # Une liste vide signifie que la CI n'est pas encore enregistrée : on attend au lieu de conclure.
+              [ "$(jq 'length > 0 and ([.[] | select(.status != "completed")] | length) == 0' <<<"${runs:-[]}")" = true ] && break
               sleep 20
             done
-            [ "$(jq '[.[] | select(.status != "completed" or (.conclusion != "success" and .conclusion != "skipped"))] | length' <<<"$runs")" = 0 ]
+            [ "$(jq 'length > 0 and ([.[] | select(.status != "completed" or (.conclusion != "success" and .conclusion != "skipped"))] | length) == 0' <<<"${runs:-[]}")" = true ]
           }
           if [ "$branche" = "main" ] && [ -n "$FICHIER_VERSION" ]; then
             version=$(fichier "$FICHIER_VERSION" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)

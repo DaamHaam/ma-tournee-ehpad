@@ -8,8 +8,8 @@ function exportName(entry: Entry, entries: Entry[]): string {
   const lastName = fullLastName(entry.patient.lastName)
   const firstName = firstWord(entry.patient.firstName)
   const homonyms = entries.filter(other => fullLastName(other.patient.lastName) === lastName)
-  // A : chaque mot du nom prend une majuscule initiale ; B : tout en minuscules.
-  const cased = entry.session === 'B' ? lastName : lastName.split(' ').map(capital).join(' ')
+  // A : chaque mot du nom prend une majuscule initiale, y compris après un tiret ou une apostrophe ; B : tout en minuscules.
+  const cased = entry.session === 'B' ? lastName : lastName.replace(/(^|[\s'’-])(\p{L})/gu, (_, before: string, letter: string) => before + letter.toLocaleUpperCase('fr'))
   if (homonyms.length < 2) return cased
   // Homonymes : « Nom P. » ; prénom complet si l'initiale ne suffit pas ; identifiant en dernier recours.
   const initial = (other: Entry) => firstWord(other.patient.firstName).charAt(0)

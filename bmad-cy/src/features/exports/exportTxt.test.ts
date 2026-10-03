@@ -42,6 +42,15 @@ describe('export TXT', () => {
     expect(exportTxt([day])).toBe('27/09/2026\nLe Gall M. de la tour fictif Essai D. essai\nPas vus : Le Gall P. (absent)')
   })
 
+  it('met une majuscule après un tiret ou une apostrophe pour une séance A', () => {
+    const day: Day = { date: '2026-09-28', mood: null, comment: '', order: ['a', 'b', 'c'], entries: {
+      a: entry(identity('a', 'DUPONT-DURAND', 'Alpha'), 'A'),
+      b: entry(identity('b', 'D’ESSAI', 'Beta'), 'A'),
+      c: entry(identity('c', 'Fictif-Exemple', 'Gamma'), 'B'),
+    } }
+    expect(exportTxt([day])).toBe('28/09/2026\nDupont-Durand D’Essai fictif-exemple')
+  })
+
   it('différencie les homonymes par « Nom P. » et n’exporte jamais le bilan', () => {
     const day: Day = { date: '2026-09-29', mood: null, comment: '', order: ['a', 'b', 'c', 'd', 'e'], entries: {
       a: { ...entry(identity('a1b2c3d4', 'FICTIF', 'Marie-Anne'), 'A'), bilan: 'marche 10 m' },

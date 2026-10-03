@@ -92,8 +92,8 @@ export class TourRepository {
       await this.database.days.put(day)
       const weekday = parseDate(date).getDay()
       await this.database.orders.put({ weekday, order })
-      // Les journées suivantes du même jour de semaine déjà enregistrées (ouvertes à l’avance) suivent le nouvel ordre.
-      await this.database.days.where('date').above(date).modify(later => {
+      // Les journées suivantes du même jour de semaine déjà ouvertes à l’avance suivent le nouvel ordre ; les journées passées gardent le leur.
+      await this.database.days.where('date').above(date).and(later => later.date >= this.today()).modify(later => {
         if (parseDate(later.date).getDay() === weekday) later.order = applyOrder(order, later.order)
       })
     })

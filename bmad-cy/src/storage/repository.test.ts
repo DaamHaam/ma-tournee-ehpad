@@ -209,4 +209,17 @@ describe('stockage local', () => {
     expect((await database.days.get('2026-09-10'))?.order).toEqual(thursday)
     expect((await repository.dayView('2026-09-22')).order).toEqual(reordered)
   })
+
+  it('réordonner une journée passée ne modifie pas l’ordre des journées passées suivantes', async () => {
+    let now = TODAY
+    const local = new TourRepository(database, () => now)
+    await local.initialize()
+    for (const date of ['2026-09-08', '2026-09-15', '2026-09-22']) await local.ensureDay(date)
+    const past = (await database.days.get('2026-09-15'))!.order
+    now = '2026-09-20'
+    const reordered = [...(await database.days.get('2026-09-08'))!.order].reverse()
+    await local.reorder('2026-09-08', reordered)
+    expect((await database.days.get('2026-09-15'))?.order).toEqual(past)
+    expect((await database.days.get('2026-09-22'))?.order).toEqual(reordered)
+  })
 })
