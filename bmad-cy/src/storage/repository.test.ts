@@ -197,6 +197,20 @@ describe('stockage local', () => {
     expect(patients.find(patient => patient.lastName === 'Fictif')?.group).toBe(false)
   })
 
+  it('n’exporte pas la clé OpenRouter et la conserve lors d’une restauration', async () => {
+    await repository.initialize()
+    await repository.setSetting('openrouterKey', 'sk-or-secret')
+    await repository.setSetting('transcriptionModel', 'openai/whisper-large-v3')
+    const saved = await repository.snapshot()
+    expect(JSON.stringify(saved)).not.toContain('sk-or-secret')
+    expect(saved.settings).toContainEqual({ key: 'transcriptionModel', value: 'openai/whisper-large-v3' })
+    await repository.setSetting('openrouterKey', 'sk-or-autre')
+    await repository.restore({ ...saved, settings: [...saved.settings, { key: 'openrouterKey', value: 'sk-or-fichier' }] })
+    expect((await database.settings.get('openrouterKey'))?.value).toBe('sk-or-autre')
+    await repository.deleteSetting('openrouterKey')
+    expect(await database.settings.get('openrouterKey')).toBeUndefined()
+  })
+
   it('applique un nouvel ordre aux journées suivantes du même jour déjà ouvertes, pas aux autres jours', async () => {
     await repository.initialize()
     await repository.ensureDay('2026-09-08')

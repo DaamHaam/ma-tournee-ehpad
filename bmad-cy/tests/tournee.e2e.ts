@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
 test('première tournée, ajout patient et export', async ({ page }) => {
@@ -77,7 +78,7 @@ test('import de patients par copier-coller puis suivi éval/trans', async ({ pag
   await page.getByRole('button', { name: 'A pour EXEMPLE COMPOSE Beta' }).click()
   await page.getByRole('button', { name: 'B pour FICTIF', exact: true }).click()
 
-  await page.getByRole('link', { name: /EXEMPLE COMPOSE/ }).click()
+  await page.getByRole('link', { name: /^EXEMPLE COMPOSE/ }).click()
   await expect(page.getByLabel('Couverture')).toHaveValue('ALD')
   await expect(page.getByLabel('Fin d’ordonnance')).toHaveValue('2027-05-19')
   await expect(page.getByLabel('Médecin traitant')).toHaveValue('Dr Test')
@@ -156,18 +157,20 @@ test('sauvegarde complète puis restauration sur un appareil vierge', async ({ b
   await expect(fresh.getByText('Robert Paul')).toBeVisible()
 })
 
-test('bilan du jour ouvert par « + », copié et retrouvé dans la fiche', async ({ page }) => {
+test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans la fiche', async ({ page }) => {
   await page.goto('/#/?date=2026-09-22')
+  await page.getByRole('link', { name: 'Bilan pour Bernard Louis' }).click()
+  await expect(page).toHaveURL(/#\/bilan\/2026-09-22\//)
   const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })
-  await expect(bilan).toHaveCount(0)
-  await page.getByRole('button', { name: 'Bilan pour Bernard Louis' }).click()
-  await expect(bilan).toBeFocused()
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Démarrer la dictée' })).toBeDisabled()
+  await expect(page.getByText(/ajoutez une clé OpenRouter/)).toBeVisible()
   await bilan.fill('Marche 10 m en 12 s.\nDouleur 2/10.')
   await page.getByRole('button', { name: 'Copier' }).click()
   await expect(page.getByRole('button', { name: 'Copié ✓' })).toBeVisible()
-  await page.getByRole('button', { name: 'Bilan pour Bernard Louis' }).click()
-  await expect(bilan).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Bilan pour Bernard Louis' })).toHaveClass(/filled/)
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await expect(page).toHaveURL(/date=2026-09-22/)
+  await expect(page.getByRole('link', { name: 'Bilan pour Bernard Louis' })).toHaveClass(/filled/)
   await page.getByRole('link', { name: /Bernard L\./ }).click()
   await page.getByRole('button', { name: /^Séances \(/ }).click()
   await expect(page.locator('.history-bilan')).toHaveText('Marche 10 m en 12 s.\nDouleur 2/10.')
@@ -176,6 +179,55 @@ test('bilan du jour ouvert par « + », copié et retrouvé dans la fiche', asyn
   await page.getByLabel('Au', { exact: true }).fill('2026-09-22')
   await page.getByRole('button', { name: 'Actualiser' }).click()
   await expect(page.getByText('Rien à exporter sur cette période.')).toBeVisible()
+})
+
+test('dictée OpenRouter simulée : clé testée, texte inséré au curseur, clé absente de la sauvegarde', async ({ page }) => {
+  // Micro et enregistreur factices : le navigateur de test n’a pas de micro ; OpenRouter est simulé.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } })
+    class FakeRecorder {
+      static isTypeSupported(type: string) { return type === 'audio/mp4' }
+      state = 'inactive'; mimeType = 'audio/mp4'
+      ondataavailable: ((event: { data: Blob }) => void) | null = null
+      onstop: (() => void) | null = null
+      start() { this.state = 'recording' }
+      stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob(['son'], { type: 'audio/mp4' }) }); this.onstop?.() }
+    }
+    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeRecorder })
+  })
+  const sent: string[] = []
+  await page.route('https://openrouter.ai/api/v1/key', route => route.fulfill({ json: { data: { label: 'test' } } }))
+  await page.route('https://openrouter.ai/api/v1/audio/transcriptions', route => {
+    sent.push(route.request().headers().authorization ?? '')
+    return route.fulfill({ json: { text: sent.length === 1 ? 'Milieu dicté.' : 'Suite dictée.' } })
+  })
+  await page.goto('/#/settings')
+  await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test1234')
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Clé enregistrée sur cet appareil (…1234).')).toBeVisible()
+  await expect(page.getByLabel('Modèle')).toHaveValue('openai/whisper-large-v3')
+  await page.getByRole('button', { name: 'Tester la clé' }).click()
+  await expect(page.getByText('Clé valide.')).toBeVisible()
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Sauvegarder' }).click()])
+  expect(readFileSync((await download.path())!, 'utf8')).not.toContain('sk-or-v1-test1234')
+
+  await page.goto('/#/?date=2026-09-22')
+  await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
+  const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })
+  await bilan.fill('Début. Fin.')
+  await bilan.press('Home')
+  for (let step = 0; step < 6; step++) await bilan.press('ArrowRight')
+  await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
+  await expect(page.getByText(/Enregistrement 0:0\d \/ 5:00/)).toBeVisible()
+  await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
+  await expect(bilan).toHaveValue('Début. Milieu dicté. Fin.')
+  await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
+  await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
+  await expect(bilan).toHaveValue('Début. Milieu dicté. Suite dictée. Fin.')
+  expect(sent).toEqual(['Bearer sk-or-v1-test1234', 'Bearer sk-or-v1-test1234'])
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
+  await expect(bilan).toHaveValue('Début. Milieu dicté. Suite dictée. Fin.')
 })
 
 test('patient pointé puis archivé le jour même : il reste visible et corrigeable, renommé dans l’export', async ({ page }) => {

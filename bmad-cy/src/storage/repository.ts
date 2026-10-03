@@ -1,4 +1,4 @@
-import { db, type OrderTemplate, type Setting, type TourDatabase } from './database'
+import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
 import { applyOrder, careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 // GRP n’est pas importé : un patient déjà connu garde son réglage, un nouveau part sans groupe.
@@ -147,20 +147,23 @@ export class TourRepository {
   async snapshot(): Promise<BackupData> {
     return this.database.transaction('r', this.database.patients, this.database.days, this.database.orders, this.database.settings, async () => ({
       patients: await this.database.patients.toArray(), days: await this.database.days.toArray(),
-      orders: await this.database.orders.toArray(), settings: await this.database.settings.toArray(),
+      orders: await this.database.orders.toArray(), settings: (await this.database.settings.toArray()).filter(item => !PRIVATE_SETTINGS.includes(item.key)),
     }))
   }
   // Restauration complète : remplace patients, journées, ordres et réglages ; jamais de réinjection des fictifs ensuite.
+  // Les réglages propres à l’appareil (clé OpenRouter) sont conservés et ceux du fichier ignorés.
   async restore(data: BackupData): Promise<void> {
     await this.database.transaction('rw', this.database.patients, this.database.days, this.database.orders, this.database.settings, async () => {
+      const kept = (await this.database.settings.toArray()).filter(item => PRIVATE_SETTINGS.includes(item.key))
       await Promise.all([this.database.patients.clear(), this.database.days.clear(), this.database.orders.clear(), this.database.settings.clear()])
       await this.database.patients.bulkPut(data.patients)
       await this.database.days.bulkPut(data.days)
       await this.database.orders.bulkPut(data.orders)
-      await this.database.settings.bulkPut([...data.settings.filter(item => item.key !== 'initialized'), { key: 'initialized', value: 'yes' }])
+      await this.database.settings.bulkPut([...data.settings.filter(item => item.key !== 'initialized' && !PRIVATE_SETTINGS.includes(item.key)), ...kept, { key: 'initialized', value: 'yes' }])
     })
   }
   async setSetting(key: string, value: string): Promise<void> { await this.database.settings.put({ key, value }) }
+  async deleteSetting(key: string): Promise<void> { await this.database.settings.delete(key) }
   async daysBetween(start: string, end: string): Promise<Day[]> {
     if (!validDate(start) || !validDate(end) || start > end) throw new Error('La date de début doit précéder ou être égale à la date de fin.')
     return this.database.days.where('date').between(start, end, true, true).toArray()

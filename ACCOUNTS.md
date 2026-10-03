@@ -14,7 +14,7 @@ Carte des comptes utilisés par le projet. **Aucune valeur secrète ici** : seul
 - Aucune base distante : IndexedDB (Dexie) sur l'appareil. Sauvegarde JSON `ma-tournee-sauvegarde` exportée par l'utilisateur.
 
 ## API et services externes
-- Aucun.
+- OpenRouter (transcription des bilans dictés, modèle Whisper choisi dans les réglages) : clé personnelle saisie dans `Réglages` de l’app, stockée seulement sur l’iPhone (IndexedDB), exclue de la sauvegarde. Compte et plafond de crédit gérés sur openrouter.ai. Aucun secret OpenRouter côté GitHub.
 
 ## Outils des agents
 - Notification : `tg-notify` en local ; secrets GitHub `TG_CLAUDE_TOKEN`, `TG_CODEX_TOKEN`, `TG_CHAT_ID` pour `.github/workflows/agents.yml` (clôtures et versions)

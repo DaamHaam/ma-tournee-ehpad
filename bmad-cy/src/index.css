@@ -139,8 +139,25 @@ select { width:100%; min-height:44px; border:1px solid #cbd3da; border-radius:9p
 .page-heading.end { justify-content:flex-end; }
 .bilan-toggle { min-width:44px; padding:.35rem; color:var(--muted); font-size:1.2rem; line-height:1; }
 .bilan-toggle.filled { border-color:var(--accent); color:var(--accent); }
-.bilan { padding:.5rem .6rem .6rem; border-top:1px solid #edf0f2; background:#fafbfc; -webkit-user-select:text; user-select:text; }
-.bilan textarea { -webkit-user-select:text; user-select:text; margin-bottom:.4rem; }
+.bilan-toggle { display:inline-grid; place-items:center; }
+body:has(.bilan-page) .bottom-nav { display:none; }
+/* Bilan plein écran : recouvre la navigation ; le texte occupe la page, le micro reste en bas. */
+.bilan-page { position:fixed; z-index:40; inset:0; display:flex; flex-direction:column; gap:.6rem; height:100dvh; padding:calc(.6rem + env(safe-area-inset-top)) max(.8rem,env(safe-area-inset-right)) calc(.7rem + env(safe-area-inset-bottom)) max(.8rem,env(safe-area-inset-left)); background:#f6f7f9; }
+.bilan-header { display:flex; align-items:center; gap:.6rem; }
+.bilan-back { flex:none; padding:.5rem .2rem; color:var(--accent); font-weight:700; text-decoration:none; }
+.bilan-title { flex:1; min-width:0; }
+.bilan-title h1 { margin:0; overflow:hidden; font-size:1.02rem; text-overflow:ellipsis; white-space:nowrap; }
+.bilan-title span { color:var(--muted); font-size:.78rem; }
+.bilan-text { flex:1; min-height:0; resize:none; line-height:1.45; -webkit-user-select:text; user-select:text; }
+.bilan-dictation { display:grid; justify-items:center; gap:.35rem; }
+.bilan-dictation .field-error,.bilan-dictation .save-hint { margin:0; text-align:center; }
+.dictation-status { min-height:1.1em; margin:0; color:var(--muted); font-size:.82rem; font-variant-numeric:tabular-nums; }
+.mic { display:grid; place-items:center; width:72px; height:72px; border-radius:50%; color:#fff; background:var(--accent); border-color:var(--accent); }
+.mic.recording { background:var(--danger); border-color:var(--danger); animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow:0 0 0 10px rgba(163,58,67,.15); } }
+.dictation label { margin-top:.7rem; }
+.dictation input,.dictation select { font-weight:400; }
+.dictation .action-row { margin-top:.8rem; }
 .history-bilan { margin:.3rem 0 0; color:var(--ink); font-size:.82rem; white-space:pre-wrap; }
 
 .follow-ups { display:flex; gap:2.2rem; margin:.1rem 0 .9rem; }

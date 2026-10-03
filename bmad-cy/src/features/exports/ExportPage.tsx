@@ -4,6 +4,7 @@ import { repository } from '../../storage/repository'
 import { exportTxt } from './exportTxt'
 import { PatientImportPanel } from './PatientImportPanel'
 import { BackupPanel } from './BackupPanel'
+import { DictationPanel } from '../bilan/DictationPanel'
 import { downloadFile } from './saveFile'
 import { copyText } from './clipboard'
 
@@ -64,5 +65,6 @@ export function ExportPage() {
     {preview && <section className="card export-preview"><div className="section-heading"><h2>Aperçu TXT</h2></div>{preview && <pre>{preview}</pre>}<div className="action-row"><button className={copied ? 'copied' : ''} disabled={!preview} onClick={() => void copy()}>{copied ? 'Copié ✓' : 'Copier'}</button><button disabled={!preview} onClick={download}>Télécharger .txt</button>{typeof navigator.share === 'function' && <button className="primary" disabled={!preview} onClick={() => void share()}>Partager</button>}</div></section>}
     <BackupPanel />
     <PatientImportPanel />
+    <DictationPanel />
   </>
 }

@@ -2,6 +2,8 @@ import Dexie, { type EntityTable } from 'dexie'
 import { careDefaults, type Day, type Patient } from '../domain/model'
 export interface OrderTemplate { weekday: number; order: string[] }
 export interface Setting { key: string; value: string }
+// Réglages propres à l’appareil, jamais exportés dans la sauvegarde ni remplacés par une restauration.
+export const PRIVATE_SETTINGS = ['openrouterKey']
 export class TourDatabase extends Dexie {
   patients!: EntityTable<Patient, 'id'>
   days!: EntityTable<Day, 'date'>
