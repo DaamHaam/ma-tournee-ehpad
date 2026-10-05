@@ -30,3 +30,10 @@ Une passe : texte anonymisé + sexe → texte corrigé (orthographe, grammaire, 
 ## Données
 
 Seuls partent la grille, le texte dicté anonymisé et le sexe sous forme de mot. Ni nom, ni prénom, ni chambre, ni identifiant. Exception documentée dans `AGENTS.md`.
+
+## v0.15.0 — synthèse en deux écrans, prompts transitoires
+
+- « ✨ Lancer » remplit la grille puis ouvre l’**écran 1 « Réponses »** : uniquement ce qui est catégorisé dans le formulaire (✨ seul pour une cotation de l’IA, ⚠ et sa raison), items non cotés, données envoyées. Boutons « Retour à la grille » et « Valider » (possible malgré les ⚠).
+- **Écran 2 « Transmission »** en plein écran : texte prêt à transmettre (score, interprétation, observations), dictée au curseur, ↵, G I S, clavier facultatif (fermé par défaut), « Valider » enregistre le texte final et ramène à la journée. La copie se fait ensuite ailleurs (onglet Bilans…) et reprend ce texte.
+- « Voir » rouvre l’écran 1 sans nouvel appel. « Relancer » demande l’autorisation si un texte de transmission est enregistré.
+- Prompts : c’est l’agent qui fait évoluer les prompts par défaut. Une modification faite dans Réglages est transitoire (stockée avec l’empreinte du prompt par défaut d’origine) et disparaît à la mise à jour suivante qui change ce prompt. Bouton « Copier » pour montrer sa version. Partage par fichiers du dépôt : idée notée dans Notion pour plus tard.

@@ -1,5 +1,5 @@
-// Prompts par défaut de l’assistant de rédaction (une seule passe par demande).
-// Modifiables dans Réglages ; « Rétablir » revient à ces textes, mis à jour au fil des versions.
+// Prompts par défaut de l’assistant de rédaction (une seule passe par demande), tenus à jour par l’agent.
+// Une modification faite dans Réglages est transitoire : elle s’efface dès qu’une mise à jour change le prompt par défaut.
 export type PromptKind = 'tinetti' | 'correction'
 export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', correction: 'Correction du bilan libre' }
 
@@ -41,4 +41,20 @@ Réponds uniquement par un objet JSON de la forme :
 - Conserve les balises <b>, <i>, <u> et <br> existantes et n’en ajoute aucune autre.
 
 Réponds uniquement par le texte corrigé, sans commentaire ni guillemets.`,
+}
+
+// Empreinte du prompt par défaut : une version modifiée dans l’app ne vaut que pour le prompt par défaut dont elle est partie.
+export function promptFingerprint(text: string): string {
+  let hash = 5381
+  for (let index = 0; index < text.length; index++) hash = ((hash << 5) + hash + text.charCodeAt(index)) >>> 0
+  return hash.toString(36)
+}
+export function encodeCustomPrompt(kind: PromptKind, text: string): string { return JSON.stringify({ base: promptFingerprint(DEFAULT_PROMPTS[kind]), text }) }
+// Version modifiée encore valable, sinon null (prompt par défaut changé depuis, ou ancien format).
+export function customPrompt(kind: PromptKind, stored: string | undefined): string | null {
+  if (!stored) return null
+  try {
+    const value = JSON.parse(stored) as { base?: unknown; text?: unknown }
+    return value.base === promptFingerprint(DEFAULT_PROMPTS[kind]) && typeof value.text === 'string' && value.text.trim() ? value.text : null
+  } catch { return null }
 }

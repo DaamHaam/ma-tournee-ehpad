@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSave } from '../../app/SaveContext'
@@ -9,7 +9,7 @@ import { hasTestContent, previousTest, TINETTI, tinettiScore, type TestRecord } 
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, parseTinettiReply, restoreNames, tinettiRequest } from './assistant'
-import { SynthesisReview } from './SynthesisReview'
+import { ReviewAnswers, TransmissionScreen } from './SynthesisReview'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { testCopyHtml, testNotesHtml } from './display'
@@ -45,7 +45,11 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   // Dernière synthèse IA, gardée pour la revoir sans nouvel appel.
   const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource ?? '' })
   const [request, setRequest] = useState('')
-  const [synthesis, setSynthesis] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'review' } | null>(null)
+  // Synthèse en deux écrans : réponses du formulaire, puis transmission en plein écran.
+  const [synthesis, setSynthesis] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'review' } | { status: 'transmission' } | null>(null)
+  const transmission = useRef<RichEditorHandle>(null)
+  const onTransmission = useRef(false)
+  useEffect(() => { onTransmission.current = synthesis?.status === 'transmission' }, [synthesis])
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
   const changed = useRef(false)
@@ -74,7 +78,8 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     void run(() => repository.setTest(date, id, 'tinetti', { notes: text, notesHtml: html }))
   }, [date, id, run])
   const dictation = useDictation(
-    useCallback((text: string) => editor.current?.insertText(text), []),
+    // La dictée va dans l’écran de transmission quand il est ouvert, sinon dans le volet Dictée.
+    useCallback((text: string) => (onTransmission.current ? transmission : editor).current?.insertText(text), []),
     useCallback(async (text: string) => { const value = appendText(latestNotes.current, text); latestNotes.current = value; await run(() => repository.setTest(date, id, 'tinetti', { notes: htmlToText(value), notesHtml: value })) }, [date, id, run]),
   )
   // ✕ : quitte en remettant le test tel qu’il était à l’ouverture (absent s’il n’existait pas).
@@ -85,6 +90,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   // Une seule passe, sans validation : les lignes vides décrites dans la dictée sont cotées par l’IA (✨),
   // conflits et incertitudes allument un voyant (⚠), les observations rédigées sont gardées pour la copie.
   const synthesize = async () => {
+    if (resultHtml && !window.confirm('Remplacer le texte de transmission déjà enregistré ?')) return
     if (keyboard) toggleKeyboard(false)
     setSynthesis({ status: 'loading' })
     try {
@@ -94,17 +100,17 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
       const reply = parseTinettiReply(await assistant.ask('tinetti', sent, true), scores)
       const merged = { ...reply.scores, ...scores }
       const next = { observations: sanitizeBilanHtml(restoreNames(reply.observations, found)), checks: reply.checks, filled: Object.keys(reply.scores), source }
-      setScores(merged); setAi(next); setResultHtml(''); setRequest(sent); setSynthesis(null); changed.current = true
+      setScores(merged); setAi(next); setResultHtml(''); setRequest(sent); setSynthesis({ status: 'review' }); changed.current = true
       await run(() => repository.setTest(date, id, 'tinetti', { scores: merged, aiObservations: next.observations, aiChecks: next.checks, aiFilled: next.filled, aiSource: source }))
     } catch (cause) { setSynthesis({ status: 'error', message: cause instanceof Error ? cause.message : 'Synthèse impossible.' }) }
   }
   const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source }
   const notesChanged = ai.observations !== undefined && htmlToText(notesHtml) !== ai.source
-  // Texte retouché dans « Voir » : gardé jusqu’au prochain changement de cotation ou de dictée.
-  const saveText = (html: string) => {
+  // Transmission validée : enregistrée telle quelle (gardée jusqu’au prochain changement de cotation ou de dictée), puis retour à la journée.
+  const validateTransmission = async (html: string) => {
     const value = sanitizeBilanHtml(html)
-    setResultHtml(value); setSynthesis(null); changed.current = true
-    void run(() => repository.setTest(date, id, 'tinetti', { resultHtml: value }))
+    setResultHtml(value); changed.current = true
+    if (await run(() => repository.setTest(date, id, 'tinetti', { resultHtml: value }))) navigate(`/?date=${date}`)
   }
   const toggleKeyboard = (open: boolean) => { editor.current?.setKeyboard(open); setKeyboard(open) }
   const goTo = (index: number) => { const box = panes.current; if (box) box.scrollTo({ left: index * box.clientWidth, behavior: 'smooth' }) }
@@ -147,7 +153,8 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
         <RichEditor ref={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={keyboard} placeholder="Observations" onChange={saveNotes} onFormatState={setFormat} />
       </section>
     </div>
-    {synthesis?.status === 'review' && <SynthesisReview scores={scores} checks={ai.checks} filled={ai.filled} initialHtml={testCopyHtml(record)} name={name} request={request || undefined} notice={notesChanged ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : ''} onValidate={saveText} onCancel={() => setSynthesis(null)} />}
+    {synthesis?.status === 'review' && <ReviewAnswers scores={scores} checks={ai.checks} filled={ai.filled} request={request || undefined} notice={notesChanged ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : ''} onBack={() => setSynthesis(null)} onNext={() => setSynthesis({ status: 'transmission' })} />}
+    {synthesis?.status === 'transmission' && <TransmissionScreen initialHtml={testCopyHtml(record)} name={name} editor={transmission} dictation={dictation} onBack={() => setSynthesis({ status: 'review' })} onValidate={html => void validateTransmission(html)} />}
     {keyboard
       ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
       : <DictationFooter dictation={dictation}

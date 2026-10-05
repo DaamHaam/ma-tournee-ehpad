@@ -31,3 +31,13 @@ describe('assistant de rédaction', () => {
     expect(parseCorrection('"Texte corrigé."')).toBe('Texte corrigé.')
   })
 })
+
+describe('prompts modifiés dans l’app', () => {
+  it('ne valent que pour le prompt par défaut dont ils sont partis', async () => {
+    const { customPrompt, encodeCustomPrompt } = await import('./prompts')
+    expect(customPrompt('tinetti', encodeCustomPrompt('tinetti', 'Mon prompt'))).toBe('Mon prompt')
+    expect(customPrompt('tinetti', JSON.stringify({ base: 'ancienne-version', text: 'Mon prompt' }))).toBeNull()
+    expect(customPrompt('tinetti', 'ancien format texte')).toBeNull()
+    expect(customPrompt('correction', undefined)).toBeNull()
+  })
+})
