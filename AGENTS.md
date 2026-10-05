@@ -11,7 +11,7 @@ Source de vérité pour Codex et Claude Code. `CLAUDE.md` importe ce fichier afi
 
 ## Projet et commandes
 
-PWA iPhone-first destinée à préparer et tracer une tournée personnelle de kinésithérapie en EHPAD. Elle fonctionne sans compte ni serveur : les patients, journées, notes et ordres restent dans IndexedDB sur l’appareil. Seule exception : la dictée facultative des bilans envoie l’audio à OpenRouter (voir « Données et sécurité »).
+PWA iPhone-first destinée à préparer et tracer une tournée personnelle de kinésithérapie en EHPAD. Elle fonctionne sans compte ni serveur : les patients, journées, notes et ordres restent dans IndexedDB sur l’appareil. Seule exception : la dictée et l’assistant de rédaction facultatifs envoient l’audio et du texte anonymisé à OpenRouter (voir « Données et sécurité »).
 
 Le dépôt se pilote depuis sa racine. Utiliser Node.js 22.12 ou une version ultérieure compatible avec `package.json`. Les commandes npm s’exécutent dans `bmad-cy/`.
 
@@ -51,7 +51,7 @@ npm run test:e2e
 - `bmad-cy/src/storage/database.ts` : schéma Dexie/IndexedDB.
 - `bmad-cy/src/storage/repository.ts` : accès aux patients, journées et traces.
 - `bmad-cy/src/features/journee/` : tournée quotidienne, ordre, pointage et notes.
-- `bmad-cy/src/features/bilan/` : bilan du jour et test de Tinetti en plein écran, dictée OpenRouter et son réglage, onglet Bilans (copie, suppression).
+- `bmad-cy/src/features/bilan/` : bilan du jour et test de Tinetti en plein écran, dictée OpenRouter, assistant de rédaction IA (`prompts.ts` : prompts par défaut, `assistant.ts` : anonymisation et lecture des réponses) et leurs réglages, onglet Bilans (copie, suppression).
 - `bmad-cy/src/features/patients/` : liste, ajout, édition, historique, archivage et suppression.
 - `bmad-cy/src/features/exports/` : génération et partage de l’export TXT.
 - `bmad-cy/tests/` : parcours Playwright de production.
@@ -80,6 +80,8 @@ npm run test:e2e
 - Avant une première publication publique, contrôler tous les fichiers suivis et l’historique Git pour détecter données patient, exports, captures et secrets.
 - Ne pas ajouter de synchronisation, télémétrie, analytics ou service cloud sans demande explicite.
 - Exception validée : la dictée des bilans appelle directement l’API OpenRouter depuis l’appareil (transcription Whisper). Elle reste facultative et désactivée tant qu’aucune clé n’est saisie ; l’application doit rester pleinement utilisable sans clé ni réseau (micro du clavier en repli). Seul l’audio est envoyé, jamais de nom ni de donnée de la base ; l’utilisateur ne prononce aucun nom.
+- Exception validée : l’assistant de rédaction (synthèse d’un test, correction du bilan libre) envoie au modèle d’analyse choisi dans Réglages, via OpenRouter et la même clé, une seule requête par demande contenant uniquement la grille cochée, le texte dicté anonymisé (nom et prénom du patient remplacés par `[patient]`) et le sexe sous forme de mot. Jamais de nom, chambre ou identifiant. L’IA ne cote rien : le score reste calculé par l’application et le texte final est relu et validé par l’utilisateur.
+- Les prompts par défaut sont dans `bmad-cy/src/features/bilan/prompts.ts` (un par type de bilan, avec ses propres règles) ; l’utilisateur peut les remplacer dans Réglages, un prompt identique au défaut n’est pas enregistré.
 - La clé OpenRouter est saisie dans les réglages et reste sur l’appareil : jamais dans le dépôt, le code, les tests (clés fictives seulement) ni la sauvegarde JSON ; une restauration ne la remplace pas (`PRIVATE_SETTINGS`).
 - Une modification du schéma IndexedDB exige une version Dexie supérieure et une migration explicite préservant les données existantes.
 - La sauvegarde JSON `ma-tournee-sauvegarde` est un format public versionné : toute évolution doit rester capable de restaurer les sauvegardes antérieures.

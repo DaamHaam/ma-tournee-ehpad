@@ -1,7 +1,8 @@
 // Test de Tinetti (POMA, 28 points), libellés de la grille habituelle de l’utilisateur.
 // Échelle adaptée d’après Tinetti M., J Am Geriatr Soc 1986;34:119-126.
 export type TestType = 'tinetti'
-export interface TestRecord { scores: Record<string, number>; notes: string; notesHtml?: string; at: string; copied?: boolean }
+// resultHtml : texte final validé (synthèse IA relue), prêt à copier ; effacé dès que la cotation ou la dictée change.
+export interface TestRecord { scores: Record<string, number>; notes: string; notesHtml?: string; resultHtml?: string; at: string; copied?: boolean }
 export interface TestRow { id: string; sub?: string; options: { score: number; label: string }[] }
 export interface TestItem { number: number; title: string; rows: TestRow[] }
 export interface TestSection { id: 'equilibre' | 'marche'; title: string; instructions: string; items: TestItem[] }

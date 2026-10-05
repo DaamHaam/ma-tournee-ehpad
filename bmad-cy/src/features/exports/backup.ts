@@ -18,7 +18,7 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString)
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
-const PATIENT_TEXT = ['firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionEnd', 'doctor', 'rating'] as const
+const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionEnd', 'doctor', 'rating'] as const
 const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group'] as const
 
 function checkPatient(value: unknown): Patient {
@@ -38,7 +38,7 @@ function checkSnapshot(value: unknown, id: string): Day['entries'][string]['pati
 // Test standardisé : cotations numériques et texte ; heure et état copié facultatifs.
 function checkTest(value: unknown): boolean {
   return isObject(value) && isObject(value.scores) && Object.values(value.scores).every(score => typeof score === 'number') && isString(value.notes)
-    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.at === undefined || isString(value.at)) && (value.copied === undefined || isBoolean(value.copied))
+    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.resultHtml === undefined || isString(value.resultHtml)) && (value.at === undefined || isString(value.at)) && (value.copied === undefined || isBoolean(value.copied))
 }
 function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)

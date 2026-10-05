@@ -33,7 +33,7 @@ export function DictationPanel() {
     <p className="save-hint">{settings.key ? `Clé enregistrée sur cet appareil (…${settings.key.slice(-4)}).` : 'Aucune clé : utilisez le micro du clavier.'}</p>
     <form onSubmit={event => { event.preventDefault(); if (draft.trim()) void save() }}>
       <label>Clé OpenRouter<input type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} value={draft} placeholder={settings.key ? 'Remplacer la clé' : 'sk-or-…'} onChange={event => setDraft(event.target.value)} /></label>
-      <label>Modèle<select value={settings.model} onChange={event => { const value = event.target.value; void run(() => repository.setSetting(MODEL_SETTING, value)) }}>{(models.includes(settings.model) ? models : [settings.model, ...models]).map(model => <option key={model} value={model}>{model}</option>)}</select></label>
+      <label>Modèle de transcription<select value={settings.model} onChange={event => { const value = event.target.value; void run(() => repository.setSetting(MODEL_SETTING, value)) }}>{(models.includes(settings.model) ? models : [settings.model, ...models]).map(model => <option key={model} value={model}>{model}</option>)}</select></label>
       <div className="action-row">
         <button type="submit" className="primary" disabled={!draft.trim()}>Enregistrer</button>
         <button type="button" disabled={!settings.key || busy} onClick={() => void test()}>{busy ? 'Vérification…' : 'Tester la clé'}</button>

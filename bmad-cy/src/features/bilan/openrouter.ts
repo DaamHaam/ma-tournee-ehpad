@@ -30,3 +30,19 @@ export async function checkKey(key: string, fetcher: Fetch = fetch): Promise<voi
   const response = await call(fetcher, '/key', key)
   if (!response.ok) throw new Error(transcriptionError(response.status, await detail(response)))
 }
+
+// Appel unique au modèle d’analyse (une seule passe) ; json demande une réponse au format JSON.
+export async function chat(key: string, model: string, system: string, user: string, json: boolean, fetcher: Fetch = fetch): Promise<string> {
+  let response: Response
+  try {
+    response = await fetcher(`${OPENROUTER_API}/chat/completions`, {
+      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], ...(json ? { response_format: { type: 'json_object' } } : {}) }),
+    })
+  } catch { throw new Error(NETWORK_ERROR) }
+  if (!response.ok) throw new Error(transcriptionError(response.status, await detail(response)).replace('Transcription impossible', 'Analyse impossible'))
+  const body: unknown = await response.json().catch(() => null)
+  const content = (body as { choices?: { message?: { content?: unknown } }[] } | null)?.choices?.[0]?.message?.content
+  if (typeof content !== 'string' || !content.trim()) throw new Error('Réponse de l’IA vide. Réessayez.')
+  return content
+}

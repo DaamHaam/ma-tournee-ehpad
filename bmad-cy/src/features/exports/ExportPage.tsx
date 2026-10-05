@@ -5,6 +5,7 @@ import { exportTxt } from './exportTxt'
 import { PatientImportPanel } from './PatientImportPanel'
 import { BackupPanel } from './BackupPanel'
 import { DictationPanel } from '../bilan/DictationPanel'
+import { AssistantPanel } from '../bilan/AssistantPanel'
 import { downloadFile } from './saveFile'
 import { copyText } from './clipboard'
 
@@ -66,5 +67,6 @@ export function ExportPage() {
     <BackupPanel />
     <PatientImportPanel />
     <DictationPanel />
+    <AssistantPanel />
   </>
 }

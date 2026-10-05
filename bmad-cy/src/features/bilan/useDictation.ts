@@ -5,7 +5,7 @@ import { DEFAULT_MODEL, formatDuration, KEY_SETTING, MAX_DICTATION_SECONDS, MODE
 import { transcribe } from './openrouter'
 import { useRecorder } from './useRecorder'
 
-function useOnline() {
+export function useOnline() {
   const [online, setOnline] = useState(() => navigator.onLine)
   useEffect(() => {
     const update = () => setOnline(navigator.onLine)

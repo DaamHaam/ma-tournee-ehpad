@@ -8,6 +8,6 @@ export function testNotesHtml(record: Pick<TestRecord, 'notes' | 'notesHtml'>): 
 // HTML affiché et copié pour un bilan libre ou un test.
 export function itemHtml(item: { kind: BilanKind; text: string; html?: string; record?: TestRecord }): string {
   if (item.kind === 'bilan' || !item.record) return bilanHtml({ bilan: item.text, bilanHtml: item.html })
-  return tinettiResultHtml(item.record, testNotesHtml(item.record))
+  return item.record.resultHtml ? sanitizeBilanHtml(item.record.resultHtml) : tinettiResultHtml(item.record, testNotesHtml(item.record))
 }
 export function editPath(kind: BilanKind, date: string, id: string): string { return `/${kind === 'bilan' ? 'bilan' : kind}/${date}/${id}` }

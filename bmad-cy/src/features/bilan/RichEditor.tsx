@@ -9,6 +9,7 @@ export interface RichEditorHandle {
   insertLineBreak: () => void
   setKeyboard: (open: boolean) => void
   format: (command: Command) => void
+  setHtml: (html: string) => void
 }
 const COMMANDS: { command: Command; label: string; text: string }[] = [
   { command: 'bold', label: 'Gras', text: 'G' }, { command: 'italic', label: 'Italique', text: 'I' }, { command: 'underline', label: 'Souligné', text: 'S' },
@@ -93,6 +94,13 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
   }
   useImperativeHandle(ref, () => ({
     format,
+    // Remplace tout le texte (correction par l’IA, annulation) ; le curseur passe à la fin.
+    setHtml: html => {
+      if (!box.current) return
+      box.current.innerHTML = html
+      const end = document.createRange(); end.selectNodeContents(box.current); end.collapse(false); saved.current = end
+      emit()
+    },
     insertText: text => insertText(text),
     insertLineBreak,
     // Le mode clavier ne s’applique qu’au prochain focus : on retire puis redonne le focus dans le même geste.

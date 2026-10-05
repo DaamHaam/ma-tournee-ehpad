@@ -20,9 +20,10 @@ export function ScreenHeader({ back, backLabel, patient, tools, copied, copyDisa
 }
 
 // Bas de page de dictée : messages, puis bouton gauche facultatif, micro, bouton droit facultatif.
-export function DictationFooter({ dictation, left, right }: { dictation: ReturnType<typeof useDictation>; left?: ReactNode; right?: ReactNode }) {
+export function DictationFooter({ dictation, left, right, extra }: { dictation: ReturnType<typeof useDictation>; left?: ReactNode; right?: ReactNode; extra?: ReactNode }) {
   const { error, pending, transcribing, hint, hasKey, status, recording, disabled, toggle, retry, dismiss } = dictation
   return <footer className="bilan-dictation">
+    {extra}
     {error && <p className="field-error" role="alert">{error}</p>}
     {pending && !transcribing && <div className="action-row"><button type="button" onClick={retry}>Réessayer la transcription</button><button type="button" onClick={dismiss}>Abandonner</button></div>}
     {hint && <p className="save-hint">{hint}{!hasKey && <> <Link to="/settings">Réglages</Link></>}</p>}

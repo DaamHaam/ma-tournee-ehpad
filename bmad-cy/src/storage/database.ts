@@ -20,6 +20,10 @@ export class TourDatabase extends Dexie {
     this.version(3).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       if (patient.group === undefined) patient.group = false
     }))
+    // v4 : sexe du patient (accords du texte rédigé par l’IA), vide par défaut pour les patients existants.
+    this.version(4).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.sex === undefined) patient.sex = ''
+    }))
   }
 }
 export const db = new TourDatabase()
