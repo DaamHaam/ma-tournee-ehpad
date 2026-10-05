@@ -49,3 +49,9 @@ Constat : 25 à 30 s pour une synthèse avec un modèle « flash ». L’applica
 ## v0.15.2 — voyants plus justes
 
 Après la correction de vitesse (1,2 s, 181 jetons reçus, aucun de réflexion), le modèle signalait « cotation incertaine » sur des lignes pourtant dictées explicitement. Le prompt précise désormais : voyant seulement pour une dictée vague, partielle ou ambiguë, ou une contradiction avec une ligne cochée ; jamais pour une ligne décrite clairement (exemples items 7 et 8) ; raison précise, jamais une formule générale. Piste notée : Jev (modèle de décision avec probabilités) pour la catégorisation, LLM pour la rédaction.
+
+## v0.15.3 — corrections de revue
+- Anonymisation : le nom complet (« Le Gall », « de La Tour ») est remplacé d’abord ; les particules (le, la, de, du…) ne sont plus retirées seules du texte dicté.
+- Grille Tinetti verrouillée pendant la synthèse (la réponse est fusionnée avec la grille envoyée).
+- Le pied de dictée de la page Tinetti est masqué sous les écrans Réponses et Transmission.
+- Micro libéré si l’enregistreur ne démarre pas ; un collage sur plusieurs lignes garde ses retours à la ligne.

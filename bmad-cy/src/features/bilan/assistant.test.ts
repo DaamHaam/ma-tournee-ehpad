@@ -5,7 +5,8 @@ describe('assistant de rédaction', () => {
   it('retire nom et prénom sans tenir compte de la casse ni des accents', () => {
     expect(anonymize('Mme Lefèvre marche ; lefevre Hélène se lève, Hélène-Marie aussi. Lefèvrerie reste.', ['Lefèvre', 'Hélène']))
       .toBe('Mme [patient] marche ; [patient] [patient] se lève, [patient]-Marie aussi. Lefèvrerie reste.')
-    expect(anonymize('Le Gall marche', ['Le Gall', ''])).toBe('[patient] [patient] marche')
+    expect(anonymize('Le Gall marche, le pas de Gall est lent. Mme de la Tour ou la tour ?', ['Le Gall', ''])).toBe('[patient] marche, le pas de [patient] est lent. Mme de la Tour ou la tour ?')
+    expect(anonymize('Mme de La Tour marche ; La Tour sourit, la marche est lente.', ['de La Tour', 'Anne'])).toBe('Mme [patient] marche ; La [patient] sourit, la marche est lente.')
     expect(anonymize('Texte', [''])).toBe('Texte')
     const { text, found } = anonymizeWithMap('Mme Lefèvre marche, Hélène sourit.', ['Lefèvre', 'Hélène'])
     expect(restoreNames(text.replace('marche', 'marche lentement'), found)).toBe('Mme Lefèvre marche lentement, Hélène sourit.')

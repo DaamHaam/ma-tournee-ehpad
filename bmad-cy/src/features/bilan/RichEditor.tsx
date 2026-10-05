@@ -86,6 +86,8 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
     placeAfter(br)
     emit()
   }
+  // Collage en texte brut : chaque retour à la ligne du texte collé devient un <br>.
+  const paste = (text: string) => text.split(/\r\n|\r|\n/).forEach((line, index) => { if (index) insertLineBreak(); insertText(line, false) })
   const format = (command: Command) => {
     if (!focused()) { box.current?.focus(); restore() }
     document.execCommand(command)
@@ -115,7 +117,7 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
   return <div ref={box} className="bilan-text" role="textbox" aria-multiline="true" aria-label={label} data-placeholder={placeholder} contentEditable suppressContentEditableWarning inputMode={keyboard ? 'text' : 'none'}
       onInput={emit}
       onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); insertLineBreak() } }}
-      onPaste={event => { event.preventDefault(); insertText(event.clipboardData.getData('text/plain'), false) }} />
+      onPaste={event => { event.preventDefault(); paste(event.clipboardData.getData('text/plain')) }} />
 }
 
 // Boutons G / I / S : appliquent la mise en forme à la sélection sans retirer le focus du texte.

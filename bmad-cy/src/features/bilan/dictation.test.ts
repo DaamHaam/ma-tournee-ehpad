@@ -1,24 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { audioExtension, formatDuration, insertAtCursor, insertNewline, NETWORK_ERROR, transcriptionError } from './dictation'
+import { audioExtension, formatDuration, NETWORK_ERROR, spacing, transcriptionError } from './dictation'
 import { checkKey, transcribe } from './openrouter'
 
 describe('dictée des bilans', () => {
-  it('insère à la position du curseur avec les espaces nécessaires', () => {
-    expect(insertAtCursor('', 'Marche 10 m.', 0)).toEqual({ value: 'Marche 10 m.', cursor: 12 })
-    expect(insertAtCursor('Début.', ' Suite. ', 6)).toEqual({ value: 'Début. Suite.', cursor: 13 })
-    expect(insertAtCursor('Début. Fin.', 'Milieu.', 6)).toEqual({ value: 'Début. Milieu. Fin.', cursor: 14 })
-    expect(insertAtCursor('Douleur EVA', '2', 7)).toEqual({ value: 'Douleur 2 EVA', cursor: 9 })
-    expect(insertAtCursor('Texte\n', 'Ligne', 6)).toEqual({ value: 'Texte\nLigne', cursor: 11 })
-  })
-  it('remplace la sélection et borne un curseur hors du texte', () => {
-    expect(insertAtCursor('Marche lente.', 'rapide', 7, 12)).toEqual({ value: 'Marche rapide.', cursor: 13 })
-    expect(insertAtCursor('Fin', 'après', 99)).toEqual({ value: 'Fin après', cursor: 9 })
-    expect(insertAtCursor('Rien', '   ', 2)).toEqual({ value: 'Rien', cursor: 2 })
-  })
-  it('passe à la ligne au curseur ou à la place de la sélection', () => {
-    expect(insertNewline('Marche. Douleur.', 7)).toEqual({ value: 'Marche.\n Douleur.', cursor: 8 })
-    expect(insertNewline('Marche. Douleur.', 7, 8)).toEqual({ value: 'Marche.\nDouleur.', cursor: 8 })
-    expect(insertNewline('', 3)).toEqual({ value: '\n', cursor: 1 })
+  it('ajoute les espaces nécessaires autour d’une dictée', () => {
+    expect(spacing('', '')).toEqual({ lead: '', trail: '' })
+    expect(spacing('Début.', 'Fin.')).toEqual({ lead: ' ', trail: ' ' })
+    expect(spacing('Douleur ', ', EVA')).toEqual({ lead: '', trail: '' })
+    expect(spacing('Texte\n', ' suite')).toEqual({ lead: '', trail: '' })
   })
   it('déduit l’extension audio et formate la durée', () => {
     expect(audioExtension('audio/mp4')).toBe('m4a')

@@ -66,7 +66,9 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   const { copied, copy } = useBilanCopy(date, id, 'tinetti')
   const score = tinettiScore(scores)
   // Une cotation touchée à la main n’est plus celle de l’IA : ses marques (✨, ⚠) disparaissent pour cette ligne.
+  // Grille verrouillée pendant la synthèse : la réponse de l’IA est fusionnée avec la grille envoyée.
   const choose = (row: string, value: number) => {
+    if (synthesis?.status === 'loading') return
     const next = { ...scores }
     if (next[row] === value) delete next[row]
     else next[row] = value
@@ -146,7 +148,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
           <h3>{item.number}. {item.title}</h3>
           {item.rows.map(row => <div key={row.id} className="test-row" role="radiogroup" aria-label={`${item.number}. ${item.title}${row.sub ? ` – ${row.sub}` : ''}`}>
             {row.sub && <p className="row-sub">{row.sub}</p>}
-            {row.options.map(option => <button key={option.score} type="button" role="radio" className="test-option" aria-checked={scores[row.id] === option.score} aria-label={`${option.score} – ${option.label}`} onClick={() => choose(row.id, option.score)}>
+            {row.options.map(option => <button key={option.score} type="button" role="radio" className="test-option" aria-checked={scores[row.id] === option.score} aria-label={`${option.score} – ${option.label}`} disabled={synthesis?.status === 'loading'} onClick={() => choose(row.id, option.score)}>
               <span className="option-score">{option.score}</span><span className="option-label">{option.label}</span>{scores[row.id] === option.score && ai.filled.includes(row.id) && <span className="ai-mark" title="Cotée par l’IA d’après la dictée">✨</span>}{previous?.record.scores[row.id] === option.score && <span className="previous-mark" title="Cotation précédente">★</span>}
             </button>)}
             {ai.checks.filter(check => check.row === row.id).map(check => <p key={check.row} className="row-doubt" role="note">⚠ {check.reason || 'à vérifier'}</p>)}
@@ -160,7 +162,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     </div>
     {synthesis?.status === 'review' && <ReviewAnswers stats={stats} scores={scores} checks={ai.checks} filled={ai.filled} request={request || undefined} notice={notesChanged ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : ''} onBack={() => setSynthesis(null)} onNext={() => setSynthesis({ status: 'transmission' })} />}
     {synthesis?.status === 'transmission' && <TransmissionScreen initialHtml={testCopyHtml(record)} name={name} editor={transmission} dictation={dictation} onBack={() => setSynthesis({ status: 'review' })} onValidate={html => void validateTransmission(html)} />}
-    {keyboard
+    {synthesis?.status === 'review' || synthesis?.status === 'transmission' ? null : keyboard
       ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
       : <DictationFooter dictation={dictation}
         left={pane === 1 ? <button type="button" className="round-button" aria-label="Aller à la ligne" title="Aller à la ligne" onPointerDown={event => event.preventDefault()} onClick={() => editor.current?.insertLineBreak()}><Icon d={ICONS.newline} size={24} /></button> : undefined}

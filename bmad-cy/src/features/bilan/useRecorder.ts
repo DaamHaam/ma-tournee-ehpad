@@ -18,7 +18,9 @@ export function useRecorder(maxSeconds: number, onAudio: (audio: Blob) => void) 
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }) }
     catch { throw new Error('Accès au micro refusé. Autorisez-le dans les réglages de l’iPhone.') }
     const mimeType = TYPES.find(type => MediaRecorder.isTypeSupported?.(type))
-    const media = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 64000 } : undefined)
+    let media: MediaRecorder
+    try { media = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 64000 } : undefined) }
+    catch { stream.getTracks().forEach(track => track.stop()); throw new Error('Enregistrement audio non disponible sur cet appareil.') }
     const chunks: Blob[] = []
     media.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }
     media.onstop = () => {
@@ -30,7 +32,8 @@ export function useRecorder(maxSeconds: number, onAudio: (audio: Blob) => void) 
     }
     discard.current = false
     recorder.current = media
-    media.start()
+    try { media.start() }
+    catch { recorder.current = null; stream.getTracks().forEach(track => track.stop()); throw new Error('Enregistrement audio impossible. Réessayez.') }
     const began = Date.now()
     setElapsed(0)
     setRecording(true)

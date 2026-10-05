@@ -17,14 +17,20 @@ export function restoreNames(text: string, found: string[]): string {
   if (parts.length - 1 !== found.length) return text
   return parts.reduce((result, part, index) => result + (index ? found[index - 1] : '') + part, '')
 }
+const PARTICLES = new Set(['le', 'la', 'les', 'de', 'du', 'des', 'd', 'l', 'van', 'von', 'der', 'den', 'di', 'da', 'dos', 'del', 'el', 'al', 'ben', 'mac', 'mc', 'st', 'saint', 'sainte'])
 export function anonymizeWithMap(text: string, names: string[]): { text: string; found: string[] } {
-  const words = [...new Set(names.flatMap(name => name.split(/[\s'’-]+/)).map(word => word.trim()).filter(word => word.length >= 2))]
-  if (!words.length) return { text, found: [] }
+  const escape = (word: string) => plainLetters(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = names.map(name => name.split(/[\s'’-]+/).map(word => word.trim()).filter(Boolean))
+  // Le nom complet (« Le Gall ») d’abord, puis chaque mot sauf les particules, qui sont aussi des mots courants (« le », « de »…).
+  const phrases = parts.filter(words => words.length > 1).map(words => words.map(escape).join(`[\\s'’-]+`))
+  const words = parts.flat().filter(word => word.length >= 2 && !PARTICLES.has(plainLetters(word).toLowerCase())).map(escape)
+  const alternatives = [...new Set([...phrases, ...words])]
+  if (!alternatives.length) return { text, found: [] }
   const plain = plainLetters(text)
   const found: string[] = []
   let result = ''
   let index = 0
-  const pattern = new RegExp(`(?<![\\p{L}])(${words.map(word => plainLetters(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}])`, 'giu')
+  const pattern = new RegExp(`(?<![\\p{L}])(${alternatives.join('|')})(?![\\p{L}])`, 'giu')
   for (const match of plain.matchAll(pattern)) {
     result += text.slice(index, match.index) + ANONYMOUS
     found.push(text.slice(match.index, match.index! + match[0].length))
