@@ -35,11 +35,17 @@ function checkSnapshot(value: unknown, id: string): Day['entries'][string]['pati
   if (!isString(snapshot.id) || !isString(snapshot.firstName) || !isString(snapshot.room) || !isString(snapshot.priority)) throw new Error(INVALID)
   return snapshot as Day['entries'][string]['patient']
 }
+// Test standardisé : cotations numériques et texte ; heure et état copié facultatifs.
+function checkTest(value: unknown): boolean {
+  return isObject(value) && isObject(value.scores) && Object.values(value.scores).every(score => typeof score === 'number') && isString(value.notes)
+    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.at === undefined || isString(value.at)) && (value.copied === undefined || isBoolean(value.copied))
+}
 function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)
   const entries: Day['entries'] = {}
   for (const [id, entry] of Object.entries(value.entries)) {
     if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanHtml !== undefined && !isString(entry.bilanHtml)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
+    if (entry.tests !== undefined && !(isObject(entry.tests) && Object.values(entry.tests).every(checkTest))) throw new Error(INVALID)
     entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]
   }
   const day = { mood: null, comment: '', ...value, entries } as Day

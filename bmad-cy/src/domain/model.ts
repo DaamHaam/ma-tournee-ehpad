@@ -1,3 +1,4 @@
+import { hasTestContent, type TestRecord, type TestType } from './tinetti'
 export type SessionType = 'A' | 'B' | null
 export type Mood = -3 | -2 | -1 | 0 | 1 | 2 | 3 | null
 export interface Identity { id: string; lastName: string; firstName: string; room: string; priority: string; demo: boolean }
@@ -8,7 +9,8 @@ export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '', group: false } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification.
-export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean }
+// tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié.
+export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; tests?: Partial<Record<TestType, TestRecord>> }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
@@ -34,7 +36,7 @@ export function identityKey(patient: Pick<Identity, 'lastName' | 'firstName'>): 
   const plain = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').replace(/\s+/g, ' ').trim()
   return `${plain(patient.lastName)}|${plain(patient.firstName)}`
 }
-export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' }
+export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' || Object.values(entry.tests ?? {}).some(hasTestContent) }
 // Range les éléments d’une journée selon un ordre modèle ; ceux que le modèle ignore gardent leur place relative, à la fin.
 export function applyOrder(template: string[], current: string[]): string[] {
   const present = new Set(current)
@@ -77,12 +79,16 @@ export function entryVisible(entry: Entry, patient: Pick<Patient, 'archived'> | 
   if (patient && !patient.archived) return true
   return date <= today && hasTrace(entry)
 }
-// Bilans d’une journée dans l’ordre où ils ont été commencés ; les bilans sans heure (anciens) suivent l’ordre de la tournée.
-export interface DayBilan { id: string; patient: Identity; text: string; html?: string; copied: boolean }
+// Bilans et tests d’une journée dans l’ordre où ils ont été commencés ; ceux sans heure (anciens) suivent l’ordre de la tournée.
+export type BilanKind = 'bilan' | TestType
+export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text: string; html?: string; record?: TestRecord; copied: boolean; at?: string }
 export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   const rank = new Map(day.order.map((id, index) => [id, index]))
-  return Object.entries(day.entries)
-    .filter(([, entry]) => (entry.bilan ?? '').trim() !== '')
-    .sort(([a, x], [b, y]) => (x.bilanAt ?? '\uffff').localeCompare(y.bilanAt ?? '\uffff') || (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity))
-    .map(([id, entry]) => ({ id, patient: entry.patient, text: entry.bilan!, html: entry.bilanHtml, copied: !!entry.bilanCopied }))
+  const items: DayBilan[] = []
+  for (const [id, entry] of Object.entries(day.entries)) {
+    if ((entry.bilan ?? '').trim()) items.push({ id, kind: 'bilan', patient: entry.patient, text: entry.bilan!, html: entry.bilanHtml, copied: !!entry.bilanCopied, at: entry.bilanAt })
+    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (hasTestContent(record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, copied: !!record.copied, at: record.at || undefined })
+  }
+  return items.sort((x, y) => (x.at ?? '\uffff').localeCompare(y.at ?? '\uffff') || (rank.get(x.id) ?? Infinity) - (rank.get(y.id) ?? Infinity) || x.kind.localeCompare(y.kind))
 }
+export function hasBilanOrTest(entry: Entry): boolean { return (entry.bilan ?? '').trim() !== '' || Object.values(entry.tests ?? {}).some(hasTestContent) }

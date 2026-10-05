@@ -5,7 +5,8 @@ import { db } from '../../storage/database'
 import { dateLabel, dayBilans, fullName, shortName, validDate } from '../../domain/model'
 import { useToday } from '../../app/useToday'
 import { BilanActions } from './BilanActions'
-import { bilanHtml } from './richText'
+import { editPath, itemHtml, KIND_LABEL } from './display'
+import { tinettiScore } from '../../domain/tinetti'
 
 // Bilans d’une journée (aujourd’hui par défaut), repliés, à reporter un par un dans le logiciel de la résidence.
 export function BilansPage() {
@@ -22,15 +23,18 @@ export function BilansPage() {
       <div className="section-heading"><h2>{bilans.length ? `${copied} / ${bilans.length} bilans copiés` : 'Aucun bilan ce jour'}</h2></div>
       {!!bilans.length && <ol className="card bilan-list">{bilans.map(bilan => {
         const name = fullName(bilan.patient)
-        const expanded = !!open[`${date}:${bilan.id}`]
-        return <li key={bilan.id} className={bilan.copied ? 'copied' : ''}>
+        const key = `${date}:${bilan.id}:${bilan.kind}`
+        const expanded = !!open[key]
+        const html = itemHtml(bilan)
+        const score = bilan.record ? tinettiScore(bilan.record.scores) : null
+        return <li key={key} className={bilan.copied ? 'copied' : ''}>
           <div className="bilan-row">
-            <button type="button" className="bilan-summary" aria-expanded={expanded} onClick={() => setOpen(current => ({ ...current, [`${date}:${bilan.id}`]: !expanded }))}>
-              <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
+            <button type="button" className="bilan-summary" aria-expanded={expanded} onClick={() => setOpen(current => ({ ...current, [key]: !expanded }))}>
+              <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{score && <span className="kind-tag">{KIND_LABEL[bilan.kind]} {score.total}/{score.max}</span>}{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
             </button>
-            <BilanActions date={date} id={bilan.id} name={name} html={bilanHtml({ bilan: bilan.text, bilanHtml: bilan.html })} />
+            <BilanActions date={date} id={bilan.id} name={name} html={html} kind={bilan.kind} />
           </div>
-          {expanded && <div className="bilan-body"><p dangerouslySetInnerHTML={{ __html: bilanHtml({ bilan: bilan.text, bilanHtml: bilan.html }) }} /><Link to={`/bilan/${date}/${bilan.id}`} state={{ from: `/bilans?date=${date}` }}>Modifier</Link></div>}
+          {expanded && <div className="bilan-body"><p dangerouslySetInnerHTML={{ __html: html }} /><Link to={editPath(bilan.kind, date, bilan.id)} state={{ from: `/bilans?date=${date}` }}>Modifier</Link></div>}
         </li>
       })}</ol>}
     </>}

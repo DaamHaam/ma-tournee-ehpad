@@ -47,10 +47,11 @@ npm run test:e2e
 
 - `bmad-cy/src/App.tsx` : coque, navigation et état global de sauvegarde.
 - `bmad-cy/src/domain/model.ts` : types et règles métier pures.
+- `bmad-cy/src/domain/tinetti.ts` : grille de Tinetti, score, interprétation et résultat à copier.
 - `bmad-cy/src/storage/database.ts` : schéma Dexie/IndexedDB.
 - `bmad-cy/src/storage/repository.ts` : accès aux patients, journées et traces.
 - `bmad-cy/src/features/journee/` : tournée quotidienne, ordre, pointage et notes.
-- `bmad-cy/src/features/bilan/` : bilan du jour en plein écran, dictée OpenRouter et son réglage, onglet Bilans (copie qui vaut transmission, suppression).
+- `bmad-cy/src/features/bilan/` : bilan du jour et test de Tinetti en plein écran, dictée OpenRouter et son réglage, onglet Bilans (copie, suppression).
 - `bmad-cy/src/features/patients/` : liste, ajout, édition, historique, archivage et suppression.
 - `bmad-cy/src/features/exports/` : génération et partage de l’export TXT.
 - `bmad-cy/tests/` : parcours Playwright de production.
@@ -66,6 +67,7 @@ npm run test:e2e
 - Un patient archivé ou supprimé ne doit plus apparaître dans les tournées actuelles ou futures, sauf le jour même s’il y a déjà une trace (séance, note ou bilan) : il reste alors affiché avec sa mention pour rester corrigeable.
 - Consulter une journée passée ne la crée ni ne la modifie ; seule une saisie explicite l’enregistre.
 - Un bilan est stocké en texte brut (`bilan`) et, s’il est mis en forme, en HTML restreint (`bilanHtml` : seulement `<b>`, `<i>`, `<u>`, `<br>`, toujours filtré par `sanitizeBilanHtml` avant affichage ou copie).
+- Les tests standardisés (Tinetti d’abord) sont rangés dans `entries[id].tests[type]`, un par type et par jour ; leur score est calculé par l’application. Copier un test le marque copié et coche l’évaluation du jour de la copie.
 - Copier un bilan (onglet Bilans, historique ou page du bilan) le marque comme copié et coche la transmission du jour de la copie dans la fiche ; modifier le bilan retire la marque « copié », le supprimer ne décoche pas la transmission.
 - L’import de patients conserve l’identifiant d’un patient déjà connu (même nom et prénom, sans tenir compte de la casse ni des accents).
 - Les quatre patients du premier lancement sont explicitement fictifs et ne doivent être injectés qu’une seule fois.

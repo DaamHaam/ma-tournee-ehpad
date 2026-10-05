@@ -11,6 +11,7 @@ Version testable : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamha
 - Sauvegarde complète : [`_bmad-output/implementation-artifacts/tech-spec-sauvegarde-complete.md`](./_bmad-output/implementation-artifacts/tech-spec-sauvegarde-complete.md)
 - Idées Notion du 29/09 : [`_bmad-output/implementation-artifacts/tech-spec-idees-notion-2026-09-29.md`](./_bmad-output/implementation-artifacts/tech-spec-idees-notion-2026-09-29.md)
 - Dictée des bilans via OpenRouter : [`_bmad-output/implementation-artifacts/tech-spec-dictee-bilan-openrouter.md`](./_bmad-output/implementation-artifacts/tech-spec-dictee-bilan-openrouter.md)
+- Test de Tinetti : [`_bmad-output/implementation-artifacts/tech-spec-tinetti.md`](./_bmad-output/implementation-artifacts/tech-spec-tinetti.md)
 - Suivi du sprint : [`_bmad-output/implementation-artifacts/sprint-status.yaml`](./_bmad-output/implementation-artifacts/sprint-status.yaml)
 
 ## Lancer l'application

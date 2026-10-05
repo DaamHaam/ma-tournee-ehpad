@@ -219,6 +219,39 @@ describe('stockage local', () => {
     await expect(repository.markBilanCopied('2026-09-08', alice.id)).rejects.toThrow('Ce bilan n’existe plus.')
   })
 
+  it('enregistre un Tinetti, le copie comme évaluation, l’annule ou le supprime', async () => {
+    await repository.initialize()
+    await repository.ensureDay('2026-09-08')
+    const [alice] = (await database.patients.toArray()).filter(patient => patient.lastName === 'Martin')
+    await repository.setTest('2026-09-08', alice.id, 'tinetti', { scores: { e1: 1 } }, '2026-09-08T10:00:00Z')
+    await repository.setTest('2026-09-08', alice.id, 'tinetti', { notes: 'Marche lente', notesHtml: '<b>Marche</b> lente' }, '2026-09-08T10:05:00Z')
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.tinetti).toEqual({ scores: { e1: 1 }, notes: 'Marche lente', notesHtml: '<b>Marche</b> lente', at: '2026-09-08T10:00:00Z' })
+    await repository.markTestCopied('2026-09-08', alice.id, 'tinetti')
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.tinetti?.copied).toBe(true)
+    expect((await database.patients.get(alice.id))?.evalDates).toEqual([TODAY])
+    expect((await database.patients.get(alice.id))?.transDates).toEqual([])
+    await repository.restoreTest('2026-09-08', alice.id, 'tinetti', undefined)
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests).toBeUndefined()
+    await repository.setTest('2026-09-08', alice.id, 'tinetti', { scores: { e1: 0 } })
+    await repository.setTest('2026-09-08', alice.id, 'tinetti', { scores: {} })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests).toBeUndefined()
+    await expect(repository.markTestCopied('2026-09-08', alice.id, 'tinetti')).rejects.toThrow('Ce test n’existe plus.')
+  })
+
+  it('annule un bilan en le remettant tel qu’à l’ouverture', async () => {
+    await repository.initialize()
+    await repository.ensureDay('2026-09-08')
+    const [alice] = (await database.patients.toArray()).filter(patient => patient.lastName === 'Martin')
+    await repository.setBilan('2026-09-08', alice.id, 'Avant', '<b>Avant</b>', '2026-09-08T09:00:00Z')
+    await repository.markBilanCopied('2026-09-08', alice.id)
+    const before = { ...(await database.days.get('2026-09-08'))!.entries[alice.id] }
+    await repository.setBilan('2026-09-08', alice.id, 'Après')
+    await repository.restoreBilan('2026-09-08', alice.id, { bilan: before.bilan, bilanHtml: before.bilanHtml, bilanAt: before.bilanAt, bilanCopied: before.bilanCopied })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id]).toMatchObject({ bilan: 'Avant', bilanHtml: '<b>Avant</b>', bilanAt: '2026-09-08T09:00:00Z', bilanCopied: true })
+    await repository.restoreBilan('2026-09-08', alice.id, {})
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilan).toBeUndefined()
+  })
+
   it('n’exporte pas la clé OpenRouter et la conserve lors d’une restauration', async () => {
     await repository.initialize()
     await repository.setSetting('openrouterKey', 'sk-or-secret')

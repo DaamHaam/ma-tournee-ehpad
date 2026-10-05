@@ -16,6 +16,11 @@ describe('sauvegarde complète', () => {
     const withBilan = JSON.parse(buildBackup(data, ''))
     withBilan.days[0].entries.p1 = { ...withBilan.days[0].entries.p1, bilan: 'Marche', bilanHtml: '<b>Marche</b>', bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true }
     expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1).toMatchObject({ bilanHtml: '<b>Marche</b>', bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true })
+    withBilan.days[0].entries.p1.tests = { tinetti: { scores: { e1: 1 }, notes: 'lent', at: '2026-09-21T09:00:00Z', copied: true } }
+    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1.tests?.tinetti?.scores).toEqual({ e1: 1 })
+    withBilan.days[0].entries.p1.tests.tinetti.scores.e1 = 'un'
+    expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+    withBilan.days[0].entries.p1.tests.tinetti.scores.e1 = 1
     withBilan.days[0].entries.p1.bilanCopied = 'oui'
     expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
   })

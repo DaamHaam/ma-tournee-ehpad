@@ -1,5 +1,11 @@
 import { readFileSync } from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+// « + » sur la carte propose bilan libre ou Tinetti.
+async function openBilan(page: Page, name: string, choice = 'Bilan libre') {
+  await page.getByRole('button', { name: `Bilan pour ${name}` }).click()
+  await page.getByRole('link', { name: choice }).click()
+}
 
 test('première tournée, ajout patient et export', async ({ page }) => {
   await page.goto('/#/')
@@ -159,7 +165,7 @@ test('sauvegarde complète puis restauration sur un appareil vierge', async ({ b
 
 test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans la fiche', async ({ page }) => {
   await page.goto('/#/?date=2026-09-22')
-  await page.getByRole('link', { name: 'Bilan pour Bernard Louis' }).click()
+  await openBilan(page, 'Bernard Louis')
   await expect(page).toHaveURL(/#\/bilan\/2026-09-22\//)
   const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })
   await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeHidden()
@@ -177,10 +183,10 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await bilan.pressSequentially('Douleur 2/10.')
   await expect.poll(() => bilan.innerHTML()).toBe('Marche 10 m en 12 s.<br>Douleur 2/10.')
   await page.getByRole('button', { name: 'Copier' }).click()
-  await expect(page.getByRole('button', { name: 'Copié ✓' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copié' })).toBeVisible()
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
   await expect(page).toHaveURL(/date=2026-09-22/)
-  await expect(page.getByRole('link', { name: 'Bilan pour Bernard Louis' })).toHaveClass(/filled/)
+  await expect(page.getByRole('button', { name: 'Bilan pour Bernard Louis' })).toHaveClass(/filled/)
   await page.getByRole('link', { name: /Bernard L\./ }).click()
   await page.getByRole('button', { name: /^Séances \(/ }).click()
   await expect.poll(() => page.locator('.history-bilan').innerHTML()).toBe('Marche 10 m en 12 s.<br>Douleur 2/10.')
@@ -194,7 +200,7 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
 test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppression, passage à la ligne', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
   await page.goto('/#/?date=2026-09-22')
-  await page.getByRole('link', { name: 'Bilan pour Petit Jeanne' }).click()
+  await openBilan(page, 'Petit Jeanne')
   const petit = page.getByRole('textbox', { name: 'Bilan du jour pour Petit Jeanne' })
   await petit.fill('Marche.Douleur 2/10.')
   await petit.press('End')
@@ -207,7 +213,7 @@ test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppress
   await expect(petit.locator('b')).toHaveText('Marche')
   await expect(page.getByRole('button', { name: 'Gras' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await page.getByRole('link', { name: 'Bilan pour Bernard Louis' }).click()
+  await openBilan(page, 'Bernard Louis')
   await page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' }).fill('Transferts autonomes.')
   await expect(page.getByRole('button', { name: 'Copier' })).toBeEnabled()
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
@@ -251,6 +257,61 @@ test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppress
   await expect(page.getByRole('heading', { name: '1 / 1 bilans copiés' })).toBeVisible()
 })
 
+test('bilan annulé par la croix : il revient à son état d’ouverture', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Robert Paul')
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Robert Paul' }).fill('Saisi sur le mauvais patient')
+  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
+  await expect(page).toHaveURL(/date=2026-09-22/)
+  await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).not.toHaveClass(/filled/)
+  await openBilan(page, 'Robert Paul')
+  await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Robert Paul' })).toHaveText('')
+})
+
+test('Tinetti : cotation, volets, dictée, copie qui coche Éval, consultation et annulation', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
+  await expect(page.getByRole('tab', { name: 'Équilibre 0/16' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
+  await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^2 – / }).click()
+  await page.getByRole('radiogroup', { name: '8. Rotation de 360° – Stabilité' }).getByRole('radio', { name: /^1 – / }).click()
+  await expect(page.getByRole('tab', { name: 'Équilibre 4/16' })).toBeVisible()
+  await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^2 – / }).click()
+  await expect(page.getByRole('tab', { name: 'Équilibre 2/16' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Marche 0/12' }).click()
+  await page.getByRole('radiogroup', { name: '14. Marche déviante' }).getByRole('radio', { name: /^2 – / }).click()
+  await expect(page.getByRole('tab', { name: 'Marche 2/12' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByLabel('Total 4 sur 28')).toBeVisible()
+  await page.getByRole('tab', { name: 'Dictée' }).click()
+  await page.getByRole('textbox', { name: 'Observations Tinetti pour Petit Jeanne' }).fill('Marche prudente.')
+  await page.evaluate(() => {
+    const store = window as unknown as { copied?: { html: string; text: string } }
+    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
+  })
+  await page.getByRole('button', { name: 'Copier' }).click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { copied?: { html: string } }).copied?.html)).toBe('<u><b>Tinetti</b></u> : <b>4/28</b> (équilibre 2/16, marche 2/12) – cotation incomplète<br>Items non cotés : 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16.<br>Marche prudente.')
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
+
+  await page.getByRole('link', { name: 'Bilans' }).click()
+  await page.getByLabel('Date').fill('2026-09-22')
+  await expect(page.getByText('Tinetti 4/28')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '1 / 1 bilans copiés' })).toBeVisible()
+  await page.getByRole('link', { name: 'Patients' }).click()
+  await page.getByRole('link', { name: /Petit Jeanne/ }).click()
+  await expect(page.getByLabel('Éval')).toBeChecked()
+  await expect(page.getByLabel('Trans')).not.toBeChecked()
+  await page.getByRole('button', { name: /^Séances \(/ }).click()
+  await expect(page.locator('.history-bilan')).toContainText('4/28')
+
+  // Un nouveau Tinetti annulé par la croix ne laisse rien.
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Robert Paul', 'Test de Tinetti')
+  await page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^1 – / }).click()
+  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
+  await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).not.toHaveClass(/filled/)
+})
+
 // En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.
 test.describe('dictée', () => {
   test.use({ serviceWorkers: 'block' })
@@ -288,7 +349,7 @@ test.describe('dictée', () => {
     expect(readFileSync((await download.path())!, 'utf8')).not.toContain('sk-or-v1-test1234')
 
     await page.goto('/#/?date=2026-09-22')
-    await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
+    await openBilan(page, 'Martin Alice')
     const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })
     await bilan.fill('Début. Fin.')
     await bilan.press('Home')
@@ -302,7 +363,7 @@ test.describe('dictée', () => {
     await expect(bilan).toHaveText('Début. Milieu dicté. Suite dictée. Fin.')
     expect(sent).toEqual(['Bearer sk-or-v1-test1234', 'Bearer sk-or-v1-test1234'])
     await page.getByRole('link', { name: 'Retour à la journée' }).click()
-    await page.getByRole('link', { name: 'Bilan pour Martin Alice' }).click()
+    await openBilan(page, 'Martin Alice')
     await expect(bilan).toHaveText('Début. Milieu dicté. Suite dictée. Fin.')
   })
 })

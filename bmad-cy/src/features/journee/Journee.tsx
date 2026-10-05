@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { dateLabel, daysSince, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, lastSessionsA, weekDate, weeksSince, type Mood, type Patient } from '../../domain/model'
+import { dateLabel, daysSince, hasBilanOrTest, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, lastSessionsA, weekDate, weeksSince, type Mood, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { useToday } from '../../app/useToday'
 // Toute la carte se déplace après un appui long (toucher ou souris) ; les appuis courts restent aux boutons.
@@ -32,6 +32,8 @@ export function Journee() {
   const date = rawDate && validDate(rawDate) ? rawDate : today
   const [noteOverrides, setNoteOverrides] = useState<Record<string, boolean>>({})
   const { run } = useSave()
+  // « + » propose un bilan libre ou un test standardisé.
+  const [chooser, setChooser] = useState<{ id: string; name: string } | null>(null)
   const patients = useLiveQuery(() => db.patients.toArray(), [])
   const day = useLiveQuery(() => repository.dayView(date), [date])
   // Seules les journées antérieures comptent : la saisie du jour affiché ne relance pas ce calcul.
@@ -61,10 +63,16 @@ export function Journee() {
         const noteOpen = entry ? noteOverrides[noteKey] ?? entry.note.trim() !== '' : false
         const sinceA = !isSeparator && lastA ? daysSince(lastA.get(id), date) : null
         return <SortableRow key={id} id={id} label={label} group={!!active.get(id)?.group}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className="patient-row">
-          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><strong>{shortName(patient!)}</strong>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<Link className={`button bilan-toggle${entry.bilan?.trim() ? ' filled' : ''}`} draggable={false} to={`/bilan/${date}/${id}`} aria-label={`Bilan pour ${fullName(patient!)}`}>+</Link></div></div>
+          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><strong>{shortName(patient!)}</strong>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<button type="button" className={`bilan-toggle${hasBilanOrTest(entry) ? ' filled' : ''}`} aria-haspopup="dialog" aria-label={`Bilan pour ${fullName(patient!)}`} onClick={() => setChooser({ id, name: fullName(patient!) })}>+</button></div></div>
  {noteOpen && <input key={`${date}-${id}-note`} className="day-note" onMouseDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} autoFocus={noteOverrides[noteKey] === true} aria-label={`Note du jour pour ${fullName(patient!)}`} placeholder="Note" defaultValue={entry.note} onChange={e => { const value = e.target.value; void run(() => repository.setNote(date, id, value)) }} />}
         </article>}</SortableRow>
       })}</div></SortableContext></DndContext>
+      {chooser && <div className="sheet-backdrop" onClick={() => setChooser(null)}><div className="sheet" role="dialog" aria-label={`Bilan pour ${chooser.name}`} onClick={event => event.stopPropagation()}>
+        <p className="sheet-title">{chooser.name}</p>
+        <Link className="button primary" to={`/bilan/${date}/${chooser.id}`}>Bilan libre</Link>
+        <Link className="button" to={`/tinetti/${date}/${chooser.id}`}>Test de Tinetti</Link>
+        <button type="button" onClick={() => setChooser(null)}>Annuler</button>
+      </div></div>}
       <section className="card day-summary"><fieldset><legend className="sr-only">Niveau H</legend><div className="mood-options">{([-3, -2, -1, 0, 1, 2, 3] as const).map(mood => <button key={mood} aria-pressed={day.mood === mood} onClick={() => void run(() => repository.setMood(date, day.mood === mood ? null : mood as Mood))}>H{moodSigns(mood)}</button>)}</div></fieldset><textarea key={date} aria-label="Commentaire général" rows={2} defaultValue={day.comment} placeholder="Commentaire" onChange={e => { const value = e.target.value; void run(() => repository.setComment(date, value)) }} /></section>
     </>}
   </>

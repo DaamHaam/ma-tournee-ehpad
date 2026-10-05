@@ -1,5 +1,7 @@
+import { hasTestContent, type TestRecord, type TestType } from '../domain/tinetti'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
-import { applyOrder, careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+import { applyOrder, careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 // GRP n’est pas importé : un patient déjà connu garde son réglage, un nouveau part sans groupe.
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, 'group'>
@@ -95,6 +97,55 @@ export class TourRepository {
     })
   }
   async deleteBilan(date: string, id: string): Promise<void> { await this.setBilan(date, id, '') }
+  // Test standardisé du jour : modifier le décoche « copié » ; vidé (ni cotation ni texte), il disparaît.
+  async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml'>>, now = new Date().toISOString()): Promise<void> {
+    await this.changeDay(date, day => {
+      const entry = this.entry(day, id)
+      const record: TestRecord = { scores: {}, notes: '', at: now, ...entry.tests?.[type], ...patch }
+      delete record.copied
+      if (!record.notes.trim()) delete record.notesHtml
+      const tests = { ...entry.tests }
+      if (hasTestContent(record)) tests[type] = record
+      else delete tests[type]
+      if (Object.keys(tests).length) entry.tests = tests
+      else delete entry.tests
+    })
+  }
+  async deleteTest(date: string, id: string, type: TestType): Promise<void> { await this.restoreTest(date, id, type, undefined) }
+  async restoreTest(date: string, id: string, type: TestType, record: TestRecord | undefined): Promise<void> {
+    await this.changeDay(date, day => {
+      const entry = this.entry(day, id)
+      const tests = { ...entry.tests }
+      if (record) tests[type] = record
+      else delete tests[type]
+      if (Object.keys(tests).length) entry.tests = tests
+      else delete entry.tests
+    })
+  }
+  // Copier un test vaut évaluation faite le jour de la copie.
+  async markTestCopied(date: string, id: string, type: TestType): Promise<void> {
+    if (!validDate(date)) throw new Error('Choisissez une date valide.')
+    await this.database.transaction('rw', this.database.days, this.database.patients, async () => {
+      const day = await this.database.days.get(date)
+      const record = day?.entries[id]?.tests?.[type]
+      if (!day || !hasTestContent(record)) throw new Error('Ce test n’existe plus.')
+      record!.copied = true
+      await this.database.days.put(day)
+      const patient = await this.database.patients.get(id)
+      const today = this.today()
+      if (patient && !(patient.evalDates ?? []).includes(today)) await this.database.patients.put({ ...patient, evalDates: [...(patient.evalDates ?? []), today].sort() })
+    })
+  }
+  // Annulation : remet le bilan exactement comme à l’ouverture de la page.
+  async restoreBilan(date: string, id: string, snapshot: BilanSnapshot): Promise<void> {
+    await this.changeDay(date, day => {
+      const entry = this.entry(day, id)
+      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied'] as const) {
+        if (snapshot[key] === undefined) delete entry[key]
+        else (entry as unknown as Record<string, unknown>)[key] = snapshot[key]
+      }
+    })
+  }
   // Copier un bilan vaut transmission faite le jour de la copie (cochée dans la fiche si le patient existe encore).
   async markBilanCopied(date: string, id: string): Promise<void> {
     if (!validDate(date)) throw new Error('Choisissez une date valide.')
