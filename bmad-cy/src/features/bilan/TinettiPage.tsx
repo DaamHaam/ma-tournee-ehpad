@@ -7,14 +7,14 @@ import { repository } from '../../storage/repository'
 import { fullName, parseDate, validDate, type Entry } from '../../domain/model'
 import { hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
-import { RichEditor, type RichEditorHandle } from './RichEditor'
+import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText } from './richText'
 import { testNotesHtml } from './display'
 import { useDictation } from './useDictation'
 import { DictationFooter, Icon, ScreenHeader } from './screen'
-import { backTarget, ICONS, useVisibleViewport } from './screenUtils'
+import { backTarget, ICONS, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 
-// Test de Tinetti en plein écran : volets Équilibre, Marche et Dictée à faire glisser, micro toujours accessible.
+// Test de Tinetti en plein écran : volet Grille (équilibre puis marche) et volet Dictée, d’un seul glissement ; micro toujours accessible.
 export function TinettiPage() {
   const { date = '', id = '' } = useParams()
   const target = backTarget(useLocation().state, date)
@@ -41,7 +41,10 @@ function TinettiEditor({ date, id, back, label, entry, previous }: { date: strin
   const editor = useRef<RichEditorHandle>(null)
   const panes = useRef<HTMLDivElement>(null)
   const [pane, setPane] = useState(0)
+  const [keyboard, setKeyboard] = useState(false)
+  const [format, setFormat] = useState<FormatState>({ bold: false, italic: false, underline: false })
   const viewport = useVisibleViewport()
+  useBlockEdgeSwipe()
   const { copied, copy } = useBilanCopy(date, id, 'tinetti')
   const score = tinettiScore(scores)
   const choose = (row: string, value: number) => {
@@ -64,19 +67,24 @@ function TinettiEditor({ date, id, back, label, entry, previous }: { date: strin
     if (changed.current) await run(() => repository.restoreTest(date, id, 'tinetti', initial))
     navigate(back)
   }
+  const toggleKeyboard = (open: boolean) => { editor.current?.setKeyboard(open); setKeyboard(open) }
   const goTo = (index: number) => { const box = panes.current; if (box) box.scrollTo({ left: index * box.clientWidth, behavior: 'smooth' }) }
-  const tabs = [`Équilibre ${score.equilibre.score}/${score.equilibre.max}`, `Marche ${score.marche.score}/${score.marche.max}`, 'Dictée']
+  // Quitter le volet Dictée referme le clavier.
+  const showPane = (index: number) => { if (index !== pane) { if (index === 0 && keyboard) toggleKeyboard(false); setPane(index) } }
+  const tabs = ['Grille', 'Dictée']
+  const sections = { equilibre: score.equilibre, marche: score.marche }
   const empty = !hasTestContent({ scores, notes: htmlToText(notesHtml) })
-  return <div className="bilan-page tinetti-page" style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
+  return <div className={`bilan-page tinetti-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient}
       tools={<span className="total-badge" aria-label={`Total ${score.total} sur ${score.max}`}>Tinetti {score.total}/{score.max}</span>}
       copied={copied} copyDisabled={empty} onCopy={() => void copy(tinettiResultHtml({ scores }, notesHtml))} onCancel={() => void cancel()} />
-    <div className="pane-tabs" role="tablist" aria-label="Volets du test">
+    <div className="pane-tabs two" role="tablist" aria-label="Volets du test">
       {tabs.map((tab, index) => <button key={tab} type="button" role="tab" aria-selected={pane === index} onClick={() => goTo(index)}>{tab}</button>)}
     </div>
     {previous && <p className="previous-note">★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}
-    <div className="panes" ref={panes} onScroll={event => { const box = event.currentTarget; setPane(Math.round(box.scrollLeft / Math.max(1, box.clientWidth))) }}>
-      {TINETTI.map(section => <section key={section.id} className="pane" aria-label={section.title}>
+    <div className="panes" ref={panes} onScroll={event => { const box = event.currentTarget; showPane(Math.round(box.scrollLeft / Math.max(1, box.clientWidth))) }}>
+      <div className="pane" role="tabpanel" aria-label="Grille">{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
+        <h2 className="section-title">{section.title} <span>{sections[section.id].score}/{sections[section.id].max}</span></h2>
         <p className="pane-instructions">{section.instructions}</p>
         {section.items.map(item => <div key={item.number} className="test-item">
           <h3>{item.number}. {item.title}</h3>
@@ -87,12 +95,16 @@ function TinettiEditor({ date, id, back, label, entry, previous }: { date: strin
             </button>)}
           </div>)}
         </div>)}
-      </section>)}
-      <section className="pane notes-pane" aria-label="Dictée">
-        <RichEditor ref={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={false} onChange={saveNotes} />
+      </section>)}</div>
+      <section className="pane notes-pane" role="tabpanel" aria-label="Dictée">
+        <FormatButtons editor={editor} state={format} />
+        <RichEditor ref={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={keyboard} placeholder="Observations" onChange={saveNotes} onFormatState={setFormat} />
       </section>
     </div>
-    <DictationFooter dictation={dictation}
-      left={pane === 2 ? <button type="button" className="round-button" aria-label="Aller à la ligne" title="Aller à la ligne" onPointerDown={event => event.preventDefault()} onClick={() => editor.current?.insertLineBreak()}><Icon d={ICONS.newline} size={24} /></button> : undefined} />
+    {keyboard
+      ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
+      : <DictationFooter dictation={dictation}
+        left={pane === 1 ? <button type="button" className="round-button" aria-label="Aller à la ligne" title="Aller à la ligne" onPointerDown={event => event.preventDefault()} onClick={() => editor.current?.insertLineBreak()}><Icon d={ICONS.newline} size={24} /></button> : undefined}
+        right={pane === 1 ? <button type="button" className="round-button" aria-label="Ouvrir le clavier" title="Ouvrir le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(true)}><Icon d={ICONS.keyboard} /></button> : undefined} />}
   </div>
 }

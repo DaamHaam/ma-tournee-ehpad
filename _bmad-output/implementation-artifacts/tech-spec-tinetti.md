@@ -14,10 +14,12 @@ POMA de Tinetti (1986), 28 points, libellés de la grille habituelle de l’util
 ## Parcours
 
 - « + » sur une carte de la Journée propose « Bilan libre » ou « Test de Tinetti ».
-- Écran plein écran : en-tête (retour, nom et prénom, total, copier, ✕), onglets Équilibre x/16 · Marche y/12 · Dictée, volets qu’on fait glisser horizontalement (ou qu’on choisit par l’onglet), micro en bas sur tous les volets.
+- Écran plein écran : en-tête (retour, nom et prénom, total, copier, ✕), deux onglets Grille · Dictée, volets qu’on fait glisser horizontalement d’un seul geste (ou qu’on choisit par l’onglet), micro en bas sur les deux volets (v0.13.1).
+- Volet Grille : Équilibre puis Marche à la suite, chaque partie titrée avec son sous-total.
 - Chaque ligne se cote d’un appui ; un second appui sur la même cotation l’efface.
 - Les cotations du dernier Tinetti antérieur du patient sont marquées ★, avec son total et sa date.
-- Le volet Dictée reçoit le texte dicté (éditeur enrichi, sans clavier, ↵ pour aller à la ligne).
+- Le volet Dictée reçoit le texte dicté : éditeur enrichi avec G I S, ↵, et bouton clavier pour compléter (clavier ouvert : seulement la flèche ⌄ pour le rentrer).
+- Dans le bilan libre comme dans Tinetti, le glissement depuis le bord de l’écran (retour arrière de Safari) est bloqué : on quitte par ‹ ou ✕ seulement.
 - ✕ quitte en remettant le test comme à l’ouverture (supprimé s’il était nouveau) ; ‹ quitte en gardant.
 
 ## Résultat et copie

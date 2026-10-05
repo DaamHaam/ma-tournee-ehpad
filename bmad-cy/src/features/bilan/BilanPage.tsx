@@ -9,7 +9,7 @@ import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } fr
 import { appendText, bilanHtml, htmlToText } from './richText'
 import { useDictation } from './useDictation'
 import { DictationFooter, Icon, ScreenHeader } from './screen'
-import { backTarget, ICONS, useVisibleViewport } from './screenUtils'
+import { backTarget, ICONS, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 
 // Bilan libre du jour en plein écran ; ne part pas dans l’export TXT.
 export function BilanPage() {
@@ -38,6 +38,7 @@ function BilanEditor({ date, id, back, label, entry }: { date: string; id: strin
   // Mode dictée par défaut : toucher le texte place le curseur sans ouvrir le clavier ; le bouton clavier l’ouvre pour taper.
   const [keyboard, setKeyboard] = useState(false)
   const viewport = useVisibleViewport()
+  useBlockEdgeSwipe()
   const save = useCallback((value: string, text: string) => { latest.current = value; setHtml(value); void run(() => repository.setBilan(date, id, text, value)) }, [date, id, run])
   const dictation = useDictation(
     useCallback((text: string) => editor.current?.insertText(text), []),

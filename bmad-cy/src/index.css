@@ -232,3 +232,9 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .previous-mark { flex:none; color:#d49a00; font-size:.9rem; }
 .notes-pane { display:flex; flex-direction:column; }
 .notes-pane .bilan-text { flex:1; }
+.pane-tabs.two { grid-template-columns:repeat(2,1fr); }
+.section-title { position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; margin:0; padding:.35rem 0; background:#f6f7f9; font-size:.95rem; }
+.section-title span { color:var(--accent); font-variant-numeric:tabular-nums; }
+.notes-pane { gap:.4rem; }
+/* Pages plein écran : marges latérales hors de la zone de glissement du bord de l’écran. */
+.bilan-page { padding-left:max(1.3rem,env(safe-area-inset-left)); padding-right:max(1.3rem,env(safe-area-inset-right)); }

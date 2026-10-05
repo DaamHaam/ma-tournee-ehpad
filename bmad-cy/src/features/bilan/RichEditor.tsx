@@ -17,7 +17,7 @@ const textOf = (range: Range) => { const box = document.createElement('div'); bo
 
 // Éditeur du bilan : texte enrichi limité (gras, italique, souligné, retours à la ligne).
 // En mode dictée (clavier fermé), toucher le texte place le curseur ; la dernière position est gardée pour les insertions.
-export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onFormatState }: { ref: Ref<RichEditorHandle>; initialHtml: string; label: string; keyboard: boolean; onChange: (html: string, text: string) => void; onFormatState?: (state: FormatState) => void }) {
+export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onFormatState, placeholder = 'Bilan' }: { ref: Ref<RichEditorHandle>; initialHtml: string; label: string; keyboard: boolean; placeholder?: string; onChange: (html: string, text: string) => void; onFormatState?: (state: FormatState) => void }) {
   const box = useRef<HTMLDivElement>(null)
   const saved = useRef<Range | null>(null)
   const report = useRef(onFormatState)
@@ -104,7 +104,7 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
       if (open) { element.focus(); restore() }
     },
   }))
-  return <div ref={box} className="bilan-text" role="textbox" aria-multiline="true" aria-label={label} data-placeholder="Bilan" contentEditable suppressContentEditableWarning inputMode={keyboard ? 'text' : 'none'}
+  return <div ref={box} className="bilan-text" role="textbox" aria-multiline="true" aria-label={label} data-placeholder={placeholder} contentEditable suppressContentEditableWarning inputMode={keyboard ? 'text' : 'none'}
       onInput={emit}
       onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); insertLineBreak() } }}
       onPaste={event => { event.preventDefault(); insertText(event.clipboardData.getData('text/plain'), false) }} />

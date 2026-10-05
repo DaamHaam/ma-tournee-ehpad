@@ -29,3 +29,19 @@ export function backTarget(state: unknown, date: string) {
   const back = typeof from === 'string' && from.startsWith('/') ? from : `/?date=${date}`
   return { back, label: back.startsWith('/bilans') ? 'Retour aux bilans' : 'Retour à la journée' }
 }
+
+// Dans un bilan, le glissement depuis le bord de l’écran (retour arrière de Safari) ne doit pas quitter la page par mégarde.
+const EDGE = 20
+export function useBlockEdgeSwipe() {
+  useEffect(() => {
+    const block = (event: TouchEvent) => {
+      const x = event.touches[0]?.clientX
+      if (x !== undefined && (x < EDGE || x > window.innerWidth - EDGE)) event.preventDefault()
+    }
+    const root = document.documentElement
+    const previous = root.style.overscrollBehaviorX
+    root.style.overscrollBehaviorX = 'none'
+    document.addEventListener('touchstart', block, { passive: false })
+    return () => { document.removeEventListener('touchstart', block); root.style.overscrollBehaviorX = previous }
+  }, [])
+}

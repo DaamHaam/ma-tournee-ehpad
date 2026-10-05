@@ -2,12 +2,12 @@
 
 PWA iPhone-first pour préparer et tracer une tournée de kinésithérapie en EHPAD. La version actuelle fonctionne sans compte ni serveur : patients, journées, notes et ordres sont enregistrés dans IndexedDB sur l’appareil. Seule la dictée facultative des bilans envoie l’audio à OpenRouter pour transcription.
 
-Version actuelle : 0.13.0 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
+Version actuelle : 0.13.1 (affichée en bas de `Réglages / Export`). Version testable en ligne : [https://daamhaam.github.io/ma-tournee-ehpad/](https://daamhaam.github.io/ma-tournee-ehpad/)
 
 ## Parcours disponible
 
 - `Journée` : date au toucher, raccourcis lundi/jeudi/vendredi, réorganisation des cartes et des quatre repères (le rouge pour les patients sans séance prévue) par appui long, cartes au format « NOM P. », pointage A/B exclusif, note ouverte par le triangle, bilan libre du jour ouvert en plein écran par « + » (copiable, visible dans l’historique, hors export TXT), niveau H et commentaire.
-- Test de Tinetti (« + » puis « Test de Tinetti ») : grille de 28 points en plein écran, volets Équilibre / Marche / Dictée à faire glisser, cotation d’un appui, score calculé, cotations précédentes marquées ★ ; copier le résultat coche Éval.
+- Test de Tinetti (« + » puis « Test de Tinetti ») : grille de 28 points en plein écran, volets Grille (équilibre puis marche) et Dictée (G I S, clavier) à faire glisser, sans retour arrière par glissement du bord, cotation d’un appui, score calculé, cotations précédentes marquées ★ ; copier le résultat coche Éval.
 - Mise en forme des bilans : barre G / I / S au-dessus du texte pour mettre en gras, italique ou souligné un passage sélectionné ; la copie transmet la mise en forme (HTML) et le texte brut.
 - Dictée des bilans : bouton micro en bas du bilan, transcription par OpenRouter (Whisper) insérée à la position du curseur (toucher le texte place le curseur sans ouvrir le clavier ; en bas, ↵ pour aller à la ligne, micro au centre, clavier à droite pour taper), 5 minutes au plus par dictée. Nécessite une clé OpenRouter saisie dans `Réglages` (gardée sur l’appareil, exclue de la sauvegarde) et le réseau ; sinon, le micro du clavier reste disponible. Ne prononcer aucun nom : l’audio part chez OpenRouter.
 - `Bilans` : bilans d’une journée (aujourd’hui par défaut, sélecteur de date) dans l’ordre où ils ont été commencés, repliés ; chacun se déplie, se modifie, se copie (copie = transmission du jour cochée, marque ✓) ou se supprime après confirmation.
