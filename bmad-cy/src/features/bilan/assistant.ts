@@ -1,5 +1,5 @@
 import type { Sex } from '../../domain/model'
-import { TINETTI } from '../../domain/tinetti'
+import { TINETTI, validScore, type AiCheck } from '../../domain/tinetti'
 import { sanitizeBilanHtml } from './richText'
 
 export const ANALYSIS_MODEL_SETTING = 'analysisModel'
@@ -42,20 +42,24 @@ export function tinettiRequest(scores: Record<string, number>, dictation: string
   return JSON.stringify({ patient: sexLabel(sex), grille, dictee: dictation })
 }
 
-export interface TinettiReply { observations: string; checks: { row: string; reason: string }[] }
-// Lecture tolérante de la réponse : JSON éventuellement entouré de ```, lignes inconnues ou non cotées ignorées.
+export interface TinettiReply { observations: string; checks: AiCheck[]; scores: Record<string, number> }
+// Lecture tolérante de la réponse : JSON éventuellement entouré de ```, lignes inconnues ignorées.
+// L’IA ne cote que les lignes laissées vides : une cotation choisie par le kinésithérapeute n’est jamais remplacée.
 export function parseTinettiReply(content: string, scores: Record<string, number>): TinettiReply {
   const start = content.indexOf('{')
   const end = content.lastIndexOf('}')
   let data: unknown
   try { data = JSON.parse(content.slice(start, end + 1)) } catch { throw new Error('Réponse de l’IA illisible. Réessayez.') }
-  const reply = data as { observations?: unknown; a_verifier?: unknown }
+  const reply = data as { observations?: unknown; a_verifier?: unknown; cotations?: unknown }
+  const proposed = reply.cotations && typeof reply.cotations === 'object' && !Array.isArray(reply.cotations) ? reply.cotations as Record<string, unknown> : {}
+  const filled = Object.fromEntries(Object.entries(proposed).filter(([row, score]) => scores[row] === undefined && validScore(row, score))) as Record<string, number>
+  const merged = { ...filled, ...scores }
   const observations = typeof reply.observations === 'string' ? sanitizeBilanHtml(reply.observations.replace(/\n/g, '<br>')) : ''
   const checks = Array.isArray(reply.a_verifier) ? reply.a_verifier.flatMap(item => {
     const check = item as { ligne?: unknown; raison?: unknown }
-    return typeof check.ligne === 'string' && scores[check.ligne] !== undefined ? [{ row: check.ligne, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
+    return typeof check.ligne === 'string' && merged[check.ligne] !== undefined ? [{ row: check.ligne, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
   }) : []
-  return { observations, checks }
+  return { observations, checks, scores: filled }
 }
 
 // Texte corrigé renvoyé par l’IA : guillemets ou blocs de code retirés, puis filtré comme un bilan.

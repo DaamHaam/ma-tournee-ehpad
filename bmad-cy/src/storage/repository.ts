@@ -98,7 +98,7 @@ export class TourRepository {
   }
   async deleteBilan(date: string, id: string): Promise<void> { await this.setBilan(date, id, '') }
   // Test standardisé du jour : modifier le décoche « copié » ; vidé (ni cotation ni texte), il disparaît.
-  async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml'>>, now = new Date().toISOString()): Promise<void> {
+  async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml' | 'aiObservations' | 'aiChecks' | 'aiFilled' | 'aiSource'>>, now = new Date().toISOString()): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
       const record: TestRecord = { scores: {}, notes: '', at: now, ...entry.tests?.[type], ...patch }

@@ -2,7 +2,9 @@
 // Échelle adaptée d’après Tinetti M., J Am Geriatr Soc 1986;34:119-126.
 export type TestType = 'tinetti'
 // resultHtml : texte final validé (synthèse IA relue), prêt à copier ; effacé dès que la cotation ou la dictée change.
-export interface TestRecord { scores: Record<string, number>; notes: string; notesHtml?: string; resultHtml?: string; at: string; copied?: boolean }
+// ai* : dernière synthèse IA (observations rédigées, lignes à vérifier, lignes cotées par l’IA, dictée résumée), pour la revoir sans nouvel appel.
+export interface AiCheck { row: string; reason: string }
+export interface TestRecord { scores: Record<string, number>; notes: string; notesHtml?: string; resultHtml?: string; at: string; copied?: boolean; aiObservations?: string; aiChecks?: AiCheck[]; aiFilled?: string[]; aiSource?: string }
 export interface TestRow { id: string; sub?: string; options: { score: number; label: string }[] }
 export interface TestItem { number: number; title: string; rows: TestRow[] }
 export interface TestSection { id: 'equilibre' | 'marche'; title: string; instructions: string; items: TestItem[] }
@@ -67,6 +69,11 @@ export function tinettiResultHtml(record: Pick<TestRecord, 'scores'>, notesHtml 
   if (!score.complete) lines.push(`Items non cotés : ${score.missing.join(', ')}.`)
   if (notesHtml.trim()) lines.push(notesHtml)
   return lines.join('<br>')
+}
+// Cotation valide pour une ligne de la grille (sert à filtrer les cotations proposées par l’IA).
+export function validScore(row: string, score: unknown): score is number {
+  const testRow = TINETTI.flatMap(section => section.items.flatMap(item => item.rows)).find(candidate => candidate.id === row)
+  return !!testRow && typeof score === 'number' && testRow.options.some(option => option.score === score)
 }
 export function hasTestContent(record: Pick<TestRecord, 'scores' | 'notes'> | undefined): boolean { return !!record && (Object.keys(record.scores).length > 0 || record.notes.trim() !== '') }
 // Dernier test du même type, strictement antérieur à la journée, pour afficher les cotations précédentes.

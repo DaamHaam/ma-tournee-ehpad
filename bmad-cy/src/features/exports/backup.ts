@@ -38,7 +38,9 @@ function checkSnapshot(value: unknown, id: string): Day['entries'][string]['pati
 // Test standardisé : cotations numériques et texte ; heure et état copié facultatifs.
 function checkTest(value: unknown): boolean {
   return isObject(value) && isObject(value.scores) && Object.values(value.scores).every(score => typeof score === 'number') && isString(value.notes)
-    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.resultHtml === undefined || isString(value.resultHtml)) && (value.at === undefined || isString(value.at)) && (value.copied === undefined || isBoolean(value.copied))
+    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.resultHtml === undefined || isString(value.resultHtml))
+    && (value.aiObservations === undefined || isString(value.aiObservations)) && (value.aiSource === undefined || isString(value.aiSource))
+    && (value.aiFilled === undefined || isStringList(value.aiFilled)) && (value.aiChecks === undefined || (Array.isArray(value.aiChecks) && value.aiChecks.every(check => isObject(check) && isString(check.row) && isString(check.reason)))) && (value.at === undefined || isString(value.at)) && (value.copied === undefined || isBoolean(value.copied))
 }
 function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)

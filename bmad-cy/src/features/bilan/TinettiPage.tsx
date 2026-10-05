@@ -5,7 +5,7 @@ import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { fullName, parseDate, validDate, type Entry, type Sex } from '../../domain/model'
-import { hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord } from '../../domain/tinetti'
+import { hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type AiCheck, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, parseTinettiReply, restoreNames, tinettiRequest } from './assistant'
@@ -42,7 +42,10 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   const [startNotes] = useState(notesHtml)
   // Texte final validé après synthèse ; effacé dès que la cotation ou la dictée change (comme dans la base).
   const [resultHtml, setResultHtml] = useState(initial?.resultHtml ?? '')
-  const [synthesis, setSynthesis] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'review'; checks: { row: string; reason: string }[]; html: string } | null>(null)
+  // Dernière synthèse IA, gardée pour la revoir sans nouvel appel.
+  const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource ?? '' })
+  type Review = { status: 'review'; scores: Record<string, number>; checks: AiCheck[]; filled: string[]; html: string; observations: string; source: string; request?: string; notice?: string }
+  const [synthesis, setSynthesis] = useState<{ status: 'loading' } | { status: 'error'; message: string } | Review | null>(null)
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
   const changed = useRef(false)
@@ -75,20 +78,31 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     if (changed.current) await run(() => repository.restoreTest(date, id, 'tinetti', initial))
     navigate(back)
   }
-  // Une seule passe : grille cochée + dictée anonymisée → observations rédigées et lignes à vérifier.
+  // Une seule passe : grille cochée + dictée anonymisée → lignes non cochées cotées d’après la dictée, observations rédigées, lignes à vérifier.
   const synthesize = async () => {
     if (keyboard) toggleKeyboard(false)
     setSynthesis({ status: 'loading' })
     try {
-      const { text, found } = anonymizeWithMap(htmlToText(latestNotes.current), [entry.patient.lastName, entry.patient.firstName])
-      const reply = parseTinettiReply(await assistant.ask('tinetti', tinettiRequest(scores, text, sex), true), scores)
-      setSynthesis({ status: 'review', checks: reply.checks, html: tinettiResultHtml({ scores }, sanitizeBilanHtml(restoreNames(reply.observations, found))) })
+      const source = htmlToText(latestNotes.current)
+      const { text, found } = anonymizeWithMap(source, [entry.patient.lastName, entry.patient.firstName])
+      const request = tinettiRequest(scores, text, sex)
+      const reply = parseTinettiReply(await assistant.ask('tinetti', request, true), scores)
+      const merged = { ...reply.scores, ...scores }
+      const observations = sanitizeBilanHtml(restoreNames(reply.observations, found))
+      setSynthesis({ status: 'review', scores: merged, checks: reply.checks, filled: Object.keys(reply.scores), html: tinettiResultHtml({ scores: merged }, observations), observations, source, request })
     } catch (cause) { setSynthesis({ status: 'error', message: cause instanceof Error ? cause.message : 'Synthèse impossible.' }) }
   }
+  // Revoir la dernière synthèse sans relancer l’IA ; le texte suit la grille actuelle s’il n’a pas été validé depuis.
+  const view = () => {
+    const changedNotes = htmlToText(latestNotes.current) !== ai.source
+    setSynthesis({ status: 'review', scores, checks: ai.checks.filter(check => scores[check.row] !== undefined), filled: ai.filled.filter(row => scores[row] !== undefined), html: resultHtml || tinettiResultHtml({ scores }, ai.observations ?? ''), observations: ai.observations ?? '', source: ai.source, notice: changedNotes ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : '' })
+  }
   const validate = (html: string) => {
+    if (synthesis?.status !== 'review') return
     const value = sanitizeBilanHtml(html)
-    setResultHtml(value); setSynthesis(null); changed.current = true
-    void run(() => repository.setTest(date, id, 'tinetti', { resultHtml: value }))
+    const { scores: merged, checks, filled, observations, source } = synthesis
+    setScores(merged); setResultHtml(value); setAi({ observations, checks, filled, source }); setSynthesis(null); changed.current = true
+    void run(() => repository.setTest(date, id, 'tinetti', { scores: merged, resultHtml: value, aiObservations: observations, aiChecks: checks, aiFilled: filled, aiSource: source }))
   }
   const toggleKeyboard = (open: boolean) => { editor.current?.setKeyboard(open); setKeyboard(open) }
   const goTo = (index: number) => { const box = panes.current; if (box) box.scrollTo({ left: index * box.clientWidth, behavior: 'smooth' }) }
@@ -101,12 +115,15 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     <ScreenHeader back={back} backLabel={label} patient={entry.patient}
       tools={<span className="total-badge" aria-label={`Total ${score.total} sur ${score.max}`}>Tinetti {score.total}/{score.max}</span>}
       copied={copied} copyDisabled={empty} onCopy={() => void copy(resultHtml || tinettiResultHtml({ scores }, notesHtml))} onCancel={() => void cancel()} />
-    <div className="pane-tabs two with-action" role="tablist" aria-label="Volets du test">
+    <div className="pane-tabs two" role="tablist" aria-label="Volets du test">
       {tabs.map((tab, index) => <button key={tab} type="button" role="tab" aria-selected={pane === index} onClick={() => goTo(index)}>{tab}</button>)}
-      <button type="button" className="synth-button" disabled={!!assistant.unavailable || empty || synthesis?.status === 'loading'} title={assistant.unavailable || 'Synthèse par l’IA'} onClick={() => void synthesize()}>{synthesis?.status === 'loading' ? 'Synthèse…' : '✨ Synthèse'}</button>
+    </div>
+    <div className="synth-bar">
+      <span className={`synth-state${resultHtml ? ' done' : ''}`}>{resultHtml ? '✓ Synthèse validée' : ai.observations !== undefined ? 'Synthèse à revalider' : 'Synthèse IA'}</span>
+      {(resultHtml || ai.observations !== undefined) && <button type="button" onClick={view}>Voir</button>}
+      <button type="button" className="synth-button" disabled={!!assistant.unavailable || empty || synthesis?.status === 'loading'} title={assistant.unavailable || 'Synthèse par l’IA'} onClick={() => void synthesize()}>{synthesis?.status === 'loading' ? 'Synthèse…' : ai.observations !== undefined ? '✨ Relancer' : '✨ Lancer'}</button>
     </div>
     {synthesis?.status === 'error' && <p className="field-error" role="alert">{synthesis.message}</p>}
-    {resultHtml && !synthesis && <p className="synth-done">✓ Synthèse validée, prête à copier</p>}
     {previous && <p className="previous-note">★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}
     <div className="panes" ref={panes} onScroll={event => { const box = event.currentTarget; showPane(Math.round(box.scrollLeft / Math.max(1, box.clientWidth))) }}>
       <div className="pane" role="tabpanel" aria-label="Grille">{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
@@ -127,7 +144,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
         <RichEditor ref={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={keyboard} placeholder="Observations" onChange={saveNotes} onFormatState={setFormat} />
       </section>
     </div>
-    {synthesis?.status === 'review' && <SynthesisReview scores={scores} checks={synthesis.checks} initialHtml={synthesis.html} name={name} onValidate={validate} onCancel={() => setSynthesis(null)} />}
+    {synthesis?.status === 'review' && <SynthesisReview scores={synthesis.scores} checks={synthesis.checks} filled={synthesis.filled} initialHtml={synthesis.html} name={name} request={synthesis.request} notice={synthesis.notice} onValidate={validate} onCancel={() => setSynthesis(null)} />}
     {keyboard
       ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
       : <DictationFooter dictation={dictation}

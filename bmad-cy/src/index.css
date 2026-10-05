@@ -245,9 +245,7 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .prompt-editor summary { cursor:pointer; color:var(--accent); font-size:.88rem; font-weight:700; }
 .prompt-editor textarea { margin-top:.5rem; line-height:1.4; }
 /* Synthèse IA du test : bouton dans la barre des volets, relecture en surimpression. */
-.pane-tabs.with-action { grid-template-columns:1fr 1fr auto; }
 .synth-button { min-height:36px; padding:.2rem .6rem; font-size:.78rem; color:var(--accent); border-color:var(--accent); }
-.synth-done { margin:0; color:#2e7a4b; font-size:.78rem; font-weight:700; text-align:center; }
 .synthesis { position:absolute; z-index:5; inset:0; display:flex; flex-direction:column; gap:.6rem; padding:calc(.6rem + env(safe-area-inset-top)) max(1.3rem,env(safe-area-inset-right)) calc(.7rem + env(safe-area-inset-bottom)) max(1.3rem,env(safe-area-inset-left)); background:#f6f7f9; }
 .synthesis-scroll { display:flex; flex:1; flex-direction:column; gap:.4rem; min-height:0; overflow-y:auto; }
 .synthesis h2 { margin:.2rem 0; font-size:.95rem; }
@@ -263,3 +261,12 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .synthesis-actions button { min-width:8rem; }
 .tinetti-page { position:fixed; }
 .assist-row { display:flex; gap:.5rem; justify-content:center; }
+/* Barre de synthèse distincte des onglets Grille / Dictée. */
+.synth-bar { display:flex; align-items:center; gap:.4rem; padding:.3rem .5rem; border:1px dashed #c4ced8; border-radius:10px; background:#fff; }
+.synth-state { flex:1; color:var(--muted); font-size:.8rem; font-weight:700; }
+.synth-state.done { color:#2e7a4b; }
+.synth-bar button { min-height:34px; padding:.15rem .6rem; font-size:.8rem; }
+.ai-mark { color:var(--accent); font-weight:800; font-size:.75rem; }
+.synth-notice { margin:0; padding:.4rem .5rem; border-radius:8px; background:#fff7e0; color:#7a5500; font-size:.8rem; }
+.sent-data summary { cursor:pointer; color:var(--muted); font-size:.78rem; font-weight:700; }
+.sent-data pre { max-height:14rem; overflow:auto; margin:.3rem 0 0; padding:.5rem; border-radius:8px; background:#eef1f4; font-size:.68rem; white-space:pre-wrap; }
