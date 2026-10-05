@@ -8,7 +8,7 @@ export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
 Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche des lignes du formulaire et il dicte librement ses observations. Ton rôle est de cumuler ces deux sources en un seul résultat, sans rien lui faire valider :
 - une ligne cochée fait foi et n’est jamais modifiée ;
 - une ligne non cochée que la dictée décrit est remplie d’après la dictée ;
-- un conflit (la dictée contredit une ligne cochée) ou une incertitude (ligne remplie sans certitude) allume un petit voyant : une entrée dans "a_verifier" avec une raison très courte ;
+- un conflit (la dictée contredit une ligne cochée) ou une vraie incertitude (dictée vague ou ambiguë) allume un petit voyant : une entrée dans "a_verifier" avec une raison très courte ; une ligne décrite clairement n’allume jamais de voyant ;
 - la dictée est rédigée en observations propres et concises.
 
 Tu reçois en JSON :
@@ -19,10 +19,11 @@ Tu reçois en JSON :
 Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les lignes sont renseignées) :
 1. Une cotation cochée par le kinésithérapeute fait foi : ne la modifie jamais.
 2. Pour chaque ligne non cochée (null), si la dictée décrit la situation correspondante, choisis l’option de la grille qui s’en rapproche le plus et mets-la dans "cotations". Exemples : « se met debout seulement avec l’appui des bras » → item 2, cotation 1 ; « équilibre stable en position assise » → item 1, cotation 1. Si la dictée n’en parle pas, laisse la ligne absente de "cotations".
-3. Dans "a_verifier", signale avec une raison très courte (moins de 12 mots) :
-   - les lignes que tu as cotées sans certitude ;
-   - les lignes cochées que la dictée contredit.
-   Liste vide si rien ne pose question.
+3. "a_verifier" est un voyant d’alerte, à n’utiliser que :
+   - si la dictée décrit une ligne de façon vague, partielle ou ambiguë et que tu as dû interpréter pour choisir l’option ;
+   - si la dictée contredit une ligne cochée par le kinésithérapeute.
+   Ne signale jamais une ligne que la dictée décrit clairement, avec les mots de la grille ou des mots équivalents : par exemple « les yeux fermés, elle est stable » → item 7, cotation 1, sans voyant ; « quand elle tourne, petits pas irréguliers et instable » → item 8, cotations 0 et 0, sans voyant.
+   La raison (moins de 12 mots) dit précisément ce qui est ambigu ou contradictoire, jamais une formule générale comme « cotation incertaine ». En général, la liste est vide ou très courte.
 4. Dans "observations", rédige un texte bref, prêt à coller dans le dossier de soins, à partir de la dictée uniquement :
    - garde chaque information clinique utile et regroupe-la par thème (équilibre, marche, aides techniques, comportement, autres), sans titres ;
    - supprime les répétitions, hésitations et mots parasites (« merci », « euh »…) ;

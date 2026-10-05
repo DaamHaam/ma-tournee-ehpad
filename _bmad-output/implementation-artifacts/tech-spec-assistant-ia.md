@@ -45,3 +45,7 @@ Constat : 25 à 30 s pour une synthèse avec un modèle « flash ». L’applica
 - `provider: { sort: 'latency' }` : OpenRouter choisit l’hébergeur le plus réactif ;
 - requête allégée : options envoyées seulement pour les lignes non cochées (une ligne cochée porte son libellé).
 - Mesure affichée : durée dans la barre (« ✓ Synthèse faite en 3,2 s ») et, dans « Données envoyées », jetons envoyés, reçus et de réflexion. « Tester le modèle » affiche aussi la durée.
+
+## v0.15.2 — voyants plus justes
+
+Après la correction de vitesse (1,2 s, 181 jetons reçus, aucun de réflexion), le modèle signalait « cotation incertaine » sur des lignes pourtant dictées explicitement. Le prompt précise désormais : voyant seulement pour une dictée vague, partielle ou ambiguë, ou une contradiction avec une ligne cochée ; jamais pour une ligne décrite clairement (exemples items 7 et 8) ; raison précise, jamais une formule générale. Piste notée : Jev (modèle de décision avec probabilités) pour la catégorisation, LLM pour la rédaction.
