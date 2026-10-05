@@ -4,7 +4,7 @@ import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } fr
 import { Icon } from './screen'
 import { ICONS } from './screenUtils'
 
-// Relecture rapide de la synthèse : réponses cochées (⚠ là où l’IA doute), puis texte final modifiable avant validation.
+// Consultation de la synthèse (facultative) : réponses (✨ cotées par l’IA, ⚠ à vérifier) et texte à copier, retouchable.
 export function SynthesisReview({ scores, checks, filled, initialHtml, name, request, notice, onValidate, onCancel }: {
   scores: Record<string, number>; checks: { row: string; reason: string }[]; filled: string[]; initialHtml: string; name: string
   request?: string; notice?: string; onValidate: (html: string) => void; onCancel: () => void
@@ -36,6 +36,6 @@ export function SynthesisReview({ scores, checks, filled, initialHtml, name, req
       <RichEditor ref={editor} initialHtml={initialHtml} label={`Texte final Tinetti pour ${name}`} keyboard={keyboard} placeholder="Texte final" onChange={value => setHtml(value)} onFormatState={setFormat} />
       {request && <details className="sent-data"><summary>Données envoyées à l’IA</summary><pre>{JSON.stringify(JSON.parse(request), null, 1)}</pre></details>}
     </div>
-    <div className="action-row synthesis-actions"><button type="button" className="primary" onClick={() => onValidate(html)}>Valider</button><button type="button" onClick={onCancel}>Annuler</button></div>
+    <div className="action-row synthesis-actions"><button type="button" className="primary" onClick={() => onValidate(html)}>Enregistrer le texte</button><button type="button" onClick={onCancel}>Fermer</button></div>
   </div>
 }

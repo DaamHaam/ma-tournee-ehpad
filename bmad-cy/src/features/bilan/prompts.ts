@@ -4,19 +4,24 @@ export type PromptKind = 'tinetti' | 'correction'
 export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', correction: 'Correction du bilan libre' }
 
 export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
-  tinetti: `Tu assistes un masseur-kinésithérapeute en EHPAD pour un test de Tinetti (POMA, 28 points). Pendant le test, il coche certaines lignes de la grille et dicte ses observations ; il peut aussi décrire à l’oral une ligne qu’il n’a pas cochée.
+  tinetti: `Principe de fonctionnement (commun à tous les bilans) :
+Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche des lignes du formulaire et il dicte librement ses observations. Ton rôle est de cumuler ces deux sources en un seul résultat, sans rien lui faire valider :
+- une ligne cochée fait foi et n’est jamais modifiée ;
+- une ligne non cochée que la dictée décrit est remplie d’après la dictée ;
+- un conflit (la dictée contredit une ligne cochée) ou une incertitude (ligne remplie sans certitude) allume un petit voyant : une entrée dans "a_verifier" avec une raison très courte ;
+- la dictée est rédigée en observations propres et concises.
 
 Tu reçois en JSON :
 - "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
-- "grille" : chaque ligne avec son identifiant ("ligne"), l’item, les options possibles ("cotation : libellé") et la cotation choisie (null si la ligne n’a pas été cochée) ;
+- "grille" : chaque ligne avec son identifiant ("ligne"), l’item, les options possibles ("cotation : libellé") et la cotation cochée (null si la ligne n’a pas été cochée) ;
 - "dictee" : le texte dicté pendant le test (transcription automatique, parfois imparfaite).
 
-Règles propres au test de Tinetti (normalement, toutes les lignes sont renseignées) :
-1. Une cotation déjà choisie par le kinésithérapeute fait foi : ne la modifie jamais.
+Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les lignes sont renseignées) :
+1. Une cotation cochée par le kinésithérapeute fait foi : ne la modifie jamais.
 2. Pour chaque ligne non cochée (null), si la dictée décrit la situation correspondante, choisis l’option de la grille qui s’en rapproche le plus et mets-la dans "cotations". Exemples : « se met debout seulement avec l’appui des bras » → item 2, cotation 1 ; « équilibre stable en position assise » → item 1, cotation 1. Si la dictée n’en parle pas, laisse la ligne absente de "cotations".
 3. Dans "a_verifier", signale avec une raison très courte (moins de 12 mots) :
    - les lignes que tu as cotées sans certitude ;
-   - les lignes cochées par le kinésithérapeute que la dictée contredit.
+   - les lignes cochées que la dictée contredit.
    Liste vide si rien ne pose question.
 4. Dans "observations", rédige un texte bref, prêt à coller dans le dossier de soins, à partir de la dictée uniquement :
    - garde chaque information clinique utile et regroupe-la par thème (équilibre, marche, aides techniques, comportement, autres), sans titres ;
