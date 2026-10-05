@@ -197,6 +197,27 @@ describe('stockage local', () => {
     expect(patients.find(patient => patient.lastName === 'Fictif')?.group).toBe(false)
   })
 
+  it('date le bilan à sa première saisie, le décoche s’il change, le supprime', async () => {
+    await repository.initialize()
+    await repository.ensureDay('2026-09-08')
+    const [alice] = (await database.patients.toArray()).filter(patient => patient.lastName === 'Martin')
+    await repository.setBilan('2026-09-08', alice.id, 'Début', '2026-09-08T09:00:00Z')
+    await repository.setBilan('2026-09-08', alice.id, 'Début suite', '2026-09-08T09:30:00Z')
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id]).toMatchObject({ bilan: 'Début suite', bilanAt: '2026-09-08T09:00:00Z' })
+    await repository.markBilanCopied('2026-09-08', alice.id)
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilanCopied).toBe(true)
+    expect((await database.patients.get(alice.id))?.transDates).toEqual([TODAY])
+    await repository.markBilanCopied('2026-09-08', alice.id)
+    expect((await database.patients.get(alice.id))?.transDates).toEqual([TODAY])
+    await repository.setBilan('2026-09-08', alice.id, 'Début suite modifiée')
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilanCopied).toBeUndefined()
+    await repository.deleteBilan('2026-09-08', alice.id)
+    const entry = (await database.days.get('2026-09-08'))?.entries[alice.id]
+    expect(entry?.bilan).toBe('')
+    expect(entry?.bilanAt).toBeUndefined()
+    await expect(repository.markBilanCopied('2026-09-08', alice.id)).rejects.toThrow('Ce bilan n’existe plus.')
+  })
+
   it('n’exporte pas la clé OpenRouter et la conserve lors d’une restauration', async () => {
     await repository.initialize()
     await repository.setSetting('openrouterKey', 'sk-or-secret')

@@ -25,7 +25,7 @@ h1 { margin-bottom:.2rem; font-size:clamp(1.55rem,7vw,2.1rem); letter-spacing:-.
 h2 { margin-bottom:.7rem; font-size:1rem; letter-spacing:-.01em; }
 
 main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) calc(6.4rem + env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left)); }
-.bottom-nav { position:fixed; z-index:30; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(3,1fr); padding:.35rem max(.5rem,env(safe-area-inset-right)) calc(.35rem + env(safe-area-inset-bottom)) max(.5rem,env(safe-area-inset-left)); border-top:1px solid var(--line); background:rgba(255,255,255,.97); box-shadow:0 -8px 28px rgba(32,42,54,.08); }
+.bottom-nav { position:fixed; z-index:30; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(4,1fr); padding:.35rem max(.5rem,env(safe-area-inset-right)) calc(.35rem + env(safe-area-inset-bottom)) max(.5rem,env(safe-area-inset-left)); border-top:1px solid var(--line); background:rgba(255,255,255,.97); box-shadow:0 -8px 28px rgba(32,42,54,.08); }
 .bottom-nav a { display:grid; place-items:center; align-content:center; min-height:52px; border-radius:10px; color:#647181; font-size:.68rem; font-weight:700; line-height:1.1; text-align:center; text-decoration:none; }
 .bottom-nav a.active { background:var(--accent-soft); color:var(--accent); }
 
@@ -168,3 +168,25 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .follow-up-check input { width:26px; min-height:26px; accent-color:var(--accent); }
 .follow-up .subtle { padding-left:2.1rem; font-size:.78rem; }
 .history-toggle { display:inline-flex; align-items:center; gap:.4rem; min-height:44px; margin-bottom:.9rem; color:var(--accent); }
+/* Actions discrètes d’un bilan : copier (vaut transmission) et supprimer. */
+.bilan-actions { display:flex; flex:none; gap:.35rem; }
+.icon-button { display:grid; place-items:center; min-width:40px; min-height:40px; padding:.3rem; color:var(--muted); border-color:#e1e6eb; }
+.icon-button.copied { border-color:#2e7a4b; color:#2e7a4b; font-weight:800; }
+.icon-button.danger { color:var(--danger); border-color:#efd3d6; }
+.history-bilan-row { display:flex; align-items:flex-start; gap:.5rem; padding:0 0 .65rem; }
+.history-bilan-row .history-bilan { flex:1; margin:0; }
+.bilan-list { margin:0; padding:.3rem .95rem; list-style:none; }
+.bilan-list li+li { border-top:1px solid #edf0f2; }
+.bilan-row { display:flex; align-items:center; gap:.5rem; min-height:56px; }
+.bilan-summary { display:flex; flex:1; align-items:center; gap:.55rem; min-width:0; border:0; background:none; padding:.4rem 0; text-align:left; }
+.bilan-summary strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bilan-summary .triangle { flex:none; width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:9px solid var(--muted); transition:transform .15s; }
+.bilan-summary[aria-expanded="true"] .triangle { transform:rotate(90deg); }
+.copied-mark { color:#2e7a4b; font-weight:800; }
+.bilan-list li.copied strong { color:var(--muted); }
+.bilan-body { padding:0 0 .8rem 1.3rem; }
+.bilan-body p { margin:0 0 .5rem; font-size:.88rem; white-space:pre-wrap; -webkit-user-select:text; user-select:text; }
+.bilan-body a { color:var(--accent); font-size:.85rem; font-weight:700; }
+.dictation-bar { display:flex; align-items:center; justify-content:center; gap:1.6rem; }
+.newline-button { display:grid; place-items:center; width:52px; height:52px; border-radius:50%; padding:0; color:var(--accent); }
+.dictation-bar .keyboard-toggle { width:52px; height:52px; border-radius:50%; padding:0; }

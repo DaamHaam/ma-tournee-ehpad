@@ -12,6 +12,14 @@ describe('sauvegarde complète', () => {
     expect(backup).toMatchObject({ format: 'ma-tournee-sauvegarde', version: 1, createdAt: '2026-09-25T10:00:00.000Z', ...data })
   })
 
+  it('relit l’heure et l’état copié d’un bilan, refuse des valeurs invalides', () => {
+    const withBilan = JSON.parse(buildBackup(data, ''))
+    withBilan.days[0].entries.p1 = { ...withBilan.days[0].entries.p1, bilan: 'Marche', bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true }
+    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1).toMatchObject({ bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true })
+    withBilan.days[0].entries.p1.bilanCopied = 'oui'
+    expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+  })
+
   it('complète les champs absents d’un patient plus ancien', () => {
     const legacy = JSON.parse(buildBackup(data, ''))
     legacy.patients = [{ id: 'p2', lastName: 'ESSAI' }]

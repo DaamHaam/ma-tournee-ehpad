@@ -39,7 +39,7 @@ function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)
   const entries: Day['entries'] = {}
   for (const [id, entry] of Object.entries(value.entries)) {
-    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
+    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
     entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]
   }
   const day = { mood: null, comment: '', ...value, entries } as Day

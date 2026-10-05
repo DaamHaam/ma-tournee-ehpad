@@ -80,7 +80,32 @@ export class TourRepository {
   }
   async setSession(date: string, id: string, session: 'A' | 'B'): Promise<void> { await this.changeDay(date, day => { const entry = this.entry(day, id); entry.session = toggleSession(entry.session, session) }) }
   async setNote(date: string, id: string, note: string): Promise<void> { await this.changeDay(date, day => { this.entry(day, id).note = note }) }
-  async setBilan(date: string, id: string, bilan: string): Promise<void> { await this.changeDay(date, day => { this.entry(day, id).bilan = bilan }) }
+  // Un bilan modifié n’est plus considéré comme copié ; vidé, il perd aussi son heure de début.
+  async setBilan(date: string, id: string, bilan: string, now = new Date().toISOString()): Promise<void> {
+    await this.changeDay(date, day => {
+      const entry = this.entry(day, id)
+      if (entry.bilan === bilan) return
+      entry.bilan = bilan
+      delete entry.bilanCopied
+      if (!bilan.trim()) delete entry.bilanAt
+      else entry.bilanAt ??= now
+    })
+  }
+  async deleteBilan(date: string, id: string): Promise<void> { await this.setBilan(date, id, '') }
+  // Copier un bilan vaut transmission faite le jour de la copie (cochée dans la fiche si le patient existe encore).
+  async markBilanCopied(date: string, id: string): Promise<void> {
+    if (!validDate(date)) throw new Error('Choisissez une date valide.')
+    await this.database.transaction('rw', this.database.days, this.database.patients, async () => {
+      const day = await this.database.days.get(date)
+      const entry = day?.entries[id]
+      if (!day || !entry?.bilan?.trim()) throw new Error('Ce bilan n’existe plus.')
+      entry.bilanCopied = true
+      await this.database.days.put(day)
+      const patient = await this.database.patients.get(id)
+      const today = this.today()
+      if (patient && !(patient.transDates ?? []).includes(today)) await this.database.patients.put({ ...patient, transDates: [...(patient.transDates ?? []), today].sort() })
+    })
+  }
   async setMood(date: string, mood: Mood): Promise<void> { await this.changeDay(date, day => { day.mood = mood }) }
   async setComment(date: string, comment: string): Promise<void> { await this.changeDay(date, day => { day.comment = comment }) }
   async reorder(date: string, order: string[]): Promise<void> {

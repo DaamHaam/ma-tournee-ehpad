@@ -6,7 +6,8 @@ export interface Patient extends Identity, PatientCare { archived: boolean; crea
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '', group: false } }
-export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string }
+// bilanAt : heure de première saisie du bilan (ordre de l’onglet Bilans) ; bilanCopied : copié depuis la dernière modification.
+export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanAt?: string; bilanCopied?: boolean }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
@@ -74,4 +75,13 @@ export function followUpLevel(last: string | null, today: string): FollowUpLevel
 export function entryVisible(entry: Entry, patient: Pick<Patient, 'archived'> | undefined, date: string, today: string): boolean {
   if (patient && !patient.archived) return true
   return date <= today && hasTrace(entry)
+}
+// Bilans d’une journée dans l’ordre où ils ont été commencés ; les bilans sans heure (anciens) suivent l’ordre de la tournée.
+export interface DayBilan { id: string; patient: Identity; text: string; copied: boolean }
+export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
+  const rank = new Map(day.order.map((id, index) => [id, index]))
+  return Object.entries(day.entries)
+    .filter(([, entry]) => (entry.bilan ?? '').trim() !== '')
+    .sort(([a, x], [b, y]) => (x.bilanAt ?? '\uffff').localeCompare(y.bilanAt ?? '\uffff') || (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity))
+    .map(([id, entry]) => ({ id, patient: entry.patient, text: entry.bilan!, copied: !!entry.bilanCopied }))
 }

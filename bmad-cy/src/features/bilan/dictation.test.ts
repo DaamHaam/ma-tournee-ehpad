@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { audioExtension, formatDuration, insertAtCursor, NETWORK_ERROR, transcriptionError } from './dictation'
+import { audioExtension, formatDuration, insertAtCursor, insertNewline, NETWORK_ERROR, transcriptionError } from './dictation'
 import { checkKey, transcribe } from './openrouter'
 
 describe('dictée des bilans', () => {
@@ -14,6 +14,11 @@ describe('dictée des bilans', () => {
     expect(insertAtCursor('Marche lente.', 'rapide', 7, 12)).toEqual({ value: 'Marche rapide.', cursor: 13 })
     expect(insertAtCursor('Fin', 'après', 99)).toEqual({ value: 'Fin après', cursor: 9 })
     expect(insertAtCursor('Rien', '   ', 2)).toEqual({ value: 'Rien', cursor: 2 })
+  })
+  it('passe à la ligne au curseur ou à la place de la sélection', () => {
+    expect(insertNewline('Marche. Douleur.', 7)).toEqual({ value: 'Marche.\n Douleur.', cursor: 8 })
+    expect(insertNewline('Marche. Douleur.', 7, 8)).toEqual({ value: 'Marche.\nDouleur.', cursor: 8 })
+    expect(insertNewline('', 3)).toEqual({ value: '\n', cursor: 1 })
   })
   it('déduit l’extension audio et formate la durée', () => {
     expect(audioExtension('audio/mp4')).toBe('m4a')

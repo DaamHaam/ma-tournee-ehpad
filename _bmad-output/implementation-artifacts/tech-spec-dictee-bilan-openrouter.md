@@ -33,3 +33,12 @@ Seul l’audio part chez OpenRouter : aucun nom, identifiant ni donnée de la ba
 - Unitaires : insertion au curseur, extension audio, messages d’erreur, requête multipart simulée, clé exclue de la sauvegarde et conservée à la restauration.
 - Playwright : bilan plein écran sans clé ; dictée avec micro et OpenRouter simulés (clé testée, insertion au curseur, enchaînement, clé absente du fichier de sauvegarde).
 - Réel : sur iPhone avec la clé de l’utilisateur.
+
+## Lot 1 bis — onglet Bilans, copie et suppression (v0.11.0)
+
+- Onglet « Bilans » en 3ᵉ position (Journée · Patients · Bilans · Réglages) : bilans de la journée choisie (aujourd’hui par défaut), dans l’ordre où ils ont été commencés (`bilanAt`, heure de première saisie ; anciens bilans sans heure : ordre de la tournée). Repliés ; dépliés : texte et « Modifier » (retour vers l’onglet Bilans). Compteur « n / N bilans copiés ».
+- Chaque bilan a deux icônes, « Copier » et « Supprimer », dans l’onglet Bilans et dans l’historique des séances de la fiche patient.
+- Copier (y compris depuis la page du bilan) : texte seul (la mise en forme viendra au lot 2), marque ✓ (`bilanCopied`) et coche la transmission du jour de la copie dans la fiche. Modifier le bilan retire la marque ✓. Plus tard, une catégorisation automatique choisira éval ou transmission.
+- Supprimer : confirmation, puis le bilan est vidé (heure et marque effacées) ; la transmission déjà cochée reste.
+- Page du bilan : barre du bas ↵ (aller à la ligne au curseur, sans clavier) · micro · clavier.
+- Champs optionnels `bilanAt` et `bilanCopied` dans les journées : pas de changement de schéma Dexie ; la sauvegarde v1 les relit et accepte les fichiers qui ne les ont pas.

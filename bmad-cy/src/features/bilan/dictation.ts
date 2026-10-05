@@ -20,6 +20,13 @@ export function insertAtCursor(value: string, insert: string, start: number, end
   return { value: head + after, cursor: head.length }
 }
 
+// Passage à la ligne à la position du curseur (remplace la sélection).
+export function insertNewline(value: string, start: number, end = start): { value: string; cursor: number } {
+  const from = Math.max(0, Math.min(start, value.length))
+  const to = Math.max(from, Math.min(end, value.length))
+  return { value: `${value.slice(0, from)}\n${value.slice(to)}`, cursor: from + 1 }
+}
+
 // Extension attendue par OpenRouter selon le type produit par l’enregistreur (Safari iPhone : audio/mp4).
 export function audioExtension(mimeType: string): string {
   const type = mimeType.toLowerCase()

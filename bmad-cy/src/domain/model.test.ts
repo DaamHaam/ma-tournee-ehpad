@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { applyOrder, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
+import { applyOrder, dayBilans, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
 
 describe('règles du domaine', () => {
+  it('liste les bilans dans l’ordre où ils ont été commencés, les anciens selon la tournée', () => {
+    const identity = (id: string) => ({ id, lastName: id.toUpperCase(), firstName: '', room: '', priority: '', demo: false })
+    const entry = (id: string, extra: object) => ({ patient: identity(id), session: null, note: '', ...extra })
+    const bilans = dayBilans({ order: ['a', 'b', 'c', 'd', 'e'], entries: {
+      a: entry('a', { bilan: 'ancien A' }), b: entry('b', { bilan: 'deuxième', bilanAt: '2026-10-05T10:00:00Z', bilanCopied: true }),
+      c: entry('c', { bilan: 'premier', bilanAt: '2026-10-05T09:00:00Z' }), d: entry('d', { bilan: '   ' }), e: entry('e', { bilan: 'ancien E' }),
+    } })
+    expect(bilans.map(bilan => [bilan.id, bilan.copied])).toEqual([['c', false], ['b', true], ['a', false], ['e', false]])
+  })
   it('bascule A/B de façon exclusive et réversible', () => {
     expect(toggleSession(null, 'A')).toBe('A')
     expect(toggleSession('A', 'B')).toBe('B')

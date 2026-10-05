@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import { BilanActions } from '../bilan/BilanActions'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { dateLabel, fullName, hasTrace, parseDate, validDate, type Patient } from '../../domain/model'
@@ -116,7 +117,7 @@ export function PatientDetail() {
     {!!history?.length && historyOpen && <section id="patient-history" className="card history" aria-label="Séances et notes">
       <ol>{history.map(day => {
         const entry = day.entries[id]
-        return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}</span>{entry.bilan?.trim() && <p className="history-bilan">{entry.bilan}</p>}</Link></li>
+        return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}</span></Link>{entry.bilan?.trim() && <div className="history-bilan-row"><p className="history-bilan">{entry.bilan}</p><BilanActions date={day.date} id={id} name={fullName(patient)} text={entry.bilan} /></div>}</li>
       })}</ol>
     </section>}
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>
