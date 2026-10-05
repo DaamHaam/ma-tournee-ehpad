@@ -31,18 +31,30 @@ export async function checkKey(key: string, fetcher: Fetch = fetch): Promise<voi
   if (!response.ok) throw new Error(transcriptionError(response.status, await detail(response)))
 }
 
+export interface ChatResult { content: string; seconds: number; promptTokens?: number; completionTokens?: number; reasoningTokens?: number }
 // Appel unique au modèle d’analyse (une seule passe) ; json demande une réponse au format JSON.
-export async function chat(key: string, model: string, system: string, user: string, json: boolean, fetcher: Fetch = fetch): Promise<string> {
-  let response: Response
-  try {
-    response = await fetcher(`${OPENROUTER_API}/chat/completions`, {
-      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], ...(json ? { response_format: { type: 'json_object' } } : {}) }),
-    })
-  } catch { throw new Error(NETWORK_ERROR) }
-  if (!response.ok) throw new Error(transcriptionError(response.status, await detail(response)).replace('Transcription impossible', 'Analyse impossible'))
-  const body: unknown = await response.json().catch(() => null)
-  const content = (body as { choices?: { message?: { content?: unknown } }[] } | null)?.choices?.[0]?.message?.content
+// Rapidité : réflexion du modèle désactivée (jetons de raisonnement inutiles ici) et hébergeur le plus réactif.
+// Si le modèle impose sa réflexion et refuse l’option, l’appel est refait une fois sans elle.
+export async function chat(key: string, model: string, system: string, user: string, json: boolean, fetcher: Fetch = fetch, now: () => number = () => performance.now()): Promise<ChatResult> {
+  const started = now()
+  const send = async (fast: boolean) => {
+    try {
+      return await fetcher(`${OPENROUTER_API}/chat/completions`, {
+        method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model, temperature: 0.2, messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+          ...(json ? { response_format: { type: 'json_object' } } : {}),
+          ...(fast ? { reasoning: { enabled: false }, provider: { sort: 'latency' } } : {}),
+        }),
+      })
+    } catch { throw new Error(NETWORK_ERROR) }
+  }
+  let response = await send(true)
+  let error = response.ok ? '' : await detail(response)
+  if (!response.ok && response.status === 400 && /reason/i.test(error)) { response = await send(false); error = response.ok ? '' : await detail(response) }
+  if (!response.ok) throw new Error(transcriptionError(response.status, error).replace('Transcription impossible', 'Analyse impossible'))
+  const body = await response.json().catch(() => null) as { choices?: { message?: { content?: unknown } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } } | null
+  const content = body?.choices?.[0]?.message?.content
   if (typeof content !== 'string' || !content.trim()) throw new Error('Réponse de l’IA vide. Réessayez.')
-  return content
+  return { content, seconds: Math.round((now() - started) / 100) / 10, promptTokens: body?.usage?.prompt_tokens, completionTokens: body?.usage?.completion_tokens, reasoningTokens: body?.usage?.completion_tokens_details?.reasoning_tokens }
 }

@@ -4,10 +4,11 @@ import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } fr
 import { DictationFooter, Icon } from './screen'
 import { ICONS } from './screenUtils'
 import type { useDictation } from './useDictation'
+import type { ChatResult } from './openrouter'
 
 // Écran 1 de la synthèse : uniquement ce qui est catégorisé dans le formulaire (✨ coté par l’IA, ⚠ à vérifier).
-export function ReviewAnswers({ scores, checks, filled, request, notice, onBack, onNext }: {
-  scores: Record<string, number>; checks: { row: string; reason: string }[]; filled: string[]
+export function ReviewAnswers({ stats, scores, checks, filled, request, notice, onBack, onNext }: {
+  stats?: ChatResult | null; scores: Record<string, number>; checks: { row: string; reason: string }[]; filled: string[]
   request?: string; notice?: string; onBack: () => void; onNext: () => void
 }) {
   const doubts = new Map(checks.map(check => [check.row, check.reason]))
@@ -27,7 +28,7 @@ export function ReviewAnswers({ scores, checks, filled, request, notice, onBack,
         </li>
       }))}</ul>
       {!!missing.length && <p className="save-hint">Non cotés : {missing.join(', ')}.</p>}
-      {request && <details className="sent-data"><summary>Données envoyées à l’IA</summary><pre>{JSON.stringify(JSON.parse(request), null, 1)}</pre></details>}
+      {request && <details className="sent-data"><summary>Données envoyées à l’IA</summary>{stats && <p className="save-hint">Réponse en {String(stats.seconds).replace('.', ',')} s · {stats.promptTokens ?? '?'} jetons envoyés, {stats.completionTokens ?? '?'} reçus{stats.reasoningTokens ? `, dont ${stats.reasoningTokens} de réflexion` : ''}.</p>}<pre>{JSON.stringify(JSON.parse(request), null, 1)}</pre></details>}
     </div>
     <div className="action-row synthesis-actions"><button type="button" onClick={onBack}>Retour à la grille</button><button type="button" className="primary" onClick={onNext}>Valider</button></div>
   </div>

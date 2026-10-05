@@ -37,3 +37,11 @@ Seuls partent la grille, le texte dicté anonymisé et le sexe sous forme de mot
 - **Écran 2 « Transmission »** en plein écran : texte prêt à transmettre (score, interprétation, observations), dictée au curseur, ↵, G I S, clavier facultatif (fermé par défaut), « Valider » enregistre le texte final et ramène à la journée. La copie se fait ensuite ailleurs (onglet Bilans…) et reprend ce texte.
 - « Voir » rouvre l’écran 1 sans nouvel appel. « Relancer » demande l’autorisation si un texte de transmission est enregistré.
 - Prompts : c’est l’agent qui fait évoluer les prompts par défaut. Une modification faite dans Réglages est transitoire (stockée avec l’empreinte du prompt par défaut d’origine) et disparaît à la mise à jour suivante qui change ce prompt. Bouton « Copier » pour montrer sa version. Partage par fichiers du dépôt : idée notée dans Notion pour plus tard.
+
+## v0.15.1 — rapidité de la synthèse
+
+Constat : 25 à 30 s pour une synthèse avec un modèle « flash ». L’application ne fait qu’un appel ; le temps vient du modèle. Mesures :
+- `reasoning: { enabled: false }` (réflexion du modèle désactivée, inutile pour cette tâche) ; si le modèle impose sa réflexion (erreur 400 qui la mentionne), l’appel est refait une fois sans l’option ;
+- `provider: { sort: 'latency' }` : OpenRouter choisit l’hébergeur le plus réactif ;
+- requête allégée : options envoyées seulement pour les lignes non cochées (une ligne cochée porte son libellé).
+- Mesure affichée : durée dans la barre (« ✓ Synthèse faite en 3,2 s ») et, dans « Données envoyées », jetons envoyés, reçus et de réflexion. « Tester le modèle » affiche aussi la durée.

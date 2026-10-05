@@ -35,10 +35,12 @@ export function anonymizeWithMap(text: string, names: string[]): { text: string;
 
 // Contenu envoyé pour la synthèse Tinetti : grille cochée et dictée anonymisée, sans aucune identité.
 export function tinettiRequest(scores: Record<string, number>, dictation: string, sex: Sex): string {
-  const grille = TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => ({
-    ligne: row.id, partie: section.title, item: `${item.number}. ${item.title}${row.sub ? ` – ${row.sub}` : ''}`,
-    options: row.options.map(option => `${option.score} : ${option.label}`), cotation: scores[row.id] ?? null,
-  }))))
+  // Requête allégée (réponse plus rapide) : les options ne sont envoyées que pour les lignes à remplir ; une ligne cochée porte son libellé.
+  const grille = TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => {
+    const base = { ligne: row.id, partie: section.title, item: `${item.number}. ${item.title}${row.sub ? ` – ${row.sub}` : ''}` }
+    const chosen = row.options.find(option => option.score === scores[row.id])
+    return chosen ? { ...base, cotation: chosen.score, libelle: chosen.label } : { ...base, cotation: null, options: row.options.map(option => `${option.score} : ${option.label}`) }
+  })))
   return JSON.stringify({ patient: sexLabel(sex), grille, dictee: dictation })
 }
 

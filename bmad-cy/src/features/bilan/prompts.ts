@@ -13,7 +13,7 @@ Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche
 
 Tu reçois en JSON :
 - "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
-- "grille" : chaque ligne avec son identifiant ("ligne"), l’item, les options possibles ("cotation : libellé") et la cotation cochée (null si la ligne n’a pas été cochée) ;
+- "grille" : chaque ligne avec son identifiant ("ligne") et l’item ; une ligne cochée porte sa cotation et son libellé, une ligne non cochée porte "cotation": null et ses options possibles ("cotation : libellé") ;
 - "dictee" : le texte dicté pendant le test (transcription automatique, parfois imparfaite).
 
 Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les lignes sont renseignées) :

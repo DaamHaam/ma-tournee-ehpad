@@ -8,6 +8,7 @@ import { fullName, parseDate, validDate, type Entry, type Sex } from '../../doma
 import { hasTestContent, previousTest, TINETTI, tinettiScore, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
+import type { ChatResult } from './openrouter'
 import { anonymizeWithMap, parseTinettiReply, restoreNames, tinettiRequest } from './assistant'
 import { ReviewAnswers, TransmissionScreen } from './SynthesisReview'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
@@ -45,6 +46,8 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   // Dernière synthèse IA, gardée pour la revoir sans nouvel appel.
   const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource ?? '' })
   const [request, setRequest] = useState('')
+  // Durée et jetons de la dernière synthèse de cette séance, pour comprendre d’où vient l’attente.
+  const [stats, setStats] = useState<ChatResult | null>(null)
   // Synthèse en deux écrans : réponses du formulaire, puis transmission en plein écran.
   const [synthesis, setSynthesis] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'review' } | { status: 'transmission' } | null>(null)
   const transmission = useRef<RichEditorHandle>(null)
@@ -97,7 +100,9 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
       const source = htmlToText(latestNotes.current)
       const { text, found } = anonymizeWithMap(source, [entry.patient.lastName, entry.patient.firstName])
       const sent = tinettiRequest(scores, text, sex)
-      const reply = parseTinettiReply(await assistant.ask('tinetti', sent, true), scores)
+      const answer = await assistant.ask('tinetti', sent, true)
+      setStats(answer)
+      const reply = parseTinettiReply(answer.content, scores)
       const merged = { ...reply.scores, ...scores }
       const next = { observations: sanitizeBilanHtml(restoreNames(reply.observations, found)), checks: reply.checks, filled: Object.keys(reply.scores), source }
       setScores(merged); setAi(next); setResultHtml(''); setRequest(sent); setSynthesis({ status: 'review' }); changed.current = true
@@ -127,7 +132,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
       {tabs.map((tab, index) => <button key={tab} type="button" role="tab" aria-selected={pane === index} onClick={() => goTo(index)}>{tab}</button>)}
     </div>
     <div className="synth-bar">
-      <span className={`synth-state${ai.observations !== undefined && !notesChanged ? ' done' : ''}`}>{synthesis?.status === 'loading' ? 'Synthèse en cours…' : ai.observations === undefined ? 'Synthèse IA' : notesChanged ? 'Dictée modifiée depuis la synthèse' : `✓ Synthèse faite${ai.checks.length ? ` · ${ai.checks.length} ⚠` : ''}`}</span>
+      <span className={`synth-state${ai.observations !== undefined && !notesChanged ? ' done' : ''}`}>{synthesis?.status === 'loading' ? 'Synthèse en cours…' : ai.observations === undefined ? 'Synthèse IA' : notesChanged ? 'Dictée modifiée depuis la synthèse' : `✓ Synthèse faite${stats ? ` en ${String(stats.seconds).replace('.', ',')} s` : ''}${ai.checks.length ? ` · ${ai.checks.length} ⚠` : ''}`}</span>
       {ai.observations !== undefined && <button type="button" onClick={() => setSynthesis({ status: 'review' })}>Voir</button>}
       <button type="button" className="synth-button" disabled={!!assistant.unavailable || empty || synthesis?.status === 'loading'} title={assistant.unavailable || 'Synthèse par l’IA'} onClick={() => void synthesize()}>{synthesis?.status === 'loading' ? '…' : ai.observations !== undefined ? '✨ Relancer' : '✨ Lancer'}</button>
     </div>
@@ -153,7 +158,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
         <RichEditor ref={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={keyboard} placeholder="Observations" onChange={saveNotes} onFormatState={setFormat} />
       </section>
     </div>
-    {synthesis?.status === 'review' && <ReviewAnswers scores={scores} checks={ai.checks} filled={ai.filled} request={request || undefined} notice={notesChanged ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : ''} onBack={() => setSynthesis(null)} onNext={() => setSynthesis({ status: 'transmission' })} />}
+    {synthesis?.status === 'review' && <ReviewAnswers stats={stats} scores={scores} checks={ai.checks} filled={ai.filled} request={request || undefined} notice={notesChanged ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : ''} onBack={() => setSynthesis(null)} onNext={() => setSynthesis({ status: 'transmission' })} />}
     {synthesis?.status === 'transmission' && <TransmissionScreen initialHtml={testCopyHtml(record)} name={name} editor={transmission} dictation={dictation} onBack={() => setSynthesis({ status: 'review' })} onValidate={html => void validateTransmission(html)} />}
     {keyboard
       ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>

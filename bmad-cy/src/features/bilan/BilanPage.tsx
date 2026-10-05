@@ -56,7 +56,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
     setCorrection({ busy: true })
     try {
       const { text, found } = anonymizeWithMap(latest.current, [entry.patient.lastName, entry.patient.firstName])
-      const corrected = sanitizeBilanHtml(restoreNames(parseCorrection(await assistant.ask('correction', `Sexe : ${sexLabel(sex)}\n\nTexte :\n${text}`, false)), found))
+      const corrected = sanitizeBilanHtml(restoreNames(parseCorrection((await assistant.ask('correction', `Sexe : ${sexLabel(sex)}\n\nTexte :\n${text}`, false)).content), found))
       const previous = latest.current
       editor.current?.setHtml(corrected)
       setCorrection({ previous })

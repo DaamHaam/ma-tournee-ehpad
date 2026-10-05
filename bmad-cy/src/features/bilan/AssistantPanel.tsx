@@ -28,7 +28,7 @@ export function AssistantPanel() {
   const copyPrompt = async (kind: PromptKind) => setStatus(await copyText(settings.prompts[kind] || DEFAULT_PROMPTS[kind]) ? { ok: true, text: 'Prompt copié.' } : { ok: false, text: 'Copie impossible.' })
   const test = async () => {
     setBusy(true); setStatus(null)
-    try { await chat(settings.key, settings.model, 'Réponds seulement : OK', 'Test de connexion.', false); setStatus({ ok: true, text: 'Modèle joignable.' }) }
+    try { const result = await chat(settings.key, settings.model, 'Réponds seulement : OK', 'Test de connexion.', false); setStatus({ ok: true, text: `Modèle joignable (réponse en ${result.seconds} s).` }) }
     catch (cause) { setStatus({ ok: false, text: cause instanceof Error ? cause.message : 'Test impossible.' }) }
     finally { setBusy(false) }
   }

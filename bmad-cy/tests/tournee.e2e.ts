@@ -396,7 +396,7 @@ test.describe('dictée', () => {
     await model.fill('deepseek/modele-test')
     await model.blur()
     await page.getByRole('button', { name: 'Tester le modèle' }).click()
-    await expect(page.getByText('Modèle joignable.')).toBeVisible()
+    await expect(page.getByText(/^Modèle joignable \(réponse en/)).toBeVisible()
     await page.getByText('Prompt : Synthèse du test de Tinetti').click()
     const prompt = page.getByLabel('Prompt Synthèse du test de Tinetti')
     await expect(prompt).toHaveValue(/Règles propres au test de Tinetti/)
@@ -436,7 +436,7 @@ test.describe('dictée', () => {
     await expect(tries.getByRole('radio', { name: /^1 – / })).toHaveAttribute('aria-checked', 'true')
     await expect(tries.getByRole('radio', { name: /^1 – / })).toContainText('✨')
     await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('note')).toHaveText('⚠ dictée : se lève sans les bras')
-    await expect(page.getByText('✓ Synthèse faite · 2 ⚠')).toBeVisible()
+    await expect(page.getByText(/^✓ Synthèse faite en [0-9,]+ s · 2 ⚠$/)).toBeVisible()
     // « Voir » rouvre l’écran 1 sans nouvel appel ; « Valider » passe à la transmission en plein écran.
     const calls = bodies.length
     await page.getByRole('button', { name: 'Voir' }).click()

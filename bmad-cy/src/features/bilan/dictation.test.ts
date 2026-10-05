@@ -55,3 +55,23 @@ describe('dictée des bilans', () => {
     await expect(checkKey('k', async () => Response.json({ data: {} }))).resolves.toBeUndefined()
   })
 })
+
+describe('appel au modèle d’analyse', () => {
+  it('demande une réponse rapide (sans réflexion, hébergeur réactif) et mesure durée et jetons', async () => {
+    const { chat } = await import('./openrouter')
+    let clock = 1000
+    const fetcher = vi.fn(async () => { clock += 3200; return Response.json({ choices: [{ message: { content: '{"ok":1}' } }], usage: { prompt_tokens: 900, completion_tokens: 120, completion_tokens_details: { reasoning_tokens: 0 } } }) })
+    const result = await chat('k', 'deepseek/x', 'système', 'texte', true, fetcher, () => clock)
+    expect(result).toEqual({ content: '{"ok":1}', seconds: 3.2, promptTokens: 900, completionTokens: 120, reasoningTokens: 0 })
+    const body = JSON.parse((fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body).toMatchObject({ model: 'deepseek/x', reasoning: { enabled: false }, provider: { sort: 'latency' }, response_format: { type: 'json_object' } })
+  })
+  it('refait l’appel sans l’option si le modèle impose sa réflexion', async () => {
+    const { chat } = await import('./openrouter')
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(Response.json({ error: { message: 'Reasoning is mandatory for this endpoint' } }, { status: 400 }))
+      .mockResolvedValueOnce(Response.json({ choices: [{ message: { content: 'Texte' } }] }))
+    expect((await chat('k', 'm', 's', 'u', false, fetcher)).content).toBe('Texte')
+    expect(JSON.parse(fetcher.mock.calls[1][1].body).reasoning).toBeUndefined()
+  })
+})
