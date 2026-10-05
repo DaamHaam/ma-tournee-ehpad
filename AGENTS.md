@@ -65,6 +65,7 @@ npm run test:e2e
 - Une journée conserve son ordre et un snapshot minimal de l’identité des patients. Archiver ou supprimer un patient ne doit pas altérer les journées passées ni leurs exports.
 - Un patient archivé ou supprimé ne doit plus apparaître dans les tournées actuelles ou futures, sauf le jour même s’il y a déjà une trace (séance, note ou bilan) : il reste alors affiché avec sa mention pour rester corrigeable.
 - Consulter une journée passée ne la crée ni ne la modifie ; seule une saisie explicite l’enregistre.
+- Un bilan est stocké en texte brut (`bilan`) et, s’il est mis en forme, en HTML restreint (`bilanHtml` : seulement `<b>`, `<i>`, `<u>`, `<br>`, toujours filtré par `sanitizeBilanHtml` avant affichage ou copie).
 - Copier un bilan (onglet Bilans, historique ou page du bilan) le marque comme copié et coche la transmission du jour de la copie dans la fiche ; modifier le bilan retire la marque « copié », le supprimer ne décoche pas la transmission.
 - L’import de patients conserve l’identifiant d’un patient déjà connu (même nom et prénom, sans tenir compte de la casse ni des accents).
 - Les quatre patients du premier lancement sont explicitement fictifs et ne doivent être injectés qu’une seule fois.

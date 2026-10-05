@@ -81,11 +81,14 @@ export class TourRepository {
   async setSession(date: string, id: string, session: 'A' | 'B'): Promise<void> { await this.changeDay(date, day => { const entry = this.entry(day, id); entry.session = toggleSession(entry.session, session) }) }
   async setNote(date: string, id: string, note: string): Promise<void> { await this.changeDay(date, day => { this.entry(day, id).note = note }) }
   // Un bilan modifié n’est plus considéré comme copié ; vidé, il perd aussi son heure de début.
-  async setBilan(date: string, id: string, bilan: string, now = new Date().toISOString()): Promise<void> {
+  // html : version mise en forme du même bilan ; absente, le bilan est du texte brut.
+  async setBilan(date: string, id: string, bilan: string, html?: string, now = new Date().toISOString()): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
-      if (entry.bilan === bilan) return
+      if (entry.bilan === bilan && entry.bilanHtml === html) return
       entry.bilan = bilan
+      if (html !== undefined && bilan.trim()) entry.bilanHtml = html
+      else delete entry.bilanHtml
       delete entry.bilanCopied
       if (!bilan.trim()) delete entry.bilanAt
       else entry.bilanAt ??= now

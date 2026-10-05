@@ -150,7 +150,7 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .bilan-title span { color:var(--muted); font-size:.78rem; }
 .keyboard-toggle { flex:none; display:grid; place-items:center; min-width:44px; padding:.35rem; color:var(--muted); }
 .keyboard-toggle[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
-.bilan-text { flex:1; min-height:0; resize:none; line-height:1.45; -webkit-user-select:text; user-select:text; }
+.bilan-text { flex:1; min-height:0; overflow-y:auto; border:1px solid #cbd3da; border-radius:9px; background:#fff; padding:.68rem .72rem; color:var(--ink); font-size:16px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; outline:none; -webkit-user-select:text; user-select:text; -webkit-user-select:text; user-select:text; }
 .bilan-dictation { display:grid; justify-items:center; gap:.35rem; }
 .bilan-dictation .field-error,.bilan-dictation .save-hint { margin:0; text-align:center; }
 .dictation-status { min-height:1.1em; margin:0; color:var(--muted); font-size:.82rem; font-variant-numeric:tabular-nums; }
@@ -190,3 +190,11 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .dictation-bar { display:flex; align-items:center; justify-content:center; gap:1.6rem; }
 .newline-button { display:grid; place-items:center; width:52px; height:52px; border-radius:50%; padding:0; color:var(--accent); }
 .dictation-bar .keyboard-toggle { width:52px; height:52px; border-radius:50%; padding:0; }
+.bilan-text:focus { border-color:var(--accent); }
+.bilan-text:empty::before { content:attr(data-placeholder); color:#9aa5b1; }
+.format-bar { display:flex; gap:.4rem; }
+.format-bar button { min-width:44px; min-height:38px; padding:.2rem .5rem; color:var(--ink); }
+.format-bar button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.format-bold { font-weight:900; }
+.format-italic { font-style:italic; font-family:Georgia,serif; }
+.format-underline { text-decoration:underline; }

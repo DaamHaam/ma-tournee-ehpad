@@ -5,6 +5,7 @@ import { db } from '../../storage/database'
 import { dateLabel, dayBilans, fullName, shortName, validDate } from '../../domain/model'
 import { useToday } from '../../app/useToday'
 import { BilanActions } from './BilanActions'
+import { bilanHtml } from './richText'
 
 // Bilans d’une journée (aujourd’hui par défaut), repliés, à reporter un par un dans le logiciel de la résidence.
 export function BilansPage() {
@@ -27,9 +28,9 @@ export function BilansPage() {
             <button type="button" className="bilan-summary" aria-expanded={expanded} onClick={() => setOpen(current => ({ ...current, [`${date}:${bilan.id}`]: !expanded }))}>
               <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
             </button>
-            <BilanActions date={date} id={bilan.id} name={name} text={bilan.text} />
+            <BilanActions date={date} id={bilan.id} name={name} html={bilanHtml({ bilan: bilan.text, bilanHtml: bilan.html })} />
           </div>
-          {expanded && <div className="bilan-body"><p>{bilan.text}</p><Link to={`/bilan/${date}/${bilan.id}`} state={{ from: `/bilans?date=${date}` }}>Modifier</Link></div>}
+          {expanded && <div className="bilan-body"><p dangerouslySetInnerHTML={{ __html: bilanHtml({ bilan: bilan.text, bilanHtml: bilan.html }) }} /><Link to={`/bilan/${date}/${bilan.id}`} state={{ from: `/bilans?date=${date}` }}>Modifier</Link></div>}
         </li>
       })}</ol>}
     </>}

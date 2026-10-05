@@ -6,6 +6,11 @@ export const DEFAULT_MODEL = TRANSCRIPTION_MODELS[0]
 export const MAX_DICTATION_SECONDS = 5 * 60
 export const OPENROUTER_API = 'https://openrouter.ai/api/v1'
 
+// Espaces à ajouter autour d’une dictée selon le texte qui la précède et celui qui la suit.
+export function spacing(before: string, after: string): { lead: string; trail: string } {
+  return { lead: before && !/\s$/.test(before) ? ' ' : '', trail: after && !/^[\s.,;:!?)]/.test(after) ? ' ' : '' }
+}
+
 // Insère la dictée à la place de la sélection, avec une espace de chaque côté si nécessaire ; le curseur suit le texte inséré.
 export function insertAtCursor(value: string, insert: string, start: number, end = start): { value: string; cursor: number } {
   const from = Math.max(0, Math.min(start, value.length))
@@ -14,8 +19,7 @@ export function insertAtCursor(value: string, insert: string, start: number, end
   if (!piece) return { value, cursor: to }
   const before = value.slice(0, from)
   const after = value.slice(to)
-  const lead = before && !/\s$/.test(before) ? ' ' : ''
-  const trail = after && !/^[\s.,;:!?)]/.test(after) ? ' ' : ''
+  const { lead, trail } = spacing(before, after)
   const head = before + lead + piece + trail
   return { value: head + after, cursor: head.length }
 }

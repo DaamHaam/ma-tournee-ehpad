@@ -14,8 +14,8 @@ describe('sauvegarde complète', () => {
 
   it('relit l’heure et l’état copié d’un bilan, refuse des valeurs invalides', () => {
     const withBilan = JSON.parse(buildBackup(data, ''))
-    withBilan.days[0].entries.p1 = { ...withBilan.days[0].entries.p1, bilan: 'Marche', bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true }
-    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1).toMatchObject({ bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true })
+    withBilan.days[0].entries.p1 = { ...withBilan.days[0].entries.p1, bilan: 'Marche', bilanHtml: '<b>Marche</b>', bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true }
+    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1).toMatchObject({ bilanHtml: '<b>Marche</b>', bilanAt: '2026-09-21T09:00:00Z', bilanCopied: true })
     withBilan.days[0].entries.p1.bilanCopied = 'oui'
     expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
   })

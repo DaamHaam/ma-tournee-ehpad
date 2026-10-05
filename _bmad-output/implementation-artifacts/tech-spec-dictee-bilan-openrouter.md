@@ -42,3 +42,11 @@ Seul l’audio part chez OpenRouter : aucun nom, identifiant ni donnée de la ba
 - Supprimer : confirmation, puis le bilan est vidé (heure et marque effacées) ; la transmission déjà cochée reste.
 - Page du bilan : barre du bas ↵ (aller à la ligne au curseur, sans clavier) · micro · clavier.
 - Champs optionnels `bilanAt` et `bilanCopied` dans les journées : pas de changement de schéma Dexie ; la sauvegarde v1 les relit et accepte les fichiers qui ne les ont pas.
+
+## Lot 2 — mise en forme (v0.12.0)
+
+- Le bilan est un éditeur enrichi (`contenteditable`, toujours en `inputmode="none"` hors mode clavier) avec une barre G / I / S au-dessus du texte : sélectionner un passage puis toucher le bouton le met en gras, italique ou souligné (bouton actif surligné).
+- Seuls `<b>`, `<i>`, `<u>` et `<br>` sont conservés (`sanitizeBilanHtml`) : toute autre balise, attribut ou style est retiré, à l’enregistrement comme à l’affichage. Coller du texte n’insère que du texte brut ; Entrée (mode clavier) et ↵ insèrent un `<br>`.
+- Stockage : `bilan` reste le texte brut (traces, compteurs, compatibilité) et `bilanHtml` (optionnel) porte la version mise en forme. Les anciens bilans sans `bilanHtml` s’affichent depuis leur texte brut. Sauvegarde v1 inchangée, `bilanHtml` relu s’il existe.
+- Copier place dans le presse-papiers le HTML et le texte brut (`ClipboardItem`) ; à défaut, copie d’une sélection enrichie, puis texte brut. Le logiciel métier qui accepte le HTML garde la mise en forme.
+- La dictée et ↵ s’insèrent à la dernière position du curseur, mémorisée même quand le micro prend le focus.

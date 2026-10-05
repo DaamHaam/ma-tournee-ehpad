@@ -201,9 +201,9 @@ describe('stockage local', () => {
     await repository.initialize()
     await repository.ensureDay('2026-09-08')
     const [alice] = (await database.patients.toArray()).filter(patient => patient.lastName === 'Martin')
-    await repository.setBilan('2026-09-08', alice.id, 'Début', '2026-09-08T09:00:00Z')
-    await repository.setBilan('2026-09-08', alice.id, 'Début suite', '2026-09-08T09:30:00Z')
-    expect((await database.days.get('2026-09-08'))?.entries[alice.id]).toMatchObject({ bilan: 'Début suite', bilanAt: '2026-09-08T09:00:00Z' })
+    await repository.setBilan('2026-09-08', alice.id, 'Début', undefined, '2026-09-08T09:00:00Z')
+    await repository.setBilan('2026-09-08', alice.id, 'Début suite', '<b>Début</b> suite', '2026-09-08T09:30:00Z')
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id]).toMatchObject({ bilan: 'Début suite', bilanHtml: '<b>Début</b> suite', bilanAt: '2026-09-08T09:00:00Z' })
     await repository.markBilanCopied('2026-09-08', alice.id)
     expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilanCopied).toBe(true)
     expect((await database.patients.get(alice.id))?.transDates).toEqual([TODAY])
@@ -215,6 +215,7 @@ describe('stockage local', () => {
     const entry = (await database.days.get('2026-09-08'))?.entries[alice.id]
     expect(entry?.bilan).toBe('')
     expect(entry?.bilanAt).toBeUndefined()
+    expect(entry?.bilanHtml).toBeUndefined()
     await expect(repository.markBilanCopied('2026-09-08', alice.id)).rejects.toThrow('Ce bilan n’existe plus.')
   })
 
