@@ -6,9 +6,11 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { dateLabel, daysSince, hasBilanOrTest, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, lastSessionsA, weekDate, weeksSince, type Mood, type Patient } from '../../domain/model'
+import { dateLabel, daysSince, hasBilanOrTest, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, lastSessionsA, weekDate, weeksSince, type Day, type Mood, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { useToday } from '../../app/useToday'
+import { exportTxt } from '../exports/exportTxt'
+import { copyText } from '../exports/clipboard'
 // Toute la carte se déplace après un appui long (toucher ou souris) ; les appuis courts restent aux boutons.
 function SortableRow({ id, label, group, children }: { id: string; label: string; group?: boolean; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -20,6 +22,13 @@ function NoteToggle({ patient, name, open, today, onToggle }: { patient?: Patien
   const weeks = weeksSince(last, today)
   // Le nombre de semaines depuis la dernière éval ou trans précède le triangle, dans sa couleur ; seul le triangle pivote à l’ouverture de la note.
   return <button type="button" className={`transmission ${followUpLevel(last, today)}${open ? ' open' : ''}`} aria-expanded={open} aria-label={`Note pour ${name}, ${followUp}`} title={followUp} onClick={onToggle}>{weeks !== null && <span className="weeks" aria-hidden="true">{weeks}</span>}<span className="triangle" aria-hidden="true" /></button>
+}
+// Copie la journée affichée au format exact de l’export TXT ; désactivé quand il n’y a rien à exporter.
+function DayCopy({ day }: { day: Day }) {
+  const [copied, setCopied] = useState<boolean | null>(null)
+  const text = exportTxt([day])
+  const copy = async () => { setCopied(await copyText(text)); window.setTimeout(() => setCopied(null), 1500) }
+  return <div className="action-row day-copy"><button type="button" className={copied ? 'copied' : ''} disabled={!text} onClick={() => void copy()}>{copied === null ? 'Copier' : copied ? 'Copié ✓' : 'Copie impossible'}</button></div>
 }
 // Le clic natif émis au relâchement ouvrirait la fiche : il est bloqué pendant le glisser et juste après.
 function stopClick(event: MouseEvent) { event.preventDefault(); event.stopPropagation() }
@@ -73,7 +82,7 @@ export function Journee() {
         <Link className="button" to={`/tinetti/${date}/${chooser.id}`}>Test de Tinetti</Link>
         <button type="button" onClick={() => setChooser(null)}>Annuler</button>
       </div></div>}
-      <section className="card day-summary"><fieldset><legend className="sr-only">Niveau H</legend><div className="mood-options">{([-3, -2, -1, 0, 1, 2, 3] as const).map(mood => <button key={mood} aria-pressed={day.mood === mood} onClick={() => void run(() => repository.setMood(date, day.mood === mood ? null : mood as Mood))}>H{moodSigns(mood)}</button>)}</div></fieldset><textarea key={date} aria-label="Commentaire général" rows={2} defaultValue={day.comment} placeholder="Commentaire" onChange={e => { const value = e.target.value; void run(() => repository.setComment(date, value)) }} /></section>
+      <section className="card day-summary"><fieldset><legend className="sr-only">Niveau H</legend><div className="mood-options">{([-3, -2, -1, 0, 1, 2, 3] as const).map(mood => <button key={mood} aria-pressed={day.mood === mood} onClick={() => void run(() => repository.setMood(date, day.mood === mood ? null : mood as Mood))}>H{moodSigns(mood)}</button>)}</div></fieldset><textarea key={date} aria-label="Commentaire général" rows={2} defaultValue={day.comment} placeholder="Commentaire" onChange={e => { const value = e.target.value; void run(() => repository.setComment(date, value)) }} /><DayCopy day={day} /></section>
     </>}
   </>
 }

@@ -83,6 +83,8 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .day-note { min-height:42px; border:0; border-top:1px solid #edf0f2; border-radius:0; background:#fafbfc; }
 .day-summary { margin-top:1rem; }
 .day-summary fieldset { margin:0 0 .9rem; border:0; padding:0; }
+.day-copy { justify-content:flex-end; margin-top:.7rem; }
+.day-copy button.copied { border-color:#2e7a4b; color:#2e7a4b; }
 .day-summary legend { margin-bottom:.35rem; color:#43515f; font-size:.8rem; font-weight:700; }
 .mood-options { display:grid; grid-template-columns:repeat(7,1fr); gap:.28rem; }
 .mood-options button { min-width:0; padding:.3rem .08rem; font-size:.69rem; }

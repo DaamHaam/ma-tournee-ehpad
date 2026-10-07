@@ -327,6 +327,8 @@ test.describe('dictée', () => {
   test.use({ serviceWorkers: 'block' })
   test('dictée OpenRouter simulée : clé testée, texte inséré au curseur, clé absente de la sauvegarde', async ({ page }) => {
     // Micro et enregistreur factices : le navigateur de test n’a pas de micro ; OpenRouter est simulé.
+    // Sans partage natif (WebKit macOS l’expose) : « Sauvegarder » télécharge le fichier.
+    await page.addInitScript(() => Object.defineProperty(navigator, 'canShare', { value: undefined }))
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } })
       class FakeRecorder {
@@ -362,7 +364,8 @@ test.describe('dictée', () => {
     await openBilan(page, 'Martin Alice')
     const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })
     await bilan.fill('Début. Fin.')
-    await bilan.press('Home')
+    // Curseur au début posé par script : « Home » ne le fait pas sous macOS.
+    await bilan.evaluate(element => { const range = document.createRange(); range.setStart(element.firstChild!, 0); range.collapse(true); getSelection()!.removeAllRanges(); getSelection()!.addRange(range) })
     for (let step = 0; step < 6; step++) await bilan.press('ArrowRight')
     await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
     await expect(page.getByText(/Enregistrement 0:0\d \/ 5:00/)).toBeVisible()
@@ -531,4 +534,19 @@ test('fiche ouverte depuis la journée : retour à la même date, Éval/Trans en
   await page.getByRole('link', { name: 'Patients' }).click()
   await page.getByRole('link', { name: /Bernard Louis/ }).click()
   await expect(page.getByRole('link', { name: '← Patients' })).toBeVisible()
+})
+
+test('copier le pointage du jour au format de l’export TXT', async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text: string) => { (window as unknown as { copied: string }).copied = text } } }) })
+  await page.goto('/#/?date=2026-09-28')
+  const copy = page.locator('.day-summary').getByRole('button', { name: 'Copier' })
+  await expect(copy).toBeDisabled()
+  await page.getByRole('button', { name: 'A pour Martin Alice' }).click()
+  await page.getByRole('button', { name: 'B pour Petit Jeanne' }).click()
+  await page.getByRole('button', { name: 'H++', exact: true }).click()
+  await page.getByLabel('Commentaire général').fill('calme')
+  await expect(copy).toBeEnabled()
+  await copy.click()
+  await expect(page.locator('.day-summary').getByRole('button', { name: 'Copié ✓' })).toBeVisible()
+  expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe('28/09/2026\n++ calme\nMartin petit')
 })

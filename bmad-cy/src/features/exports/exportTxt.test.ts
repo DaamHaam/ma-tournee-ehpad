@@ -61,4 +61,12 @@ describe('export TXT', () => {
     } }
     expect(exportTxt([day])).toBe('29/09/2026\nFictif M. fictif J. Essai_ccc111 essai_ddd222')
   })
+
+  it('copie du pointage du jour : même texte que l’export, vide si rien n’est exportable', () => {
+    const patient = identity('a', 'Martin', 'Alice')
+    const day: Day = { date: '2026-09-29', mood: -1, comment: 'relève', order: ['a', 'b'], entries: { a: entry(patient, 'A'), b: entry(identity('b', 'Petit', 'Jeanne'), null, 'absente') } }
+    expect(exportTxt([day])).toBe('29/09/2026\n- relève\nMartin\nPas vus : Petit (absente)')
+    const blank: Day = { date: '2026-09-29', mood: null, comment: ' ', order: ['a'], entries: { a: { ...entry(patient, null), bilan: 'Bilan seul' } } }
+    expect(exportTxt([blank])).toBe('')
+  })
 })
