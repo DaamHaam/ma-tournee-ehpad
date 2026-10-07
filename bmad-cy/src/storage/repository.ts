@@ -3,9 +3,9 @@ import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDataba
 import { applyOrder, careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
-// GRP et sexe ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
-export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, 'group' | 'sex'>
-type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex'
+// GRP, sexe et attente ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
+export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, 'group' | 'sex' | 'waiting'>
+type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting'
 export class TourRepository {
   private database: TourDatabase
   private today: () => string
@@ -215,6 +215,7 @@ export class TourRepository {
         const patient: Partial<Patient> & ImportedPatient = { ...input, lastName: input.lastName.trim(), firstName: input.firstName.trim() }
         delete patient.group
         delete patient.sex
+        delete patient.waiting
         const match = known.get(identityKey(patient))?.shift()
         if (!match) return { ...careDefaults(), ...patient, id: crypto.randomUUID(), room: '', priority: '', demo: false, archived: false, createdAt: localDate() }
         return { ...match, ...patient, evalDates: merge(match.evalDates ?? [], patient.evalDates), transDates: merge(match.transDates ?? [], patient.transDates), demo: false, archived: false }

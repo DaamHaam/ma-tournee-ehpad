@@ -24,6 +24,10 @@ export class TourDatabase extends Dexie {
     this.version(4).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       if (patient.sex === undefined) patient.sex = ''
     }))
+    // v5 : « attend une séance », désactivé par défaut pour les patients existants.
+    this.version(5).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.waiting === undefined) patient.waiting = false
+    }))
   }
 }
 export const db = new TourDatabase()

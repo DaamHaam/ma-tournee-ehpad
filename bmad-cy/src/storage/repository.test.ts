@@ -187,6 +187,29 @@ describe('stockage local', () => {
     migrated.close(); await migrated.delete()
   })
 
+  it('migre une base v4 : « attend une séance » désactivé pour les patients existants', async () => {
+    const name = `test-migration-v5-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(4).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    const { waiting: _ignored, ...v4Care } = careDefaults()
+    void _ignored
+    await legacy.table('patients').add({ ...v4Care, id: 'p1', lastName: 'Fictif', firstName: 'Gamma', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', group: true })
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect(await migrated.patients.get('p1')).toMatchObject({ lastName: 'Fictif', group: true, waiting: false })
+    migrated.close(); await migrated.delete()
+  })
+
+  it('l’import garde l’attente d’un patient reconnu, un nouveau patient n’attend pas', async () => {
+    await repository.initialize()
+    const martin = (await database.patients.toArray()).find(patient => patient.lastName === 'Martin')!
+    await repository.updatePatient(martin.id, { waiting: true })
+    await repository.replacePatients([{ ...careDefaults(), lastName: 'Martin', firstName: 'Alice' }, { ...careDefaults(), waiting: true, lastName: 'Fictif', firstName: 'Zoé' } as never])
+    const patients = await database.patients.toArray()
+    expect(patients.find(patient => patient.id === martin.id)?.waiting).toBe(true)
+    expect(patients.find(patient => patient.lastName === 'Fictif')?.waiting).toBe(false)
+  })
+
   it('garde le réglage GRP d’un patient reconnu à l’import', async () => {
     await repository.initialize()
     const martin = (await database.patients.toArray()).find(patient => patient.lastName === 'Martin')!

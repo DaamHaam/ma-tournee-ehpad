@@ -29,6 +29,7 @@ export function PatientCare({ patient }: { patient: Patient }) {
   const flag = (field: 'pointed' | 'billed' | 'group', label: string) => <label className="check-field"><input type="checkbox" checked={patient[field]} onChange={event => update({ [field]: event.target.checked })} />{label}</label>
 
   return <section className="card care">
+    <label className="switch-field"><input type="checkbox" role="switch" checked={patient.waiting} onChange={event => update({ waiting: event.target.checked })} />Attend une séance</label>
     <div className="check-row">{flag('pointed', 'Pointé')}{flag('billed', 'Facturé')}{flag('group', 'GRP')}
       <fieldset className="sex-field"><legend className="sr-only">Sexe</legend>{(['F', 'H'] as const).map(sex => <button key={sex} type="button" aria-label={`Sexe ${sex}`} aria-pressed={patient.sex === sex} onClick={() => update({ sex: patient.sex === sex ? '' : sex })}>{sex}</button>)}</fieldset></div>
     <div className="form-grid">

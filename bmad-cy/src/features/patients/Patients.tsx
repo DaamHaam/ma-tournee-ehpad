@@ -10,6 +10,7 @@ import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { FollowUps, PatientCare } from './PatientCare'
+import { WaitingLabel, WaitingMark } from './WaitingMark'
 
 function byName(a: Patient, b: Patient) {
   return a.lastName.localeCompare(b.lastName, 'fr', { sensitivity: 'base' }) || a.firstName.localeCompare(b.firstName, 'fr', { sensitivity: 'base' })
@@ -62,7 +63,7 @@ export function Patients() {
     <label className="filter-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} /> Archivés</label>
     {!patients ? null : visible.length === 0 ? <div className="empty-state"><h2>Aucun patient</h2></div> : <ul className="patient-list">
       {visible.map(patient => <li key={patient.id} className={patient.group ? 'group' : undefined}><Link to={`/patients/${patient.id}`}>
-        <span><strong>{fullName(patient)}</strong>{patient.group && <span className="sr-only"> (groupe)</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
+        <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
         {(patient.room || patient.priority) && <span className="patient-meta">{[patient.room && `Chambre ${patient.room}`, patient.priority].filter(Boolean).join(' · ')}</span>}
       </Link></li>)}
     </ul>}
@@ -112,7 +113,7 @@ export function PatientDetail() {
   if (!patient) return <div className="empty-state"><h1>Fiche introuvable</h1><Link className="button" to="/patients">Patients</Link></div>
   return <>
     <Link className="back-link" to={back.to}>← {back.label}</Link>
-    <div className="page-heading patient-title"><div><h1>{fullName(patient)}</h1>{(patient.room || patient.archived) && <p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}</div></div>
+    <div className="page-heading patient-title"><div><h1><WaitingMark waiting={patient.waiting} />{fullName(patient)}</h1>{(patient.room || patient.archived) && <p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}</div></div>
     <FollowUps patient={patient} />
     <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />

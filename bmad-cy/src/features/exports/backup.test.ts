@@ -31,6 +31,16 @@ describe('sauvegarde complète', () => {
     expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ id: 'p2', firstName: '', ...careDefaults() })
   })
 
+  it('restaure une ancienne sauvegarde sans « attend une séance » avec la valeur fausse', () => {
+    const legacy = JSON.parse(buildBackup(data, ''))
+    delete legacy.patients[0].waiting
+    expect(parseBackup(JSON.stringify(legacy)).patients[0].waiting).toBe(false)
+    legacy.patients[0].waiting = true
+    expect(parseBackup(JSON.stringify(legacy)).patients[0].waiting).toBe(true)
+    legacy.patients[0].waiting = 'oui'
+    expect(() => parseBackup(JSON.stringify(legacy))).toThrow('pas une sauvegarde')
+  })
+
   it('refuse un fichier étranger, abîmé ou trop récent', () => {
     expect(() => parseBackup('pas du json')).toThrow('pas une sauvegarde')
     expect(() => parseBackup(JSON.stringify({ format: 'autre', version: 1 }))).toThrow('pas une sauvegarde')

@@ -4,11 +4,12 @@ export type Mood = -3 | -2 | -1 | 0 | 1 | 2 | 3 | null
 export interface Identity { id: string; lastName: string; firstName: string; room: string; priority: string; demo: boolean }
 // sex : F, H ou vide ; sert seulement aux accords du texte rédigé par l’IA (envoyé sans nom).
 export type Sex = '' | 'F' | 'H'
-export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionEnd: string; doctor: string; rating: string; group: boolean }
+// waiting : patient en attente d’une séance, signalé par un « ! » rouge devant son nom.
+export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
-export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '', group: false } }
+export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification.
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié.
