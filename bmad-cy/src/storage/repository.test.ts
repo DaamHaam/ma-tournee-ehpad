@@ -210,6 +210,55 @@ describe('stockage local', () => {
     expect(patients.find(patient => patient.lastName === 'Fictif')?.waiting).toBe(false)
   })
 
+  it('migre une base v5 : prescription vide, fin d’ordonnance existante conservée', async () => {
+    const name = `test-migration-v6-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(5).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    const { prescriptionLabel: _a, prescriptionDate: _b, prescriptionDuration: _c, prescriptionUnit: _d, ...v5Care } = careDefaults()
+    void [_a, _b, _c, _d]
+    await legacy.table('patients').add({ ...v5Care, id: 'p1', lastName: 'Fictif', firstName: 'Delta', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', prescriptionEnd: '2026-12-15', waiting: true })
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect(await migrated.patients.get('p1')).toMatchObject({ waiting: true, prescriptionEnd: '2026-12-15', prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months' })
+    migrated.close(); await migrated.delete()
+  })
+
+  it('calcule la fin de prescription dès que date et durée sont connues, sinon la laisse saisissable', async () => {
+    const id = await repository.addPatient({ lastName: 'Fictif', firstName: 'Epsilon', room: '', priority: '' })
+    await repository.updatePatient(id, { prescriptionEnd: '2026-11-30', prescriptionLabel: '  Rééducation à la marche ' })
+    expect(await database.patients.get(id)).toMatchObject({ prescriptionEnd: '2026-11-30', prescriptionLabel: 'Rééducation à la marche' })
+    await repository.updatePatient(id, { prescriptionDate: '2026-01-31' })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-11-30')
+    await repository.updatePatient(id, { prescriptionDuration: 1 })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-02-28')
+    await repository.updatePatient(id, { prescriptionUnit: 'weeks' })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-02-07')
+    await repository.updatePatient(id, { prescriptionDuration: null })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-02-07')
+    await repository.updatePatient(id, { prescriptionEnd: '2026-03-01' })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-03-01')
+    await expect(repository.updatePatient(id, { prescriptionDuration: 0 })).rejects.toThrow('Durée')
+    await expect(repository.updatePatient(id, { prescriptionDate: '2026-02-30' })).rejects.toThrow('Date de prescription')
+  })
+
+  it('l’import garde la prescription d’un patient reconnu ; sa fin calculée l’emporte sur la fin importée', async () => {
+    await repository.initialize()
+    const all = await database.patients.toArray()
+    const martin = all.find(patient => patient.lastName === 'Martin')!
+    const petit = all.find(patient => patient.lastName === 'Petit')!
+    await repository.updatePatient(martin.id, { prescriptionLabel: 'Marche', prescriptionDate: '2026-09-01', prescriptionDuration: 2 })
+    await repository.updatePatient(petit.id, { prescriptionLabel: 'Équilibre' })
+    await repository.replacePatients([
+      { ...careDefaults(), lastName: 'Martin', firstName: 'Alice', prescriptionEnd: '2027-01-01' },
+      { ...careDefaults(), lastName: 'Petit', firstName: 'Jeanne', prescriptionEnd: '2027-01-01' },
+      { ...careDefaults(), lastName: 'Fictif', firstName: 'Zoé', prescriptionEnd: '2027-02-01' },
+    ])
+    const patients = await database.patients.toArray()
+    expect(patients.find(patient => patient.id === martin.id)).toMatchObject({ prescriptionLabel: 'Marche', prescriptionDuration: 2, prescriptionEnd: '2026-11-01' })
+    expect(patients.find(patient => patient.id === petit.id)).toMatchObject({ prescriptionLabel: 'Équilibre', prescriptionEnd: '2027-01-01' })
+    expect(patients.find(patient => patient.lastName === 'Fictif')).toMatchObject({ prescriptionLabel: '', prescriptionDate: '', prescriptionEnd: '2027-02-01' })
+  })
+
   it('garde le réglage GRP d’un patient reconnu à l’import', async () => {
     await repository.initialize()
     const martin = (await database.patients.toArray()).find(patient => patient.lastName === 'Martin')!

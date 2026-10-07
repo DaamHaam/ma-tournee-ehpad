@@ -41,6 +41,20 @@ describe('sauvegarde complète', () => {
     expect(() => parseBackup(JSON.stringify(legacy))).toThrow('pas une sauvegarde')
   })
 
+  it('restaure une sauvegarde antérieure à la prescription détaillée, puis relit la nouvelle', () => {
+    const legacy = JSON.parse(buildBackup(data, ''))
+    for (const key of ['prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit']) delete legacy.patients[0][key]
+    legacy.patients[0].prescriptionEnd = '2026-12-15'
+    expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ prescriptionEnd: '2026-12-15', prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months' })
+    Object.assign(legacy.patients[0], { prescriptionLabel: 'Marche', prescriptionDate: '2026-09-15', prescriptionDuration: 3, prescriptionUnit: 'weeks' })
+    expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ prescriptionLabel: 'Marche', prescriptionDate: '2026-09-15', prescriptionDuration: 3, prescriptionUnit: 'weeks' })
+    for (const [key, value] of [['prescriptionDuration', '3'], ['prescriptionUnit', 'jours'], ['prescriptionDate', '15/09/2026']] as const) {
+      const broken = structuredClone(legacy)
+      broken.patients[0][key] = value
+      expect(() => parseBackup(JSON.stringify(broken))).toThrow('pas une sauvegarde')
+    }
+  })
+
   it('refuse un fichier étranger, abîmé ou trop récent', () => {
     expect(() => parseBackup('pas du json')).toThrow('pas une sauvegarde')
     expect(() => parseBackup(JSON.stringify({ format: 'autre', version: 1 }))).toThrow('pas une sauvegarde')

@@ -28,6 +28,11 @@ export class TourDatabase extends Dexie {
     this.version(5).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       if (patient.waiting === undefined) patient.waiting = false
     }))
+    // v6 : intitulé, date et durée de la prescription, vides par défaut ; la fin d’ordonnance existante est conservée telle quelle.
+    this.version(6).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      const defaults = careDefaults()
+      for (const key of ['prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const) if (patient[key] === undefined) patient[key] = defaults[key]
+    }))
   }
 }
 export const db = new TourDatabase()

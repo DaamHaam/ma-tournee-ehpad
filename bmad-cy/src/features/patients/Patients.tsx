@@ -11,6 +11,8 @@ import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { FollowUps, PatientCare } from './PatientCare'
 import { WaitingLabel, WaitingMark } from './WaitingMark'
+import { PrescriptionMark } from './PrescriptionMark'
+import { useToday } from '../../app/useToday'
 
 function byName(a: Patient, b: Patient) {
   return a.lastName.localeCompare(b.lastName, 'fr', { sensitivity: 'base' }) || a.firstName.localeCompare(b.firstName, 'fr', { sensitivity: 'base' })
@@ -19,6 +21,7 @@ function byName(a: Patient, b: Patient) {
 export function Patients() {
   const patients = useLiveQuery(() => db.patients.toArray(), [])
   const [showArchived, setShowArchived] = useState(false)
+  const today = useToday()
   const [formOpen, setFormOpen] = useState(false)
   const [formError, setFormError] = useState('')
   const [adding, setAdding] = useState(false)
@@ -63,7 +66,7 @@ export function Patients() {
     <label className="filter-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} /> Archivés</label>
     {!patients ? null : visible.length === 0 ? <div className="empty-state"><h2>Aucun patient</h2></div> : <ul className="patient-list">
       {visible.map(patient => <li key={patient.id} className={patient.group ? 'group' : undefined}><Link to={`/patients/${patient.id}`}>
-        <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
+        <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} /><PrescriptionMark patient={patient} today={today} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
         {(patient.room || patient.priority) && <span className="patient-meta">{[patient.room && `Chambre ${patient.room}`, patient.priority].filter(Boolean).join(' · ')}</span>}
       </Link></li>)}
     </ul>}

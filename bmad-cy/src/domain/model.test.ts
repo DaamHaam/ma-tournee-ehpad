@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOrder, dayBilans, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
+import { applyOrder, dayBilans, effectivePrescriptionEnd, prescriptionEndDate, prescriptionStatus, prescriptionText, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
 
 describe('règles du domaine', () => {
   it('liste les bilans dans l’ordre où ils ont été commencés, les anciens selon la tournée', () => {
@@ -92,5 +92,36 @@ describe('règles du domaine', () => {
   it('applique un ordre modèle en gardant à la fin les éléments qu’il ne connaît pas', () => {
     expect(applyOrder(['c', 'a', 'b'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
     expect(applyOrder(['c', 'x', 'a'], ['a', 'b', 'c', 'd'])).toEqual(['c', 'a', 'b', 'd'])
+  })
+
+  it('calcule la fin de prescription en semaines ou en mois, fins de mois comprises', () => {
+    expect(prescriptionEndDate('2026-01-31', 1, 'months')).toBe('2026-02-28')
+    expect(prescriptionEndDate('2028-01-31', 1, 'months')).toBe('2028-02-29')
+    expect(prescriptionEndDate('2026-03-31', 1, 'months')).toBe('2026-04-30')
+    expect(prescriptionEndDate('2026-11-15', 3, 'months')).toBe('2027-02-15')
+    expect(prescriptionEndDate('2026-08-31', 6, 'months')).toBe('2027-02-28')
+    expect(prescriptionEndDate('2026-12-31', 12, 'months')).toBe('2027-12-31')
+    expect(prescriptionEndDate('2026-10-20', 2, 'weeks')).toBe('2026-11-03')
+    // Passage à l’heure d’hiver (25 octobre 2026) sans glissement de jour.
+    expect(prescriptionEndDate('2026-10-24', 1, 'weeks')).toBe('2026-10-31')
+    expect(prescriptionEndDate('', 1, 'months')).toBeNull()
+    expect(prescriptionEndDate('2026-01-31', null, 'months')).toBeNull()
+    expect(prescriptionEndDate('2026-01-31', 0, 'months')).toBeNull()
+    expect(prescriptionEndDate('2026-02-30', 1, 'months')).toBeNull()
+    expect(effectivePrescriptionEnd({ prescriptionDate: '', prescriptionDuration: 3, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2026-12-01')
+    expect(effectivePrescriptionEnd({ prescriptionDate: '2026-09-01', prescriptionDuration: 3, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2026-12-01')
+    expect(effectivePrescriptionEnd({ prescriptionDate: '2026-09-01', prescriptionDuration: 2, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2026-11-01')
+  })
+
+  it('surveille la fin de prescription : orange sous 15 jours, rouge une fois dépassée', () => {
+    expect(prescriptionStatus('', '2026-10-07')).toEqual({ level: 'none', days: null })
+    expect(prescriptionStatus('2026-10-23', '2026-10-07')).toEqual({ level: 'ok', days: 16 })
+    expect(prescriptionStatus('2026-10-22', '2026-10-07')).toEqual({ level: 'soon', days: 15 })
+    expect(prescriptionStatus('2026-10-07', '2026-10-07')).toEqual({ level: 'soon', days: 0 })
+    expect(prescriptionStatus('2026-10-04', '2026-10-07')).toEqual({ level: 'over', days: -3 })
+    expect(prescriptionText(prescriptionStatus('2026-10-22', '2026-10-07'))).toBe('Fin dans 15 j')
+    expect(prescriptionText(prescriptionStatus('2026-10-07', '2026-10-07'))).toBe('Fin aujourd’hui')
+    expect(prescriptionText(prescriptionStatus('2026-10-04', '2026-10-07'))).toBe('Terminée depuis 3 j')
+    expect(prescriptionText(prescriptionStatus('', '2026-10-07'))).toBe('')
   })
 })

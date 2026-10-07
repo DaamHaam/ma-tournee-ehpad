@@ -1,4 +1,4 @@
-import { careDefaults, validDate, type Day, type Patient } from '../../domain/model'
+import { careDefaults, DURATION_UNITS, validDate, type Day, type Patient } from '../../domain/model'
 import type { OrderTemplate, Setting } from '../../storage/database'
 import type { BackupData } from '../../storage/repository'
 
@@ -18,7 +18,7 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString)
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
-const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionEnd', 'doctor', 'rating'] as const
+const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating'] as const
 const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group', 'waiting'] as const
 
 function checkPatient(value: unknown): Patient {
@@ -26,6 +26,10 @@ function checkPatient(value: unknown): Patient {
   const patient = { ...careDefaults(), firstName: '', room: '', priority: '', demo: false, archived: false, createdAt: '', ...value } as Patient
   if (!isStringList(patient.evalDates) || !isStringList(patient.transDates)) throw new Error(INVALID)
   if (PATIENT_TEXT.some(key => !isString(patient[key])) || PATIENT_FLAGS.some(key => !isBoolean(patient[key]))) throw new Error(INVALID)
+  // Prescription (ajoutée après la v0.18) : absente des anciennes sauvegardes, complétée par les valeurs vides.
+  if (patient.prescriptionDate && !validDate(patient.prescriptionDate)) throw new Error(INVALID)
+  if (patient.prescriptionDuration !== null && !(Number.isInteger(patient.prescriptionDuration) && patient.prescriptionDuration > 0)) throw new Error(INVALID)
+  if (!DURATION_UNITS.includes(patient.prescriptionUnit)) throw new Error(INVALID)
   return patient
 }
 // Identité retenue par une journée : le nom est exigé, les autres champs anciens ou absents sont complétés.

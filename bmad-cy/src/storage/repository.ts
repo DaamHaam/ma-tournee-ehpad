@@ -1,11 +1,13 @@
 import { hasTestContent, type TestRecord, type TestType } from '../domain/tinetti'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
-import { applyOrder, careDefaults, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+import { applyOrder, careDefaults, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
-// GRP, sexe et attente ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
-export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, 'group' | 'sex' | 'waiting'>
-type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting'
+// GRP, sexe, attente et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
+// La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas complète (sinon la fin calculée l’emporte).
+const NOT_IMPORTED = ['group', 'sex', 'waiting', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
+export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
+type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit'
 export class TourRepository {
   private database: TourDatabase
   private today: () => string
@@ -189,10 +191,15 @@ export class TourRepository {
   async updatePatient(id: string, patch: Partial<Pick<Patient, EditableField>>): Promise<void> {
     if (patch.lastName !== undefined && !patch.lastName.trim()) throw new Error('Le nom est obligatoire.')
     if (patch.prescriptionEnd && !validDate(patch.prescriptionEnd)) throw new Error('Date de fin d’ordonnance invalide.')
+    if (patch.prescriptionDate && !validDate(patch.prescriptionDate)) throw new Error('Date de prescription invalide.')
+    if (patch.prescriptionDuration != null && !(Number.isInteger(patch.prescriptionDuration) && patch.prescriptionDuration > 0)) throw new Error('Durée de prescription invalide.')
+    if (patch.prescriptionUnit !== undefined && !DURATION_UNITS.includes(patch.prescriptionUnit)) throw new Error('Unité de durée invalide.')
     const normalized = Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])) as Partial<Patient>
     await this.database.transaction('rw', this.database.patients, this.database.days, async () => {
       if (await this.database.patients.update(id, normalized) === 0) throw new Error('Ce patient n’existe plus.')
       const patient = await this.database.patients.get(id)
+      // Date et durée connues : la fin de prescription se recalcule.
+      if (patient && effectivePrescriptionEnd(patient) !== patient.prescriptionEnd) await this.database.patients.update(id, { prescriptionEnd: effectivePrescriptionEnd(patient) })
       if (patient) await this.refreshSnapshots([patient])
     })
   }
@@ -213,12 +220,11 @@ export class TourRepository {
       const merge = (a: string[], b: string[]) => [...new Set([...a, ...b])].sort()
       const patients = imported.map(input => {
         const patient: Partial<Patient> & ImportedPatient = { ...input, lastName: input.lastName.trim(), firstName: input.firstName.trim() }
-        delete patient.group
-        delete patient.sex
-        delete patient.waiting
+        for (const key of NOT_IMPORTED) delete patient[key]
         const match = known.get(identityKey(patient))?.shift()
         if (!match) return { ...careDefaults(), ...patient, id: crypto.randomUUID(), room: '', priority: '', demo: false, archived: false, createdAt: localDate() }
-        return { ...match, ...patient, evalDates: merge(match.evalDates ?? [], patient.evalDates), transDates: merge(match.transDates ?? [], patient.transDates), demo: false, archived: false }
+        const merged = { ...match, ...patient }
+        return { ...merged, prescriptionEnd: effectivePrescriptionEnd(merged), evalDates: merge(match.evalDates ?? [], patient.evalDates), transDates: merge(match.transDates ?? [], patient.transDates), demo: false, archived: false }
       })
       await this.database.patients.clear()
       await this.database.patients.bulkAdd(patients)

@@ -285,3 +285,22 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .switch-field input::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:transform .15s; }
 .switch-field input:checked { background:#c43b33; }
 .switch-field input:checked::after { transform:translateX(18px); }
+
+/* Prescription en cours et pastille de surveillance de sa fin (orange sous 15 jours, rouge dépassée). */
+.name-line { display:flex; align-items:center; gap:.3rem; min-width:0; }
+.name-line strong { min-width:0; }
+.prescription-mark { flex:none; display:inline-block; margin-left:.35rem; border-radius:6px; padding:.08rem .32rem; color:#fff; font-size:.62rem; font-weight:800; line-height:1.3; vertical-align:middle; }
+.name-line .prescription-mark { margin-left:0; }
+.prescription-mark.soon { background:#e08a1e; }
+.prescription-mark.over { background:#c43b33; }
+.prescription { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; margin-top:1rem; border-top:1px solid #edf0f2; padding-top:1rem; }
+.prescription .wide, .prescription-status { grid-column:1 / -1; }
+.duration-field { min-width:0; margin:0; border:0; padding:0; }
+.duration-field legend { margin-bottom:.35rem; padding:0; color:#43515f; font-size:.86rem; font-weight:650; }
+.duration-inputs { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr); gap:.4rem; }
+.duration-inputs select { min-width:0; }
+.prescription input:disabled { background:#f3f5f7; color:var(--ink); opacity:1; -webkit-text-fill-color:var(--ink); }
+.prescription-status { margin:0; font-weight:750; color:var(--muted); }
+.prescription-status.soon { color:#b86a0c; }
+.prescription-status.over { color:#c43b33; }
+@media (max-width:390px) { .prescription { grid-template-columns:1fr; } }
