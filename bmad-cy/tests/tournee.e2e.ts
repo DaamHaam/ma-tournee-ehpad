@@ -630,3 +630,45 @@ test('prescription : fin calculée depuis la date et la durée, surveillance ora
   await expect(page.locator('.tour-list .prescription-mark')).toHaveCount(2)
   await expect(page.getByRole('link', { name: /Martin A\. \(Ordonnance : fin dans 6 j\)/ })).toBeVisible()
 })
+
+test('onglet Bilans : « Tout copier » met bout à bout les bilans d’un patient et les marque tous copiés', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-23')
+  await openBilan(page, 'Martin Alice', 'Test de Tinetti')
+  await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await openBilan(page, 'Bernard Louis')
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' }).fill('Bilan seul.')
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await openBilan(page, 'Martin Alice')
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' }).fill('Transferts autonomes.')
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+
+  await page.getByRole('link', { name: 'Bilans' }).click()
+  await page.getByLabel('Date').fill('2026-09-23')
+  await expect(page.locator('.bilan-summary strong')).toHaveText(['Martin A.', 'Bernard L.', 'Martin A.'])
+  await expect(page.locator('.copy-all-list li')).toHaveCount(1)
+  await expect(page.locator('.copy-all-list li')).toContainText('Martin A. · 2 bilans')
+  // La copie un par un reste disponible.
+  await expect(page.getByRole('button', { name: 'Copier le Tinetti de Martin Alice' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copier le bilan de Martin Alice' })).toBeVisible()
+  await page.evaluate(() => {
+    const store = window as unknown as { copied?: { html: string; text: string } }
+    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
+  })
+  await page.getByRole('button', { name: 'Tout copier pour Martin Alice' }).click()
+  await expect(page.getByRole('button', { name: 'Tout copié' })).toBeVisible()
+  const copied = await page.evaluate(() => (window as unknown as { copied: { html: string; text: string } }).copied)
+  expect(copied.html).toMatch(/^<u><b>Tinetti<\/b><\/u> : <b>1\/28<\/b>.*<br><br>Transferts autonomes\.$/)
+  expect(copied.text).toMatch(/^Tinetti : 1\/28[^]*\n\nTransferts autonomes\.$/)
+  await expect(page.getByRole('heading', { name: '2 / 3 bilans copiés' })).toBeVisible()
+  await expect(page.locator('.bilan-list li.copied')).toHaveCount(2)
+  await expect(page.locator('.bilan-list li', { hasText: 'Bernard L.' })).not.toHaveClass(/copied/)
+
+  await page.getByRole('link', { name: 'Patients' }).click()
+  await page.getByRole('link', { name: /Martin Alice/ }).click()
+  await expect(page.getByRole('checkbox', { name: 'Éval' })).toBeChecked()
+  await expect(page.getByRole('checkbox', { name: 'Trans' })).toBeChecked()
+  await page.getByRole('link', { name: '← Patients' }).click()
+  await page.getByRole('link', { name: /Bernard Louis/ }).click()
+  await expect(page.getByRole('checkbox', { name: 'Trans' })).not.toBeChecked()
+})

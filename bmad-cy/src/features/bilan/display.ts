@@ -1,6 +1,6 @@
-import type { BilanKind } from '../../domain/model'
+import type { BilanKind, DayBilan, Identity } from '../../domain/model'
 import { tinettiResultHtml, type TestRecord } from '../../domain/tinetti'
-import { bilanHtml, sanitizeBilanHtml, textToHtml } from './richText'
+import { bilanHtml, htmlToText, sanitizeBilanHtml, textToHtml } from './richText'
 
 export const KIND_LABEL: Record<BilanKind, string> = { bilan: 'Bilan', tinetti: 'Tinetti' }
 // Texte dicté d’un test, filtré comme un bilan.
@@ -18,3 +18,20 @@ export function itemHtml(item: { kind: BilanKind; text: string; html?: string; r
   return testCopyHtml(item.record)
 }
 export function editPath(kind: BilanKind, date: string, id: string): string { return `/${kind === 'bilan' ? 'bilan' : kind}/${date}/${id}` }
+// Patients ayant au moins deux bilans ou tests ce jour-là, dans l’ordre d’affichage (première apparition), chacun avec ses bilans dans ce même ordre.
+// Générique : tout nouveau type de bilan listé par dayBilans y entre sans changement.
+export interface BilanGroup { id: string; patient: Identity; items: DayBilan[] }
+export function multiBilanGroups(bilans: DayBilan[]): BilanGroup[] {
+  const groups = new Map<string, BilanGroup>()
+  for (const bilan of bilans) {
+    const group = groups.get(bilan.id) ?? { id: bilan.id, patient: bilan.patient, items: [] }
+    group.items.push(bilan)
+    groups.set(bilan.id, group)
+  }
+  return [...groups.values()].filter(group => group.items.length >= 2)
+}
+// Bilans mis bout à bout, séparés par une ligne vide, en HTML (mise en forme gardée) et en texte brut.
+export function joinBilans(htmls: string[]): { html: string; text: string } {
+  const pieces = htmls.map(html => sanitizeBilanHtml(html)).filter(html => htmlToText(html).trim())
+  return { html: pieces.join('<br><br>'), text: pieces.map(html => htmlToText(html)).join('\n\n') }
+}

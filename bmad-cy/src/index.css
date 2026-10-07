@@ -304,3 +304,10 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .prescription-status.soon { color:#b86a0c; }
 .prescription-status.over { color:#c43b33; }
 @media (max-width:390px) { .prescription { grid-template-columns:1fr; } }
+
+/* « Tout copier » : une ligne par patient ayant au moins deux bilans le même jour. */
+.copy-all-list { display:grid; gap:.4rem; margin:0 0 .7rem; padding:0; list-style:none; }
+.copy-all-list li { display:flex; align-items:center; justify-content:space-between; gap:.6rem; border:1px solid var(--line); border-radius:11px; background:var(--accent-soft); padding:.35rem .4rem .35rem .8rem; font-size:.9rem; }
+.copy-all-list span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.copy-all-list button { flex:none; color:var(--accent); }
+.copy-all-list button.copied { border-color:#2e7a4b; color:#2e7a4b; }
