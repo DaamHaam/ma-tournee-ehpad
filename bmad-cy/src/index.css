@@ -60,11 +60,10 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .separator::after { content:""; flex:1; height:2px; border-radius:2px; background:#b8c1c8; }
 .separator.off-day::after { height:4px; background:#c43b33; }
 .patient-row { overflow:hidden; border:1px solid var(--line); border-radius:11px; background:#fff; }
-/* GRP : mince liseré à l’extérieur gauche de la carte, sans prendre de place à l’intérieur. */
-.sortable-row.group, .patient-list .group { position:relative; }
-.sortable-row.group::before, .patient-list .group::before { content:""; position:absolute; top:9px; bottom:9px; left:-6px; width:3px; border-radius:2px; background:#7fa6bd; }
-.patient-top { display:grid; grid-template-columns:44px minmax(0,1fr) auto; align-items:center; gap:.35rem; min-height:55px; padding:.35rem .42rem; }
-.transmission { display:flex; align-items:center; justify-content:flex-end; gap:2px; width:44px; min-width:44px; height:44px; min-height:44px; padding:0 2px 0 0; border:0; background:transparent; color:#98a2aa; }
+/* GRP : bord gauche épais et foncé de la carte, qui s’élargit vers la gauche d’autant : le contenu ne bouge pas. */
+.sortable-row.group .patient-row, .patient-list .group a { margin-left:-5px; border-left:6px solid #2b5470; }
+.patient-top { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:.35rem; min-height:55px; padding:.35rem .42rem .35rem .12rem; }
+.transmission { display:flex; align-items:center; justify-content:flex-end; gap:2px; width:36px; min-width:36px; height:44px; min-height:44px; padding:0 2px 0 0; border:0; background:transparent; color:#98a2aa; }
 .transmission .triangle { flex:none; width:17px; height:19px; background:currentColor; clip-path:polygon(0 0,100% 50%,0 100%); transition:transform .15s; }
 .transmission.open .triangle { transform:rotate(90deg); }
 .transmission .weeks { color:currentColor; font-size:.74rem; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
@@ -113,7 +112,7 @@ main { width:min(100%,760px); margin:0 auto; padding:calc(1rem + env(safe-area-i
 .date-range { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:.7rem; }
 .export-preview pre { overflow:auto; max-height:46vh; margin:0 0 .9rem; border-radius:9px; background:#202a36; padding:.9rem; color:#eef4f6; font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; font-size:.76rem; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
 
-@media (max-width:390px) { main { padding-inline:.72rem; } .form-grid { grid-template-columns:1fr; } .patient-top { grid-template-columns:44px minmax(0,1fr) auto; } .session-buttons { gap:.2rem; } .session-buttons button{ min-width:44px; } .date-range { grid-template-columns:1fr; } }
+@media (max-width:390px) { main { padding-inline:.72rem; } .form-grid { grid-template-columns:1fr; } .patient-top { grid-template-columns:36px minmax(0,1fr) auto; } .session-buttons { gap:.2rem; } .session-buttons button{ min-width:44px; } .date-range { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }
 
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }

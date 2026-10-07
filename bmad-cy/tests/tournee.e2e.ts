@@ -522,13 +522,24 @@ test('fiche ouverte depuis la journée : retour à la même date, Éval/Trans en
 
   const row = page.locator('.sortable-row').filter({ hasText: 'Martin A.' })
   await expect(row).toHaveClass(/group/)
+  // GRP : bord gauche épais collé à la carte, élargie vers la gauche sans décaler le contenu.
+  const other = page.locator('.sortable-row').filter({ hasText: 'Bernard L.' })
   const card = (await row.locator('.patient-row').boundingBox())!
-  const stripe = await row.evaluate(element => { const style = getComputedStyle(element, '::before'); return { left: parseFloat(style.left), width: parseFloat(style.width) } })
-  expect(stripe.left + stripe.width).toBeLessThanOrEqual(0)
-  expect(card.x).toBeGreaterThan(-stripe.left)
+  const otherCard = (await other.locator('.patient-row').boundingBox())!
+  expect(card.x).toBeCloseTo(otherCard.x - 5, 0)
+  expect(card.x).toBeGreaterThan(0)
+  expect(await row.locator('.patient-row').evaluate(element => parseFloat(getComputedStyle(element).borderLeftWidth))).toBeGreaterThanOrEqual(5)
   const weeks = row.locator('.transmission .weeks')
   await expect(weeks).toHaveText('0')
   expect((await weeks.boundingBox())!.x).toBeLessThan((await row.locator('.transmission .triangle').boundingBox())!.x)
+  // Un nombre à deux chiffres tient dans la carte sans décaler le nom.
+  const nameX = async (target: typeof row) => (await target.locator('.patient-name').boundingBox())!.x
+  const before = await nameX(row)
+  expect(before).toBeCloseTo(await nameX(other), 0)
+  await weeks.evaluate(element => { element.textContent = '12' })
+  expect(await nameX(row)).toBeCloseTo(before, 0)
+  expect((await weeks.boundingBox())!.x).toBeGreaterThan(card.x + 5)
+  expect(((await weeks.boundingBox())!.x) - otherCard.x).toBeLessThan(10)
   await expect(page.locator('.sortable-row').filter({ hasText: 'Bernard L.' })).not.toHaveClass(/group/)
 
   await page.getByRole('link', { name: 'Patients' }).click()
