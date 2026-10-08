@@ -1,5 +1,12 @@
 # Journal des clôtures
 
+## 2026-10-08 — Claude · local
+- Livré : v0.16.0 à v0.21.1 — bouton « Copier » du pointage du jour (format TXT), triangle rapproché du bord et bord GRP épais, « Attend une séance » avec « ! » rouge (Dexie v5), prescription (intitulé, date, durée semaines/mois/ans, date seule = 1 an, fin calculée, pastille « Ordo » orange/rouge ; Dexie v6 et v7), « Tout copier » les bilans d'un patient, boutons Min/Max de la grille Tinetti, prompt Tinetti qui comprend les cotations directes et les consignes globales (« tout est bon »).
+- Tests : npm test 84/84, lint, build, Playwright 18/18 en local ; CI GitHub verte (v0.19.0 non taguée, run annulé par la file Pages). Prompt Tinetti non essayé en réel (pas de clé sur le Mac).
+- Corrigé à la revue : fin de prescription recalculée à la restauration d'une sauvegarde ; tests e2e de dictée rendus indépendants de macOS.
+- En attente : ancien bug du bilan sous le nom non reproductible (fiche Notion laissée ouverte) ; partage des prompts via le dépôt ; piste Jev ; autres tests standardisés.
+- Prochaine étape : vérifier v0.21.1 sur iPhone (dictée « tout est bon » / « item 3 score 1 », Min/Max, prescription datée seule, Copier du jour, Tout copier).
+
 ## 2026-10-05 — Claude · cloud
 - Livré : v0.10.0 à v0.15.3 — dictée des bilans via OpenRouter (Whisper, clé sur l'appareil, hors sauvegarde), bilan plein écran avec mise en forme G I S, onglet Bilans (copie qui coche Trans/Éval, suppression), test de Tinetti (grille + volet Dictée, ★ cotations précédentes, swipe de bord bloqué), sexe du patient (migration Dexie v4), assistant IA en une passe (synthèse Tinetti qui complète les lignes vides ✨ et signale ⚠, écran Transmission plein écran, « Corriger » du bilan libre), anonymisation [patient], prompts par défaut dans le code avec retouche transitoire, synthèse ramenée à ~1 s.
 - Tests : npm test 70/70, lint, build, Playwright 13/13 en local ; CI GitHub verte à chaque version. Essais réels sur iPhone par l'utilisateur (dictée, synthèse en 1,2 s).
