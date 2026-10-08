@@ -6,7 +6,7 @@ import { repository } from '../../storage/repository'
 import { ANALYSIS_MODEL_SETTING, promptSetting } from './assistant'
 import { KEY_SETTING } from './dictation'
 import { chat } from './openrouter'
-import { customPrompt, DEFAULT_PROMPTS, encodeCustomPrompt, PROMPT_LABEL, type PromptKind } from './prompts'
+import { customPrompt, DEFAULT_PROMPTS, encodeCustomPrompt, PROMPT_KINDS, PROMPT_LABEL, type PromptKind } from './prompts'
 import { copyText } from '../exports/clipboard'
 
 // Réglage de l’assistant de rédaction : modèle d’analyse (même clé que la dictée) et prompts modifiables.
@@ -14,7 +14,7 @@ export function AssistantPanel() {
   const { run } = useSave()
   const settings = useLiveQuery(async () => {
     const values = new Map((await db.settings.toArray()).map(item => [item.key, item.value]))
-    return { key: values.get(KEY_SETTING) ?? '', model: values.get(ANALYSIS_MODEL_SETTING) ?? '', prompts: { tinetti: customPrompt('tinetti', values.get(promptSetting('tinetti'))) ?? '', correction: customPrompt('correction', values.get(promptSetting('correction'))) ?? '' } }
+    return { key: values.get(KEY_SETTING) ?? '', model: values.get(ANALYSIS_MODEL_SETTING) ?? '', prompts: Object.fromEntries(PROMPT_KINDS.map(kind => [kind, customPrompt(kind, values.get(promptSetting(kind))) ?? ''])) as Record<PromptKind, string> }
   }, [])
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -38,7 +38,7 @@ export function AssistantPanel() {
     <label>Modèle d’analyse<input key={`model-${settings.model}`} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="ex. deepseek/…" defaultValue={settings.model} onBlur={event => saveModel(event.target.value)} /></label>
     <div className="action-row"><button type="button" disabled={!settings.key || !settings.model || busy} onClick={() => void test()}>{busy ? 'Test…' : 'Tester le modèle'}</button></div>
     {status && <p className={status.ok ? 'save-hint' : 'field-error'} role="status">{status.text}</p>}
-    {(Object.keys(DEFAULT_PROMPTS) as PromptKind[]).map(kind => <details key={kind} className="prompt-editor">
+    {PROMPT_KINDS.map(kind => <details key={kind} className="prompt-editor">
       <summary>Prompt : {PROMPT_LABEL[kind]}{settings.prompts[kind] ? ' (modifié)' : ''}</summary>
       <textarea key={`${kind}-${settings.prompts[kind]}`} aria-label={`Prompt ${PROMPT_LABEL[kind]}`} rows={14} defaultValue={settings.prompts[kind] || DEFAULT_PROMPTS[kind]} onBlur={event => savePrompt(kind, event.target.value)} />
       <div className="action-row"><button type="button" onClick={() => void copyPrompt(kind)}>Copier</button><button type="button" disabled={!settings.prompts[kind]} onClick={() => void run(() => repository.deleteSetting(promptSetting(kind)))}>Rétablir le prompt par défaut</button></div>

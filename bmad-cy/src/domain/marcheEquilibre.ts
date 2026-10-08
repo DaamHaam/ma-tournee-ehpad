@@ -11,13 +11,16 @@ export type FlexControl =
   | { kind: 'multi'; key: string; label?: string; options: string[] }
   | { kind: 'single'; key: string; label?: string; options: string[]; compact?: boolean }
   | { kind: 'number'; key: string; label: string; unit: string }
-  | { kind: 'text'; key: string; label: string; long?: boolean }
+  | { kind: 'text'; key: string; label: string; long?: boolean; ai?: boolean }
+// ai : champ rempli seulement par l’assistant IA (affiché dans le formulaire dès qu’il a une valeur).
 // test : test standardisé suivi dans le temps (★ dernière mesure).
 export interface FlexRubric { id: string; title: string; test?: boolean; controls: FlexControl[] }
 export interface FlexModule { id: string; title: string; rubrics: FlexRubric[] }
 export type FlexInput = Pick<TestRecord, 'choices' | 'values'>
 
 export const otherKey = (key: string) => `${key}.autre`
+// Informations dictées hors formulaire, ajoutées par l’IA sous « Autres commentaires ».
+export const AI_COMMENT_KEY = 'commentaires.ia'
 export const choiceId = (key: string, index: number) => `${key}.${index + 1}`
 const group = (id: string, title: string, options: string[]): FlexRubric => ({ id, title, controls: [{ kind: 'multi', key: id, options }, { kind: 'text', key: otherKey(id), label: 'Autre' }] })
 const AIDS = ['rollator', 'canne simple', 'déambulateur 2 roues', 'canne anglaise']
@@ -82,12 +85,25 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
   { id: 'traitement', title: 'Traitement', rubrics: [
     group('moyens', 'Moyens', ['massage à visée antalgique', 'mobilisation active des MS avec ou sans équipements (Blazepods)', 'mobilisation active des MI avec ou sans équipements (Blazepods)', 'mobilisation active avec ou sans résistance', 'travail de la marche', 'travail de marches variées (avant, arrière, latérale...)', 'travail de la marche entre barres parallèles', MERGED_MEANS.first, MERGED_MEANS.second, 'travail de renforcement des membres inférieurs', 'travail de la phase d’impulsion lors du passage assis-debout', 'entre les barres parallèles', 'travail de la posture (redressement, auto-grandissement)', 'travail de coordination', 'travail de dissociation des ceintures', 'mobilisation passive des MS', 'mobilisation passive des MI', 'habituation progressive à l’effort', 'travail cardio-respi', 'pédalier', 'escaliers', 'séances individuelles au parcours d’équilibre', 'fiche d’accompagnement à l’attention des AS']),
     { id: 'seances', title: 'Nombre de séances kiné par semaine', controls: [{ kind: 'single', key: 'seances', options: ['1', '2', '3', '4', '5'], compact: true }] },
-    { id: 'commentaires', title: 'Autres commentaires', controls: [{ kind: 'text', key: 'commentaires', label: 'Autres commentaires', long: true }] },
+    { id: 'commentaires', title: 'Autres commentaires', controls: [{ kind: 'text', key: 'commentaires', label: 'Autres commentaires', long: true }, { kind: 'text', key: AI_COMMENT_KEY, label: 'Ajouté par l’IA d’après la dictée', long: true, ai: true }] },
   ] },
 ]
 export const MARCHE_EQUILIBRE_TITLE = 'Évaluation kiné marche / équilibre'
 
 const RUBRICS = new Map(MARCHE_EQUILIBRE.flatMap(module => module.rubrics).map(rubric => [rubric.id, rubric]))
+// Champ du formulaire d’après sa clé (valeur) ou l’identifiant d’un choix, avec sa rubrique.
+export function fieldOf(key: string): { rubric: FlexRubric; control: FlexControl } | undefined {
+  for (const rubric of RUBRICS.values()) for (const control of rubric.controls) {
+    if (control.key === key) return { rubric, control }
+    if (control.kind === 'multi' && key.startsWith(`${control.key}.`)) {
+      const rank = Number(key.slice(control.key.length + 1))
+      if (Number.isInteger(rank) && rank >= 1 && rank <= control.options.length) return { rubric, control }
+    }
+  }
+  return undefined
+}
+// Rubrique désignée par son identifiant, par la clé d’un de ses champs ou par un de ses choix.
+export function rubricOfKey(key: string): FlexRubric | undefined { return RUBRICS.get(key) ?? fieldOf(key)?.rubric }
 const MULTI = new Map([...RUBRICS.values()].flatMap(rubric => rubric.controls).flatMap(control => control.kind === 'multi' ? [[control.key, control.options] as const] : []))
 const keysOf = (rubric: FlexRubric) => rubric.controls.map(control => control.key)
 
@@ -174,7 +190,7 @@ function rubricLine(id: string, input: FlexInput): Line | null {
       return line('Traitement kiné', 'bu', [...means.map(escapeHtml), read.html(otherKey('moyens'))].filter(Boolean).join(', '))
     }
     case 'seances': return line('Nombre de séances kiné par semaine', 'i', read.html('seances'))
-    case 'commentaires': return line('Autres commentaires', 'i', read.html('commentaires'))
+    case 'commentaires': return line('Autres commentaires', 'i', [read.html('commentaires'), read.html(AI_COMMENT_KEY)].filter(Boolean).join('<br>'))
     default: return null
   }
 }

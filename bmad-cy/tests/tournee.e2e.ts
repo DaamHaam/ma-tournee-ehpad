@@ -293,7 +293,7 @@ test('Tinetti : cotation, volets, dictée, copie qui coche Éval, consultation e
   await page.getByRole('button', { name: 'Fermer le clavier' }).click()
   await notes.fill('Marche prudente.')
   await notes.evaluate((element: HTMLElement) => { const range = document.createRange(); range.setStart(element.firstChild!, 0); range.setEnd(element.firstChild!, 6); const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range) })
-  await page.getByRole('button', { name: 'Gras' }).click()
+  await page.getByRole('tabpanel', { name: 'Dictée' }).getByRole('button', { name: 'Gras' }).click()
   await page.evaluate(() => {
     const store = window as unknown as { copied?: { html: string; text: string } }
     Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
@@ -334,6 +334,9 @@ test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouc
   await page.getByRole('textbox', { name: 'Test des 10m – Nombre de pas' }).fill('24')
   await expect(page.getByLabel('3 rubriques renseignées')).toBeVisible()
   await page.getByRole('tab', { name: 'Traitement' }).click()
+  // Sous-modules à la suite : l’onglet fait défiler jusqu’au sous-module et reste allumé.
+  await expect(page.getByRole('heading', { name: 'Traitement', level: 2 })).toBeInViewport()
+  await expect(page.getByRole('tab', { name: 'Traitement' })).toHaveAttribute('aria-selected', 'true')
   const means = page.getByRole('group', { name: 'Moyens', exact: true })
   await means.getByRole('checkbox', { name: 'travail des réactions parachute' }).click()
   await means.getByRole('checkbox', { name: 'travail de l’équilibre' }).click()
@@ -432,7 +435,7 @@ test.describe('dictée', () => {
     await expect(bilan).toHaveText('Début. Milieu dicté. Suite dictée. Fin.')
   })
 
-  test('assistant IA simulé : synthèse Tinetti anonymisée, relecture, validation ; correction du bilan libre', async ({ page }) => {
+  test('assistant IA simulé : Tinetti, dictée intégrée dans le volet Résultat, retouche et validation ; correction du bilan libre', async ({ page }) => {
     const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
     const bodies: { model: string; messages: { role: string; content: string }[]; response_format?: unknown }[] = []
     await page.route('https://openrouter.ai/api/v1/chat/completions', route => {
@@ -471,47 +474,47 @@ test.describe('dictée', () => {
     await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / }).click()
     await page.getByRole('tab', { name: 'Dictée' }).click()
     await page.getByRole('textbox', { name: 'Observations Tinetti pour Petit Jeanne' }).fill('Madame Petit marche prudemment, Jeanne se lève sans les bras.')
-    await page.getByRole('button', { name: '✨ Lancer' }).click()
-    // Écran 1, ouvert tout seul : la grille est déjà remplie (✨ cotées par l’IA, ⚠ conflit ou doute), sans rien valider ligne à ligne.
-    const review = page.getByRole('dialog', { name: 'Synthèse du test' })
-    await expect(review.locator('li', { hasText: 'possible > 1 tentative' })).toContainText('✨')
-    await expect(review.locator('li', { hasText: 'possible > 1 tentative' })).not.toContainText('IA')
-    await expect(review.locator('li.doubt')).toHaveCount(2)
-    await expect(review.getByText('Non cotés : 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15.', { exact: true })).toBeVisible()
-    await expect(review.getByText('Données envoyées à l’IA')).toBeVisible()
+    // Volet Résultat : d’abord la cotation et la dictée brute, puis « Intégrer la dictée » (une passe, sans validation ligne à ligne).
+    await page.getByRole('tab', { name: 'Résultat' }).click()
+    const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
+    const result = page.getByRole('textbox', { name: 'Résultat Tinetti pour Petit Jeanne' })
+    await expect(result).toContainText('Madame Petit marche prudemment')
+    await expect(resultPane.getByText('Dictée non intégrée')).toBeVisible()
+    await resultPane.getByRole('button', { name: '✨ Intégrer la dictée' }).click()
+    await expect(resultPane.getByText(/^✨ Dictée intégrée en [0-9,]+ s · 2 cotées par l’IA · 3 ⚠$/)).toBeVisible()
+    await expect.poll(() => result.innerHTML()).toContain('<b>4/28</b>')
+    await expect(result).toContainText('Marche prudente avec [patient].')
+    await expect(resultPane.getByRole('note')).toHaveText(['⚠ 2. Se mettre debout : dictée : se lève sans les bras', '⚠ 16. Écartement des pieds : talons proches ?', '⚠ 15. Tronc : non coté'])
+    await expect(resultPane.getByText('Données envoyées à l’IA')).toBeVisible()
     const request = bodies.at(-1)!
     expect(request.model).toBe('deepseek/modele-test')
     expect(request.messages[0].content).toBe('Prompt personnalisé de test.')
     expect(request.messages[1].content).not.toMatch(/Petit|Jeanne/)
     expect(JSON.parse(request.messages[1].content)).toMatchObject({ patient: 'patiente', dictee: 'Madame [patient] marche prudemment, [patient] se lève sans les bras.' })
-    await review.getByRole('button', { name: 'Retour à la grille' }).click()
+    // La grille est remplie : ✨ cotées par l’IA, ⚠ sous les lignes en conflit ou en doute, y compris non cotées.
     await page.getByRole('tab', { name: 'Grille' }).click()
     await expect(page.getByRole('heading', { name: 'Équilibre 3/16' })).toBeVisible()
     const tries = page.getByRole('radiogroup', { name: '3. Tentatives pour se mettre debout' })
     await expect(tries.getByRole('radio', { name: /^1 – / })).toHaveAttribute('aria-checked', 'true')
     await expect(tries.getByRole('radio', { name: /^1 – / })).toContainText('✨')
     await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('note')).toHaveText('⚠ dictée : se lève sans les bras')
-    // Un voyant peut porter sur une ligne restée non cotée (consigne improbable) : il reste affiché sous la ligne.
     await expect(page.getByRole('radiogroup', { name: '15. Tronc' }).getByRole('note')).toHaveText('⚠ non coté')
-    await expect(page.getByText(/^✓ Synthèse faite en [0-9,]+ s · 3 ⚠$/)).toBeVisible()
-    // « Voir » rouvre l’écran 1 sans nouvel appel ; « Valider » passe à la transmission en plein écran.
+    // Retouche du résultat au clavier puis Valider : enregistré, retour à la journée.
     const calls = bodies.length
-    await page.getByRole('button', { name: 'Voir' }).click()
-    await review.getByRole('button', { name: 'Valider' }).click()
-    expect(bodies.length).toBe(calls)
-    const transmission = page.getByRole('textbox', { name: 'Transmission Tinetti pour Petit Jeanne' })
-    await expect.poll(() => transmission.innerHTML()).toContain('<b>4/28</b>')
-    await expect(transmission).toContainText('Marche prudente avec [patient].')
-    await expect(transmission).toHaveAttribute('inputmode', 'none')
+    await page.getByRole('tab', { name: 'Résultat' }).click()
+    await expect(result).toHaveAttribute('inputmode', 'none')
     await page.getByRole('button', { name: 'Aller à la ligne' }).click()
-    await transmission.press('End')
-    await transmission.pressSequentially('Revoir dans 3 mois.')
-    await page.getByRole('button', { name: 'Valider' }).click()
+    await result.press('End')
+    await result.pressSequentially('Revoir dans 3 mois.')
+    await expect(resultPane.getByText('Texte retouché')).toBeVisible()
+    await resultPane.getByRole('button', { name: 'Valider' }).click()
     await expect(page).toHaveURL(/#\/\?date=2026-09-22/)
-    // Relancer après une transmission validée demande l’autorisation de la remplacer.
+    // Relancer sur un résultat retouché demande l’autorisation de le remplacer.
     await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
-    page.once('dialog', dialog => { expect(dialog.message()).toContain('Remplacer le texte de transmission'); void dialog.dismiss() })
-    await page.getByRole('button', { name: '✨ Relancer' }).click()
+    await page.getByRole('tab', { name: 'Résultat' }).click()
+    await expect(resultPane.getByText(/^✨ Dictée intégrée · 2 cotées par l’IA · 3 ⚠$/)).toBeVisible()
+    page.once('dialog', dialog => { expect(dialog.message()).toContain('Remplacer le texte retouché'); void dialog.dismiss() })
+    await resultPane.getByRole('button', { name: '✨ Relancer' }).click()
     expect(bodies.length).toBe(calls)
     await page.getByRole('link', { name: 'Retour à la journée' }).click()
     await page.getByRole('link', { name: 'Bilans' }).click()
@@ -532,6 +535,63 @@ test.describe('dictée', () => {
     expect(correction.messages[1].content).toBe('Sexe : patiente\n\nTexte :\nbonjour [patient], la patiente marche lentment.')
     await page.getByRole('button', { name: 'Annuler la correction' }).click()
     await expect(bilan).toHaveText('bonjour Jeanne, la patiente marche lentment.')
+  })
+
+  test('assistant IA simulé : dictée intégrée au bilan marche / équilibre', async ({ page }) => {
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
+    const bodies: { messages: { role: string; content: string }[] }[] = []
+    await page.route('https://openrouter.ai/api/v1/chat/completions', route => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+      bodies.push(route.request().postDataJSON())
+      const content = JSON.stringify({ cocher: ['marche.3', 'aideTechnique.8', 'contexte.1'], valeurs: { tug: '18', 'commentaires.ia': 'Souriante.' }, a_verifier: [{ champ: 'marche', raison: 'surveillance ou guidance ?' }] })
+      return route.fulfill({ headers: cors, json: { choices: [{ message: { content } }] } })
+    })
+    await page.goto('/#/settings')
+    await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test9012')
+    await page.getByRole('button', { name: 'Enregistrer' }).click()
+    const model = page.getByLabel('Modèle d’analyse')
+    await model.fill('deepseek/modele-test')
+    await model.blur()
+    await page.getByText('Prompt : Intégration de la dictée au bilan marche / équilibre').click()
+    await expect(page.getByLabel('Prompt Intégration de la dictée au bilan marche / équilibre')).toHaveValue(/Règles propres au bilan marche \/ équilibre/)
+
+    await page.goto('/#/?date=2026-09-22')
+    await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
+    await page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: 'évaluation de suivi' }).click()
+    await page.getByRole('tab', { name: 'Dictée' }).click()
+    const notes = page.getByRole('textbox', { name: 'Dictée marche / équilibre pour Petit Jeanne' })
+    await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
+    await page.getByRole('tab', { name: 'Résultat' }).click()
+    const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
+    const result = page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })
+    await expect(result).not.toContainText('Marche :')
+    await resultPane.getByRole('button', { name: '✨ Intégrer la dictée' }).click()
+    await expect(resultPane.getByText(/^✨ Dictée intégrée en [0-9,]+ s · 4 ajouts · 1 ⚠$/)).toBeVisible()
+    await expect(result).toContainText('Marche : possible avec une surveillance, avec un rollator')
+    await expect(result).toContainText('Timed Up and Go : 18sec')
+    await expect(result).toContainText('Autres commentaires : Souriante.')
+    await expect(resultPane.getByRole('note')).toHaveText('⚠ Marche : surveillance ou guidance ?')
+    const sent = bodies.at(-1)!.messages[1].content
+    expect(sent).not.toMatch(/Petit|Jeanne/)
+    expect(JSON.parse(sent).dictee).toBe('[patient] marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
+    // Dans le formulaire : ✨ sur les ajouts, ⚠ sur la rubrique ; une retouche à la main efface les marques de la rubrique.
+    await page.getByRole('tab', { name: 'Formulaire' }).click()
+    const walk = page.getByRole('region', { name: 'Marche', exact: true })
+    await expect(walk.getByRole('checkbox', { name: /possible avec une surveillance/ })).toHaveAttribute('aria-checked', 'true')
+    await expect(walk.getByRole('checkbox', { name: /possible avec une surveillance/ })).toContainText('✨')
+    await expect(walk.getByRole('note')).toHaveText('⚠ surveillance ou guidance ?')
+    await walk.getByRole('checkbox', { name: /possible avec une surveillance/ }).click()
+    await walk.getByRole('checkbox', { name: /possible avec une guidance/ }).click()
+    await expect(walk.getByRole('note')).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: 'Autres commentaires – Ajouté par l’IA d’après la dictée' })).toHaveValue('Souriante.')
+    // Dictée modifiée après l’intégration : le bandeau le signale.
+    await page.getByRole('tab', { name: 'Dictée' }).click()
+    await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante. Fatigue.')
+    await page.getByRole('tab', { name: 'Résultat' }).click()
+    await expect(resultPane.getByText('Dictée modifiée depuis l’intégration')).toBeVisible()
+    await expect(result).toContainText('Marche : possible avec une guidance, avec un rollator')
+    await resultPane.getByRole('button', { name: 'Valider' }).click()
+    await expect(page).toHaveURL(/#\/\?date=2026-09-22/)
   })
 })
 

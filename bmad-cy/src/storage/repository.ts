@@ -105,8 +105,10 @@ export class TourRepository {
       const entry = this.entry(day, id)
       const record: TestRecord = { scores: {}, notes: '', at: now, ...entry.tests?.[type], ...patch }
       delete record.copied
-      // Le texte validé ne vaut que pour la cotation (ou les choix du bilan flexible) et la dictée qu’il résume.
-      if (patch.resultHtml === undefined && (patch.scores !== undefined || patch.notes !== undefined || patch.choices !== undefined || patch.values !== undefined)) delete record.resultHtml
+      // Le texte retouché ne vaut que pour ce qu’il résume : cotation et dictée du Tinetti, formulaire du bilan marche / équilibre
+      // (la dictée n’y entre qu’au travers du formulaire, quand l’IA l’intègre).
+      const source = type === 'marcheEquilibre' ? [patch.choices, patch.values] : [patch.scores, patch.notes]
+      if (patch.resultHtml === undefined && source.some(value => value !== undefined)) delete record.resultHtml
       if (!record.resultHtml?.trim()) delete record.resultHtml
       if (!record.notes.trim()) delete record.notesHtml
       const tests = { ...entry.tests }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSave } from '../../app/SaveContext'
@@ -10,15 +10,19 @@ import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import type { ChatResult } from './openrouter'
 import { anonymizeWithMap, parseTinettiReply, restoreNames, tinettiRequest } from './assistant'
-import { ReviewAnswers, TransmissionScreen } from './SynthesisReview'
-import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
+import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { testCopyHtml, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
-import { DictationFooter, Icon, ScreenHeader } from './screen'
-import { backTarget, ICONS, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
+import { ScreenHeader } from './screen'
+import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
+import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
+import { useTestPanes } from './useTestPanes'
 
-// Test de Tinetti en plein écran : volet Grille (équilibre puis marche) et volet Dictée, d’un seul glissement ; micro toujours accessible.
+const ITEMS = TINETTI.flatMap(section => section.items)
+const rowLabel = (row: string) => { const item = ITEMS.find(candidate => candidate.rows.some(testRow => testRow.id === row)); const testRow = item?.rows.find(candidate => candidate.id === row); return item ? `${item.number}. ${item.title}${testRow?.sub ? ` – ${testRow.sub}` : ''}` : row }
+
+// Test de Tinetti en plein écran : volets Grille, Dictée et Résultat, d’un seul glissement ; micro toujours accessible.
 export function TinettiPage() {
   const { date = '', id = '' } = useParams()
   const target = backTarget(useLocation().state, date)
@@ -41,38 +45,34 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   const [scores, setScores] = useState<Record<string, number>>(initial?.scores ?? {})
   const [notesHtml, setNotesHtml] = useState(() => initial ? testNotesHtml(initial) : '')
   const [startNotes] = useState(notesHtml)
-  // Texte final validé après synthèse ; effacé dès que la cotation ou la dictée change (comme dans la base).
+  // Résultat retouché ; effacé (et régénéré) dès que la cotation ou la dictée change, comme dans la base.
   const [resultHtml, setResultHtml] = useState(initial?.resultHtml ?? '')
-  // Dernière synthèse IA, gardée pour la revoir sans nouvel appel.
-  const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource ?? '' })
+  const [version, setVersion] = useState(0)
+  // Dernière intégration IA, gardée pour la revoir sans nouvel appel.
+  const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource })
   const [request, setRequest] = useState('')
-  // Durée et jetons de la dernière synthèse de cette séance, pour comprendre d’où vient l’attente.
   const [stats, setStats] = useState<ChatResult | null>(null)
-  // Synthèse en deux écrans : réponses du formulaire, puis transmission en plein écran.
-  const [synthesis, setSynthesis] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'review' } | { status: 'transmission' } | null>(null)
-  const transmission = useRef<RichEditorHandle>(null)
-  const onTransmission = useRef(false)
-  useEffect(() => { onTransmission.current = synthesis?.status === 'transmission' }, [synthesis])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
   const changed = useRef(false)
   const editor = useRef<RichEditorHandle>(null)
-  const panes = useRef<HTMLDivElement>(null)
-  const [pane, setPane] = useState(0)
-  const [keyboard, setKeyboard] = useState(false)
-  const [format, setFormat] = useState<FormatState>({ bold: false, italic: false, underline: false })
+  const result = useRef<RichEditorHandle>(null)
+  const screen = useTestPanes(editor, result)
   const viewport = useVisibleViewport()
   useBlockEdgeSwipe()
   const { copied, copy } = useBilanCopy(date, id, 'tinetti')
   const score = tinettiScore(scores)
+  const regenerate = () => { changed.current = true; setResultHtml(''); setVersion(current => current + 1) }
   // Une cotation touchée à la main n’est plus celle de l’IA : ses marques (✨, ⚠) disparaissent pour cette ligne.
-  // Grille verrouillée pendant la synthèse : la réponse de l’IA est fusionnée avec la grille envoyée.
+  // Grille verrouillée pendant l’intégration : la réponse de l’IA est fusionnée avec la grille envoyée.
   const choose = (row: string, value: number) => {
-    if (synthesis?.status === 'loading') return
+    if (busy) return
     const next = { ...scores }
     if (next[row] === value) delete next[row]
     else next[row] = value
-    setScores(next); changed.current = true; setResultHtml('')
+    setScores(next); regenerate()
     const marked = ai.filled.includes(row) || ai.checks.some(check => check.row === row)
     const nextAi = marked ? { ...ai, filled: ai.filled.filter(item => item !== row), checks: ai.checks.filter(check => check.row !== row) } : ai
     if (marked) setAi(nextAi)
@@ -80,19 +80,18 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   }
   // Min / Max : remplit d’un coup les lignes vides, à corriger ensuite ligne par ligne.
   const fillEmpty = (level: 'max' | 'min') => {
-    if (synthesis?.status === 'loading') return
+    if (busy) return
     const next = fillEmptyRows(scores, level)
     if (Object.keys(next).length === Object.keys(scores).length) return
-    setScores(next); changed.current = true; setResultHtml('')
+    setScores(next); regenerate()
     void run(() => repository.setTest(date, id, 'tinetti', { scores: next }))
   }
   const saveNotes = useCallback((html: string, text: string) => {
-    latestNotes.current = html; setNotesHtml(html); changed.current = true; setResultHtml('')
+    latestNotes.current = html; setNotesHtml(html); changed.current = true; setResultHtml(''); setVersion(current => current + 1)
     void run(() => repository.setTest(date, id, 'tinetti', { notes: text, notesHtml: html }))
   }, [date, id, run])
   const dictation = useDictation(
-    // La dictée va dans l’écran de transmission quand il est ouvert, sinon dans le volet Dictée.
-    useCallback((text: string) => (onTransmission.current ? transmission : editor).current?.insertText(text), []),
+    screen.insertDictation,
     useCallback(async (text: string) => { const value = appendText(latestNotes.current, text); latestNotes.current = value; await run(() => repository.setTest(date, id, 'tinetti', { notes: htmlToText(value), notesHtml: value })) }, [date, id, run]),
   )
   // ✕ : quitte en remettant le test tel qu’il était à l’ouverture (absent s’il n’existait pas).
@@ -101,79 +100,66 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     navigate(back)
   }
   // Une seule passe, sans validation : les lignes vides décrites dans la dictée sont cotées par l’IA (✨),
-  // conflits et incertitudes allument un voyant (⚠), les observations rédigées sont gardées pour la copie.
-  const synthesize = async () => {
-    if (resultHtml && !window.confirm('Remplacer le texte de transmission déjà enregistré ?')) return
-    if (keyboard) toggleKeyboard(false)
-    setSynthesis({ status: 'loading' })
+  // conflits et incertitudes allument un voyant (⚠), les observations rédigées entrent dans le résultat.
+  // Relancer reprend la grille sans les cotations de l’IA restées intactes.
+  const integrate = async () => {
+    if (resultHtml && !window.confirm('Remplacer le texte retouché du résultat ?')) return
+    setBusy(true); setError('')
     try {
       const source = htmlToText(latestNotes.current)
+      const base = Object.fromEntries(Object.entries(scores).filter(([row]) => !ai.filled.includes(row)))
       const { text, found } = anonymizeWithMap(source, [entry.patient.lastName, entry.patient.firstName])
-      const sent = tinettiRequest(scores, text, sex)
+      const sent = tinettiRequest(base, text, sex)
       const answer = await assistant.ask('tinetti', sent, true)
-      setStats(answer)
-      const reply = parseTinettiReply(answer.content, scores)
-      const merged = { ...reply.scores, ...scores }
+      const reply = parseTinettiReply(answer.content, base)
+      const merged = { ...reply.scores, ...base }
       const next = { observations: sanitizeBilanHtml(restoreNames(reply.observations, found)), checks: reply.checks, filled: Object.keys(reply.scores), source }
-      setScores(merged); setAi(next); setResultHtml(''); setRequest(sent); setSynthesis({ status: 'review' }); changed.current = true
+      setStats(answer); setScores(merged); setAi(next); setRequest(sent); regenerate()
       await run(() => repository.setTest(date, id, 'tinetti', { scores: merged, aiObservations: next.observations, aiChecks: next.checks, aiFilled: next.filled, aiSource: source }))
-    } catch (cause) { setSynthesis({ status: 'error', message: cause instanceof Error ? cause.message : 'Synthèse impossible.' }) }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Intégration impossible.') }
+    finally { setBusy(false) }
   }
   const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source }
-  const notesChanged = ai.observations !== undefined && htmlToText(notesHtml) !== ai.source
-  // Transmission validée : enregistrée telle quelle (gardée jusqu’au prochain changement de cotation ou de dictée), puis retour à la journée.
-  const validateTransmission = async (html: string) => {
-    const value = sanitizeBilanHtml(html)
+  const generated = testCopyHtml({ ...record, resultHtml: '' })
+  const shown = resultHtml || generated
+  const editResult = (html: string) => {
+    const value = html === sanitizeBilanHtml(generated) ? '' : html
     setResultHtml(value); changed.current = true
-    if (await run(() => repository.setTest(date, id, 'tinetti', { resultHtml: value }))) navigate(`/?date=${date}`)
+    void run(() => repository.setTest(date, id, 'tinetti', { resultHtml: value }))
   }
-  const toggleKeyboard = (open: boolean) => { editor.current?.setKeyboard(open); setKeyboard(open) }
-  const goTo = (index: number) => { const box = panes.current; if (box) box.scrollTo({ left: index * box.clientWidth, behavior: 'smooth' }) }
-  // Quitter le volet Dictée referme le clavier.
-  const showPane = (index: number) => { if (index !== pane) { if (index === 0 && keyboard) toggleKeyboard(false); setPane(index) } }
-  const tabs = ['Grille', 'Dictée']
+  const notesText = htmlToText(notesHtml)
+  const empty = !hasTestContent({ scores, notes: notesText })
+  const integration = {
+    state: busy ? 'loading' as const : ai.source === undefined ? 'none' as const : ai.source !== notesText ? 'stale' as const : 'done' as const,
+    summary: `✨ Dictée intégrée${stats ? ` en ${String(stats.seconds).replace('.', ',')} s` : ''} · ${ai.filled.length} cotées par l’IA${ai.checks.length ? ` · ${ai.checks.length} ⚠` : ''}`,
+    checks: ai.checks.map(check => `${rowLabel(check.row)} : ${check.reason || 'à vérifier'}`),
+    error, unavailable: assistant.unavailable, canRun: !!notesText.trim(), request, stats, run: () => void integrate(),
+  }
   const sections = { equilibre: score.equilibre, marche: score.marche }
-  const empty = !hasTestContent({ scores, notes: htmlToText(notesHtml) })
-  return <div className={`bilan-page tinetti-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
+  return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient}
       tools={<span className="total-badge" aria-label={`Total ${score.total} sur ${score.max}`}>Tinetti {score.total}/{score.max}</span>}
-      copied={copied} copyDisabled={empty} onCopy={() => void copy(testCopyHtml(record))} onCancel={() => void cancel()} />
-    <div className="pane-tabs two" role="tablist" aria-label="Volets du test">
-      {tabs.map((tab, index) => <button key={tab} type="button" role="tab" aria-selected={pane === index} onClick={() => goTo(index)}>{tab}</button>)}
-    </div>
-    <div className="synth-bar">
-      <span className={`synth-state${ai.observations !== undefined && !notesChanged ? ' done' : ''}`}>{synthesis?.status === 'loading' ? 'Synthèse en cours…' : ai.observations === undefined ? 'Synthèse IA' : notesChanged ? 'Dictée modifiée depuis la synthèse' : `✓ Synthèse faite${stats ? ` en ${String(stats.seconds).replace('.', ',')} s` : ''}${ai.checks.length ? ` · ${ai.checks.length} ⚠` : ''}`}</span>
-      {ai.observations !== undefined && <button type="button" onClick={() => setSynthesis({ status: 'review' })}>Voir</button>}
-      <button type="button" className="synth-button" disabled={!!assistant.unavailable || empty || synthesis?.status === 'loading'} title={assistant.unavailable || 'Synthèse par l’IA'} onClick={() => void synthesize()}>{synthesis?.status === 'loading' ? '…' : ai.observations !== undefined ? '✨ Relancer' : '✨ Lancer'}</button>
-    </div>
-    {synthesis?.status === 'error' && <p className="field-error" role="alert">{synthesis.message}</p>}
+      copied={copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
+    <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.pane} goTo={screen.goTo} />
     {previous && <p className="previous-note">★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}
-    <div className="panes" ref={panes} onScroll={event => { const box = event.currentTarget; showPane(Math.round(box.scrollLeft / Math.max(1, box.clientWidth))) }}>
-      <div className="pane" role="tabpanel" aria-label="Grille"><div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={synthesis?.status === 'loading' || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
+    <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
+      <div className="pane" role="tabpanel" aria-label="Grille"><div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={busy || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
         <h2 className="section-title">{section.title} <span>{sections[section.id].score}/{sections[section.id].max}</span></h2>
         <p className="pane-instructions">{section.instructions}</p>
         {section.items.map(item => <div key={item.number} className="test-item">
           <h3>{item.number}. {item.title}</h3>
           {item.rows.map(row => <div key={row.id} className="test-row" role="radiogroup" aria-label={`${item.number}. ${item.title}${row.sub ? ` – ${row.sub}` : ''}`}>
             {row.sub && <p className="row-sub">{row.sub}</p>}
-            {row.options.map(option => <button key={option.score} type="button" role="radio" className="test-option" aria-checked={scores[row.id] === option.score} aria-label={`${option.score} – ${option.label}`} disabled={synthesis?.status === 'loading'} onClick={() => choose(row.id, option.score)}>
+            {row.options.map(option => <button key={option.score} type="button" role="radio" className="test-option" aria-checked={scores[row.id] === option.score} aria-label={`${option.score} – ${option.label}`} disabled={busy} onClick={() => choose(row.id, option.score)}>
               <span className="option-score">{option.score}</span><span className="option-label">{option.label}</span>{scores[row.id] === option.score && ai.filled.includes(row.id) && <span className="ai-mark" title="Cotée par l’IA d’après la dictée">✨</span>}{previous?.record.scores[row.id] === option.score && <span className="previous-mark" title="Cotation précédente">★</span>}
             </button>)}
             {ai.checks.filter(check => check.row === row.id).map(check => <p key={check.row} className="row-doubt" role="note">⚠ {check.reason || 'à vérifier'}</p>)}
           </div>)}
         </div>)}
       </section>)}</div>
-      <section className="pane notes-pane" role="tabpanel" aria-label="Dictée">
-        <FormatButtons editor={editor} state={format} />
-        <RichEditor ref={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={keyboard} placeholder="Observations" onChange={saveNotes} onFormatState={setFormat} />
-      </section>
+      <NotesPane editor={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} onChange={saveNotes} />
+      <ResultPane editor={result} version={version} initialHtml={shown} label={`Résultat Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} retouched={!!resultHtml} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
     </div>
-    {synthesis?.status === 'review' && <ReviewAnswers stats={stats} scores={scores} checks={ai.checks} filled={ai.filled} request={request || undefined} notice={notesChanged ? 'La dictée a changé depuis cette synthèse : relancez-la pour l’intégrer.' : ''} onBack={() => setSynthesis(null)} onNext={() => setSynthesis({ status: 'transmission' })} />}
-    {synthesis?.status === 'transmission' && <TransmissionScreen initialHtml={testCopyHtml(record)} name={name} editor={transmission} dictation={dictation} onBack={() => setSynthesis({ status: 'review' })} onValidate={html => void validateTransmission(html)} />}
-    {synthesis?.status === 'review' || synthesis?.status === 'transmission' ? null : keyboard
-      ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
-      : <DictationFooter dictation={dictation}
-        left={pane === 1 ? <button type="button" className="round-button" aria-label="Aller à la ligne" title="Aller à la ligne" onPointerDown={event => event.preventDefault()} onClick={() => editor.current?.insertLineBreak()}><Icon d={ICONS.newline} size={24} /></button> : undefined}
-        right={pane === 1 ? <button type="button" className="round-button" aria-label="Ouvrir le clavier" title="Ouvrir le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(true)}><Icon d={ICONS.keyboard} /></button> : undefined} />}
-  </div>
+    {screen.footer(dictation)}
+  </TestPage>
 }

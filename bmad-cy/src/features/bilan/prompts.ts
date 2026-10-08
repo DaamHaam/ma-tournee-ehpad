@@ -1,15 +1,18 @@
 // Prompts par défaut de l’assistant de rédaction (une seule passe par demande), tenus à jour par l’agent.
 // Une modification faite dans Réglages est transitoire : elle s’efface dès qu’une mise à jour change le prompt par défaut.
-export type PromptKind = 'tinetti' | 'correction'
-export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', correction: 'Correction du bilan libre' }
+export type PromptKind = 'tinetti' | 'marcheEquilibre' | 'correction'
+export const PROMPT_KINDS: PromptKind[] = ['tinetti', 'marcheEquilibre', 'correction']
+export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', marcheEquilibre: 'Intégration de la dictée au bilan marche / équilibre', correction: 'Correction du bilan libre' }
 
-export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
-  tinetti: `Principe de fonctionnement (commun à tous les bilans) :
+const PRINCIPLE = `Principe de fonctionnement (commun à tous les bilans) :
 Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche des lignes du formulaire et il dicte librement ses observations. Ton rôle est de cumuler ces deux sources en un seul résultat, sans rien lui faire valider :
 - une ligne cochée fait foi et n’est jamais modifiée ;
 - une ligne non cochée que la dictée décrit est remplie d’après la dictée ;
 - un conflit (la dictée contredit une ligne cochée) ou une vraie incertitude (dictée vague ou ambiguë) allume un petit voyant : une entrée dans "a_verifier" avec une raison très courte ; une ligne décrite clairement n’allume jamais de voyant ;
-- la dictée est rédigée en observations propres et concises.
+- la dictée est rédigée en observations propres et concises.`
+
+export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
+  tinetti: `${PRINCIPLE}
 
 Tu reçois en JSON :
 - "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
@@ -41,6 +44,37 @@ Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les li
 
 Réponds uniquement par un objet JSON de la forme :
 {"cotations": {"e1": 1, "e2": 1}, "observations": "…", "a_verifier": [{"ligne": "e2", "raison": "…"}]}`,
+  marcheEquilibre: `${PRINCIPLE}
+
+Tu reçois en JSON :
+- "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
+- "formulaire" : le bilan marche / équilibre, rubrique par rubrique ; chaque champ a un identifiant ("id") :
+  - choix multiples : "coches" liste les libellés déjà cochés, "a_cocher" donne les options encore libres sous la forme {"identifiant": "libellé"} ;
+  - choix unique : "valeur" (null si vide) et "options" ;
+  - nombre : "valeur" (null si vide) et "unite" ;
+  - texte : "valeur" ("" si vide) ;
+- "dictee" : le texte dicté pendant le bilan (transcription automatique, parfois imparfaite).
+
+Règles propres au bilan marche / équilibre (bilan flexible : seules les lignes cochées ou remplies apparaissent dans le compte rendu, il est normal que la plupart restent vides) :
+1. Ce que le kinésithérapeute a coché ou rempli fait foi : ne décoche rien, ne remplace aucune valeur.
+2. Dans "cocher", mets l’identifiant de chaque option libre que la dictée décrit, avec les mots de l’option ou des mots équivalents. Exemples :
+   - « elle se lève seule sans les accoudoirs » → Verticalisation « seul sans accoudoirs » ;
+   - « marche avec son rollator, sous surveillance » → Marche « possible avec une surveillance » et Aide technique « avec un rollator » ;
+   - « pas de douleur » → Douleur « pas de douleur exprimée lors des transferts et de la marche » ;
+   - « tient 10 secondes pieds joints les yeux ouverts » → Équilibre « tient maximum 10s pieds joints yeux ouverts ».
+   N’invente rien : une option que la dictée n’évoque pas reste libre. Objectifs et moyens ne sont cochés que s’ils sont dictés.
+3. Dans "valeurs", remplis les champs vides que la dictée renseigne :
+   - nombre : le chiffre seul, sans unité, converti dans l’unité du champ (« TUG en 18 secondes » → "tug": "18" ; « 10 mètres en 22 secondes et 30 pas » → "test10m.temps": "22", "test10m.pas": "30" ; « une minute dix » pour un champ en secondes → "70") ;
+   - choix unique : exactement une des options (« EVA à 4 » → "eva": "4") ;
+   - texte : bref et propre (« trajet chambre-RDC en deux minutes trente » → "trajet.duree": "2 min 30 s") ;
+   - une précision qui concerne une rubrique sans correspondre à aucune de ses options va dans le champ « Autre » de cette rubrique (identifiant en ".autre"), s’il est vide ;
+   - toute autre information clinique utile de la dictée, hors formulaire, va dans "commentaires.ia" : phrases courtes, corrigées, accordées selon "patient", sans répétition ni mot parasite ; rien s’il n’y en a pas ;
+   - les consignes de remplissage (« coche… », « mets… ») servent à remplir et ne vont jamais dans les textes.
+   N’écris jamais de nom de personne ni [patient] dans les valeurs : écris « le patient » ou « la patiente ».
+4. "a_verifier" est un voyant d’alerte, à n’utiliser que si la dictée contredit ce qui est coché ou rempli (par exemple « marche impossible » cochée alors que la dictée décrit une marche), ou si elle est vague et que tu as dû interpréter. "champ" est l’identifiant du champ concerné ; la raison (moins de 12 mots) dit précisément ce qui est ambigu ou contradictoire. En général, la liste est vide ou très courte.
+
+Réponds uniquement par un objet JSON de la forme :
+{"cocher": ["marche.3", "aideTechnique.8"], "valeurs": {"tug": "18", "commentaires.ia": "…"}, "a_verifier": [{"champ": "marche", "raison": "…"}]}`,
   correction: `Tu corriges un bilan de kinésithérapie dicté en EHPAD (transcription automatique, parfois imparfaite). La personne est anonymisée ([patient] remplace son nom).
 
 - Corrige l’orthographe, la grammaire, la ponctuation et les accords selon le sexe indiqué.

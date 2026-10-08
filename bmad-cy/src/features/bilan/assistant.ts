@@ -1,5 +1,6 @@
 import type { Sex } from '../../domain/model'
 import { TINETTI, validScore, type AiCheck } from '../../domain/tinetti'
+import { choiceId, fieldOf, MARCHE_EQUILIBRE, rubricOfKey, type FlexInput } from '../../domain/marcheEquilibre'
 import { sanitizeBilanHtml } from './richText'
 
 const TINETTI_ROWS = new Set(TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => row.id))))
@@ -56,11 +57,7 @@ export interface TinettiReply { observations: string; checks: AiCheck[]; scores:
 // Lecture tolérante de la réponse : JSON éventuellement entouré de ```, lignes inconnues ignorées.
 // L’IA ne cote que les lignes laissées vides : une cotation choisie par le kinésithérapeute n’est jamais remplacée.
 export function parseTinettiReply(content: string, scores: Record<string, number>): TinettiReply {
-  const start = content.indexOf('{')
-  const end = content.lastIndexOf('}')
-  let data: unknown
-  try { data = JSON.parse(content.slice(start, end + 1)) } catch { throw new Error('Réponse de l’IA illisible. Réessayez.') }
-  const reply = data as { observations?: unknown; a_verifier?: unknown; cotations?: unknown }
+  const reply = readJson(content) as { observations?: unknown; a_verifier?: unknown; cotations?: unknown }
   const proposed = reply.cotations && typeof reply.cotations === 'object' && !Array.isArray(reply.cotations) ? reply.cotations as Record<string, unknown> : {}
   const filled = Object.fromEntries(Object.entries(proposed).filter(([row, score]) => scores[row] === undefined && validScore(row, score))) as Record<string, number>
   const observations = typeof reply.observations === 'string' ? sanitizeBilanHtml(reply.observations.replace(/\n/g, '<br>')) : ''
@@ -70,6 +67,67 @@ export function parseTinettiReply(content: string, scores: Record<string, number
     return typeof check.ligne === 'string' && TINETTI_ROWS.has(check.ligne) ? [{ row: check.ligne, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
   }) : []
   return { observations, checks, scores: filled }
+}
+
+// Lecture tolérante du JSON de l’IA (éventuellement entouré de ```).
+function readJson(content: string): Record<string, unknown> {
+  const start = content.indexOf('{')
+  const end = content.lastIndexOf('}')
+  try {
+    const data: unknown = JSON.parse(content.slice(start, end + 1))
+    if (data && typeof data === 'object' && !Array.isArray(data)) return data as Record<string, unknown>
+  } catch { /* message ci-dessous */ }
+  throw new Error('Réponse de l’IA illisible. Réessayez.')
+}
+
+// Contenu envoyé pour le bilan marche / équilibre : formulaire (cochés en libellés, options libres avec leur identifiant)
+// et dictée anonymisée, sans aucune identité.
+export function marcheRequest(input: FlexInput, dictation: string, sex: Sex): string {
+  const choices = new Set(input.choices ?? [])
+  const values = input.values ?? {}
+  const formulaire = MARCHE_EQUILIBRE.flatMap(module => module.rubrics.map(rubric => ({
+    sous_module: module.title, rubrique: rubric.title,
+    champs: rubric.controls.map(control => {
+      const base = { id: control.key, ...(control.label ? { titre: control.label } : {}) }
+      switch (control.kind) {
+        case 'multi': {
+          const options = control.options.map((label, index) => [choiceId(control.key, index), label] as const)
+          return { ...base, type: 'choix multiples', coches: options.filter(([id]) => choices.has(id)).map(([, label]) => label), a_cocher: Object.fromEntries(options.filter(([id]) => !choices.has(id))) }
+        }
+        case 'single': return { ...base, type: 'choix unique', valeur: values[control.key] || null, options: control.options }
+        case 'number': return { ...base, type: 'nombre', unite: control.unit, valeur: values[control.key] || null }
+        case 'text': return { ...base, type: 'texte', valeur: values[control.key] ?? '' }
+      }
+    }),
+  })))
+  return JSON.stringify({ patient: sexLabel(sex), formulaire, dictee: dictation })
+}
+
+export interface FlexReply { choices: string[]; values: Record<string, string>; checks: AiCheck[] }
+// L’IA ne coche que des options libres et ne remplit que des champs vides : rien de ce qu’a saisi le kinésithérapeute n’est remplacé.
+// Voyants rattachés à leur rubrique ; un [patient] oublié dans un texte devient « le patient » ou « la patiente ».
+export function parseMarcheReply(content: string, input: FlexInput, sex: Sex): FlexReply {
+  const reply = readJson(content)
+  const taken = new Set(input.choices ?? [])
+  const person = sex === 'F' ? 'la patiente' : 'le patient'
+  const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && !taken.has(id)))] : []
+  const proposed = reply.valeurs && typeof reply.valeurs === 'object' && !Array.isArray(reply.valeurs) ? reply.valeurs as Record<string, unknown> : {}
+  const values: Record<string, string> = {}
+  for (const [key, raw] of Object.entries(proposed)) {
+    const control = fieldOf(key)?.control
+    if (!control || control.key !== key || control.kind === 'multi' || (input.values?.[key] ?? '').trim()) continue
+    const text = (typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw : '').split(ANONYMOUS).join(person).trim()
+    if (!text) continue
+    if (control.kind === 'number' && !Number.isFinite(Number(text.replace(',', '.')))) continue
+    if (control.kind === 'single' && !control.options.includes(text)) continue
+    values[key] = text
+  }
+  const checks = Array.isArray(reply.a_verifier) ? reply.a_verifier.flatMap(item => {
+    const check = item as { champ?: unknown; raison?: unknown }
+    const rubric = typeof check.champ === 'string' ? rubricOfKey(check.champ) : undefined
+    return rubric ? [{ row: rubric.id, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
+  }) : []
+  return { choices, values, checks }
 }
 
 // Texte corrigé renvoyé par l’IA : guillemets ou blocs de code retirés, puis filtré comme un bilan.

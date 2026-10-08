@@ -19,3 +19,4 @@
 ## Après le bilan marche / équilibre (v0.22.0)
 
 - Idée (2026-10-08) : antécédents dans la fiche patient, en deux parties — ceux qui concernent directement la kiné en séance, et les autres. Les bilans (dont marche / équilibre) reprendraient seulement les antécédents kiné ; aujourd’hui la rubrique Antécédents du bilan est un texte libre.
+- Idée (2026-10-08) : carnet des médecins dans l’application — enregistrer chaque médecin avec ses contacts (téléphone, mail) et des informations libres ajoutées via un petit bouton.
