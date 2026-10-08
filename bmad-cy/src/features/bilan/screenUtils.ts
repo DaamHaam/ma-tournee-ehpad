@@ -21,6 +21,9 @@ export const ICONS = {
   newline: 'M19 5v7a3 3 0 0 1-3 3H6M10 11l-4 4 4 4',
   keyboard: 'M4.5 6h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2ZM6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7.5 14h9',
   hide: 'M6 9l6 6 6-6',
+  erase: 'M21 5H9l-6 7 6 7h12zM12 9l6 6M18 9l-6 6',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',
+  undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
 }
 
 // Retour vers la page d’origine (journée par défaut, onglet Bilans si on en vient).

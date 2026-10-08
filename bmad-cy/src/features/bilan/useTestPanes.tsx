@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type RefObject, type UIEvent } from 'react'
 import type { RichEditorHandle } from './RichEditor'
-import { DictationFooter, Icon } from './screen'
+import { BarButton, DictationFooter, KeyboardBar } from './screen'
 import { ICONS } from './screenUtils'
 import type { useDictation } from './useDictation'
 
@@ -29,13 +29,20 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   const routeDictation = (dictation: ReturnType<typeof useDictation>): ReturnType<typeof useDictation> => ({
     ...dictation, toggle: async () => { if (!dictation.recording) target.current = current.current === RESULT_PANE ? RESULT_PANE : NOTES_PANE; await dictation.toggle() },
   })
+  // Formulaire : micro seul, flottant. Dictée et Résultat : ⏎ à gauche, clavier et ⌫ à droite. Clavier ouvert : petit micro et flèche.
   const footer = (dictation: ReturnType<typeof useDictation>) => {
     const editor = editorOf(pane)
-    return keyboard
-      ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
-      : <DictationFooter dictation={routeDictation(dictation)}
-        left={editor ? <button type="button" className="round-button" aria-label="Aller à la ligne" title="Aller à la ligne" onPointerDown={event => event.preventDefault()} onClick={() => editor.current?.insertLineBreak()}><Icon d={ICONS.newline} size={24} /></button> : undefined}
-        right={editor ? <button type="button" className="round-button" aria-label="Ouvrir le clavier" title="Ouvrir le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(true)}><Icon d={ICONS.keyboard} /></button> : undefined} />
+    const routed = routeDictation(dictation)
+    if (keyboard) return <KeyboardBar dictation={routed} onHide={() => toggleKeyboard(false)} />
+    if (!editor) return <DictationFooter dictation={routed} floating />
+    return <DictationFooter dictation={routed}
+      left={<BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />}
+      right={<><BarButton label="Ouvrir le clavier" icon={ICONS.keyboard} onClick={() => toggleKeyboard(true)} /><BarButton label="Effacer" icon={ICONS.erase} onClick={() => editor.current?.deleteBackward()} /></>} />
   }
-  return { panes, pane, keyboard, goTo, onScroll, insertDictation, footer }
+  // ⚠ du Résultat : retour au formulaire, sur le premier point à vérifier.
+  const showFirstDoubt = () => {
+    goTo(0)
+    window.setTimeout(() => panes.current?.querySelector('.pane .row-doubt')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350)
+  }
+  return { panes, pane, keyboard, goTo, onScroll, insertDictation, footer, showFirstDoubt }
 }

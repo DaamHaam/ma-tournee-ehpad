@@ -11,7 +11,7 @@ import { useBilanCopy } from './useBilanCopy'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { appendText, bilanHtml, htmlToText, sanitizeBilanHtml } from './richText'
 import { useDictation } from './useDictation'
-import { DictationFooter, Icon, ScreenHeader } from './screen'
+import { BarButton, DictationFooter, KeyboardBar, ScreenHeader } from './screen'
 import { backTarget, ICONS, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 
 // Bilan libre du jour en plein écran ; ne part pas dans l’export TXT.
@@ -74,16 +74,14 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
       copied={copied} copyDisabled={!htmlToText(html).trim()} onCopy={() => void copy(html)} onCancel={() => void cancel()} />
     <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} keyboard={keyboard} onChange={save} onFormatState={setFormat} />
     {keyboard
-      ? <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}><Icon d={ICONS.hide} /></button>
+      ? <KeyboardBar dictation={dictation} onHide={() => toggleKeyboard(false)} />
       : <DictationFooter dictation={dictation}
-        extra={<>
-          <div className="assist-row">
-            <button type="button" className="synth-button" disabled={!!assistant.unavailable || correction.busy || !htmlToText(html).trim()} title={assistant.unavailable || 'Corriger avec l’IA'} onClick={() => void correct()}>{correction.busy ? 'Correction…' : '✨ Corriger'}</button>
-            {correction.previous !== undefined && <button type="button" className="synth-button" onClick={undoCorrection}>Annuler la correction</button>}
-          </div>
-          {correction.error && <p className="field-error" role="alert">{correction.error}</p>}
+        extra={correction.error && <p className="field-error" role="alert">{correction.error}</p>}
+        left={<>
+          <button type="button" className="round-button ai-round" aria-label="Corriger avec l’IA" title={assistant.unavailable || 'Corriger avec l’IA'} disabled={!!assistant.unavailable || correction.busy || !htmlToText(html).trim()} onPointerDown={event => event.preventDefault()} onClick={() => void correct()}>{correction.busy ? '…' : '✨'}</button>
+          {correction.previous !== undefined && <BarButton label="Annuler la correction" icon={ICONS.undo} onClick={undoCorrection} />}
+          <BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />
         </>}
-        left={<button type="button" className="round-button" aria-label="Aller à la ligne" title="Aller à la ligne" onPointerDown={event => event.preventDefault()} onClick={() => editor.current?.insertLineBreak()}><Icon d={ICONS.newline} size={24} /></button>}
-        right={<button type="button" className="round-button" aria-label="Ouvrir le clavier" title="Ouvrir le clavier" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(true)}><Icon d={ICONS.keyboard} /></button>} />}
+        right={<><BarButton label="Ouvrir le clavier" icon={ICONS.keyboard} onClick={() => toggleKeyboard(true)} /><BarButton label="Effacer" icon={ICONS.erase} onClick={() => editor.current?.deleteBackward()} /></>} />}
   </div>
 }

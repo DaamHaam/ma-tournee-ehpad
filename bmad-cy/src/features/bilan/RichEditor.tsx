@@ -7,6 +7,7 @@ export type FormatState = Record<Command, boolean>
 export interface RichEditorHandle {
   insertText: (text: string) => void
   insertLineBreak: () => void
+  deleteBackward: () => void
   setKeyboard: (open: boolean) => void
   format: (command: Command) => void
   setHtml: (html: string) => void
@@ -86,6 +87,22 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
     placeAfter(br)
     emit()
   }
+  // Touche ⌫ sans clavier : efface la sélection, sinon le caractère (ou le retour à la ligne) avant le curseur.
+  const deleteBackward = () => {
+    const element = box.current
+    const selection = window.getSelection()
+    if (!element || !selection) return
+    const range = current().cloneRange()
+    selection.removeAllRanges(); selection.addRange(range)
+    if (range.collapsed) selection.modify('extend', 'backward', 'character')
+    const target = selection.rangeCount ? selection.getRangeAt(0) : null
+    if (!target || target.collapsed || !inside(target.startContainer) || !inside(target.endContainer)) { selection.removeAllRanges(); return }
+    target.deleteContents()
+    target.collapse(true)
+    saved.current = target.cloneRange()
+    if (!focused()) selection.removeAllRanges()
+    emit()
+  }
   // Collage en texte brut : chaque retour à la ligne du texte collé devient un <br>.
   const paste = (text: string) => text.split(/\r\n|\r|\n/).forEach((line, index) => { if (index) insertLineBreak(); insertText(line, false) })
   const format = (command: Command) => {
@@ -105,6 +122,7 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
     },
     insertText: text => insertText(text),
     insertLineBreak,
+    deleteBackward,
     // Le mode clavier ne s’applique qu’au prochain focus : on retire puis redonne le focus dans le même geste.
     setKeyboard: open => {
       const element = box.current

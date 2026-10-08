@@ -9,7 +9,6 @@ import type { AiCheck, TestRecord } from '../../domain/tinetti'
 import { choiceId, hasFlexContent, MARCHE_EQUILIBRE, marcheEquilibreHtml, previousMarcheEquilibre, rubricFilled, rubricOfKey, type FlexControl, type FlexRubric, type PreviousFlex } from '../../domain/marcheEquilibre'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
-import type { ChatResult } from './openrouter'
 import { anonymizeWithMap, marcheRequest, parseMarcheReply } from './assistant'
 import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
@@ -22,7 +21,6 @@ import { useTestPanes } from './useTestPanes'
 
 const KIND = 'marcheEquilibre'
 const shortDate = (date: string) => parseDate(date).toLocaleDateString('fr-FR')
-const rubricTitle = (id: string) => MARCHE_EQUILIBRE.flatMap(module => module.rubrics).find(rubric => rubric.id === id)?.title ?? id
 const without = (values: Record<string, string>, keys: string[]) => Object.fromEntries(Object.entries(values).filter(([key]) => !keys.includes(key)))
 
 // Bilan marche / équilibre en plein écran : volets Formulaire (sous-modules à la suite, onglets pour y sauter), Dictée et Résultat
@@ -55,8 +53,6 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   const [version, setVersion] = useState(0)
   // filled : choix et champs remplis par l’IA (✨) ; checks : voyants ⚠ par rubrique ; source : dictée intégrée.
   const [ai, setAi] = useState<{ filled: string[]; checks: AiCheck[]; source?: string }>({ filled: initial?.aiFilled ?? [], checks: initial?.aiChecks ?? [], source: initial?.aiSource })
-  const [request, setRequest] = useState('')
-  const [stats, setStats] = useState<ChatResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const assistant = useAssistant()
@@ -126,33 +122,38 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
       const reply = parseMarcheReply(answer.content, base, sex)
       const merged = { choices: [...base.choices, ...reply.choices], values: { ...reply.values, ...base.values } }
       const next = { filled: [...reply.choices, ...Object.keys(reply.values)], checks: reply.checks, source }
-      setStats(answer); setRequest(sent); setChoices(merged.choices); setValues(merged.values); setAi(next)
+      setChoices(merged.choices); setValues(merged.values); setAi(next)
       save({ ...merged, aiFilled: next.filled, aiChecks: next.checks, aiSource: source })
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Intégration impossible.') }
     finally { setBusy(false) }
   }
   const notesText = htmlToText(notesHtml)
+  // ↶ : retire les ajouts de l’IA restés intacts (choix et champs) et ses voyants ; la saisie à la main reste.
+  const undoIntegration = () => {
+    if (resultHtml && !window.confirm('Annuler l’intégration efface le texte retouché du résultat. Continuer ?')) return
+    const base = { choices: choices.filter(choice => !ai.filled.includes(choice)), values: without(values, ai.filled) }
+    setChoices(base.choices); setValues(base.values); setAi({ filled: [], checks: [], source: undefined }); setError('')
+    save({ ...base, aiFilled: [], aiChecks: [], aiSource: undefined })
+  }
   const integration = {
     state: busy ? 'loading' as const : ai.source === undefined ? 'none' as const : ai.source !== notesText ? 'stale' as const : 'done' as const,
-    summary: `✨ Dictée intégrée${stats ? ` en ${String(stats.seconds).replace('.', ',')} s` : ''} · ${ai.filled.length} ajout${ai.filled.length > 1 ? 's' : ''}${ai.checks.length ? ` · ${ai.checks.length} ⚠` : ''}`,
-    checks: ai.checks.map(check => `${rubricTitle(check.row)} : ${check.reason || 'à vérifier'}`),
-    error, unavailable: assistant.unavailable, canRun: !!notesText.trim(), request, stats, run: () => void integrate(),
+    checks: ai.checks.length, error, unavailable: assistant.unavailable, canRun: !!notesText.trim(),
+    run: () => void integrate(), undo: undoIntegration, showChecks: screen.showFirstDoubt,
   }
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Marche / équilibre</span>}
       copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
     <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.pane} goTo={screen.goTo} />
-    {previous.last && <p className="previous-note">★ bilan précédent du {shortDate(previous.last.date)}</p>}
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <FlexForm input={input} ai={ai} busy={busy} previous={previous} onToggle={toggle} onValue={setValue} />
       <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} onChange={saveNotes} />
-      <ResultPane editor={result} version={version} initialHtml={shown} label={`Compte rendu marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} retouched={!!resultHtml} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
+      <ResultPane editor={result} version={version} initialHtml={shown} label={`Compte rendu marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
     </div>
     {screen.footer(dictation)}
   </TestPage>
 }
 
-// Formulaire d’un seul tenant : les sous-modules se suivent au défilement ; les onglets du haut y sautent et suivent la lecture.
+// Formulaire d’un seul tenant : les sous-modules se suivent au défilement ; les onglets (deux rangées) y sautent et suivent la lecture.
 function FlexForm({ input, ai, busy, previous, onToggle, onValue }: {
   input: { choices: string[]; values: Record<string, string> }; ai: { filled: string[]; checks: AiCheck[] }; busy: boolean; previous: PreviousFlex
   onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
@@ -160,10 +161,6 @@ function FlexForm({ input, ai, busy, previous, onToggle, onValue }: {
   const box = useRef<HTMLDivElement>(null)
   const tabs = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(MARCHE_EQUILIBRE[0].id)
-  const showTab = (module: string) => {
-    const bar = tabs.current, button = bar?.querySelector<HTMLElement>(`[data-module="${module}"]`)
-    if (bar && button) bar.scrollTo({ left: button.offsetLeft - (bar.clientWidth - button.offsetWidth) / 2, behavior: 'smooth' })
-  }
   const offset = () => (tabs.current?.offsetHeight ?? 0) + 6
   const jump = (module: string) => {
     const pane = box.current, section = pane?.querySelector<HTMLElement>(`#module-${module}`)
@@ -177,14 +174,15 @@ function FlexForm({ input, ai, busy, previous, onToggle, onValue }: {
     let current = MARCHE_EQUILIBRE[0].id
     for (const module of MARCHE_EQUILIBRE) { const section = pane.querySelector<HTMLElement>(`#module-${module.id}`); if (section && section.offsetTop <= top) current = module.id }
     if (atEnd) current = MARCHE_EQUILIBRE.at(-1)!.id
-    if (current !== active) { setActive(current); showTab(current) }
+    if (current !== active) setActive(current)
   }
   const last = previous.last?.record
   return <div className="pane flex-form" role="tabpanel" aria-label="Formulaire" ref={box} onScroll={follow}>
+    {previous.last && <p className="previous-note">★ bilan précédent du {shortDate(previous.last.date)}</p>}
     <div className="module-tabs" role="tablist" aria-label="Sous-modules" ref={tabs}>
       {MARCHE_EQUILIBRE.map(module => {
         const filled = module.rubrics.filter(rubric => rubricFilled(rubric, input)).length
-        return <button key={module.id} data-module={module.id} type="button" role="tab" aria-selected={module.id === active} onClick={() => { setActive(module.id); showTab(module.id); jump(module.id) }}>{module.title}{filled > 0 && <span className="module-count" aria-label={`${filled} rubriques renseignées`}>{filled}</span>}</button>
+        return <button key={module.id} data-module={module.id} type="button" role="tab" aria-selected={module.id === active} onClick={() => { setActive(module.id); jump(module.id) }}>{module.title}{filled > 0 && <span className="module-count" aria-label={`${filled} rubriques renseignées`}>{filled}</span>}</button>
       })}
     </div>
     {MARCHE_EQUILIBRE.map(module => <section key={module.id} id={`module-${module.id}`} className="flex-module" aria-label={`Sous-module ${module.title}`}>
