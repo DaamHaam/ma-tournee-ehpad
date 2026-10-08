@@ -6,7 +6,7 @@ import { repository, type BilanSnapshot } from '../../storage/repository'
 import { validDate, type Entry, type Sex } from '../../domain/model'
 import { db } from '../../storage/database'
 import { useAssistant } from './useAssistant'
-import { anonymizeWithMap, parseCorrection, restoreNames, sexLabel } from './assistant'
+import { anonymizeWithMap, civility, parseCorrection, restoreNames, sexLabel } from './assistant'
 import { useBilanCopy } from './useBilanCopy'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { appendText, bilanHtml, htmlToText, sanitizeBilanHtml } from './richText'
@@ -56,7 +56,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
     setCorrection({ busy: true })
     try {
       const { text, found } = anonymizeWithMap(latest.current, [entry.patient.lastName, entry.patient.firstName])
-      const corrected = sanitizeBilanHtml(restoreNames(parseCorrection((await assistant.ask('correction', `Sexe : ${sexLabel(sex)}\n\nTexte :\n${text}`, false)).content), found))
+      const corrected = sanitizeBilanHtml(restoreNames(parseCorrection((await assistant.ask('correction', `Sexe : ${sexLabel(sex)}\n\nTexte :\n${text}`, false)).content), found, civility(sex)))
       const previous = latest.current
       editor.current?.setHtml(corrected)
       setCorrection({ previous })

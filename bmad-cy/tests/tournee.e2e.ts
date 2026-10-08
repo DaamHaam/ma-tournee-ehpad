@@ -367,7 +367,7 @@ test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouc
   await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
   await page.getByRole('link', { name: 'Bilans' }).click()
   await page.getByLabel('Date').fill('2026-09-22')
-  await expect(page.getByText('Marche / équilibre')).toBeVisible()
+  await expect(page.getByText('Marche/éq.')).toBeVisible()
 
   // Bilan suivant : ★ sur les choix et sur la dernière mesure du test des 10 m.
   await page.goto('/#/?date=2026-09-25')
@@ -485,7 +485,9 @@ test.describe('dictée', () => {
     await resultPane.getByRole('button', { name: 'Intégrer la dictée' }).click()
     await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
     await expect.poll(() => result.innerHTML()).toContain('<b>4/28</b>')
-    await expect(result).toContainText('Marche prudente avec [patient].')
+    // Plus de [patient] dans un texte de l’IA : le nom revient à sa place (ici, nombre de [patient] différent de l’envoi).
+    await expect(result).toContainText('Marche prudente avec Petit.')
+    await expect(result).not.toContainText('[patient]')
     const request = bodies.at(-1)!
     expect(request.model).toBe('deepseek/modele-test')
     expect(request.messages[0].content).toBe('Prompt personnalisé de test.')

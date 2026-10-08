@@ -5,7 +5,7 @@ import { db } from '../../storage/database'
 import { dateLabel, dayBilans, fullName, shortName, validDate } from '../../domain/model'
 import { useToday } from '../../app/useToday'
 import { BilanActions } from './BilanActions'
-import { editPath, itemHtml, KIND_LABEL, multiBilanGroups } from './display'
+import { editPath, itemHtml, KIND_LABEL, KIND_SHORT, multiBilanGroups } from './display'
 import { useBilanGroupCopy } from './useBilanCopy'
 import { tinettiScore } from '../../domain/tinetti'
 
@@ -37,7 +37,7 @@ export function BilansPage() {
         return <li key={key} className={bilan.copied ? 'copied' : ''}>
           <div className="bilan-row">
             <button type="button" className="bilan-summary" aria-expanded={expanded} onClick={() => setOpen(current => ({ ...current, [key]: !expanded }))}>
-              <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{bilan.kind !== 'bilan' && <span className="kind-tag">{KIND_LABEL[bilan.kind]}{score && ` ${score.total}/${score.max}`}</span>}{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
+              <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{bilan.kind !== 'bilan' && <span className="kind-tag" title={KIND_LABEL[bilan.kind]}>{KIND_SHORT[bilan.kind]}{score && ` ${score.total}/${score.max}`}</span>}{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
             </button>
             <BilanActions date={date} id={bilan.id} name={name} html={html} kind={bilan.kind} />
           </div>

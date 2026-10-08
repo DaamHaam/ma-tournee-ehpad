@@ -10,15 +10,19 @@ export const promptSetting = (kind: string) => `prompt.${kind}`
 export const ANONYMOUS = '[patient]'
 
 export function sexLabel(sex: Sex): string { return sex === 'F' ? 'patiente' : sex === 'H' ? 'patient' : 'patient(e)' }
+// Civilité de l’utilisateur (« Me », « Mr ») : remplace un [patient] que l’IA aurait déplacé ou ajouté, jamais « patient ».
+export function civility(sex: Sex): string { return sex === 'F' ? 'Me' : sex === 'H' ? 'Mr' : 'M.' }
 
 const plainLetters = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '')
 // Retire du texte le nom et le prénom du patient (sans tenir compte de la casse ni des accents) avant tout envoi.
 export function anonymize(text: string, names: string[]): string { return anonymizeWithMap(text, names).text }
-// Remet dans l’ordre les mots retirés, si l’IA a conservé autant de [patient] qu’envoyés.
-export function restoreNames(text: string, found: string[]): string {
+// Remet les mots retirés à la place des [patient] renvoyés par l’IA.
+export function restoreNames(text: string, found: string[], fallback = 'M.'): string {
   const parts = text.split(ANONYMOUS)
-  if (parts.length - 1 !== found.length) return text
-  return parts.reduce((result, part, index) => result + (index ? found[index - 1] : '') + part, '')
+  if (parts.length === 1) return text
+  // Autant de [patient] qu’envoyés : chacun reprend son mot ; sinon le nom (ou la civilité) prend toutes les places, sans jamais laisser [patient].
+  const exact = parts.length - 1 === found.length
+  return parts.reduce((result, part, index) => result + (index ? (exact ? found[index - 1] : found.find(word => word.length > 2) ?? found[0] ?? fallback) : '') + part, '')
 }
 const PARTICLES = new Set(['le', 'la', 'les', 'de', 'du', 'des', 'd', 'l', 'van', 'von', 'der', 'den', 'di', 'da', 'dos', 'del', 'el', 'al', 'ben', 'mac', 'mc', 'st', 'saint', 'sainte'])
 export function anonymizeWithMap(text: string, names: string[]): { text: string; found: string[] } {
@@ -105,11 +109,11 @@ export function marcheRequest(input: FlexInput, dictation: string, sex: Sex): st
 
 export interface FlexReply { choices: string[]; values: Record<string, string>; checks: AiCheck[] }
 // L’IA ne coche que des options libres et ne remplit que des champs vides : rien de ce qu’a saisi le kinésithérapeute n’est remplacé.
-// Voyants rattachés à leur rubrique ; un [patient] oublié dans un texte devient « le patient » ou « la patiente ».
+// Voyants rattachés à leur rubrique ; un [patient] oublié dans un texte devient la civilité (« Me », « Mr »).
 export function parseMarcheReply(content: string, input: FlexInput, sex: Sex): FlexReply {
   const reply = readJson(content)
   const taken = new Set(input.choices ?? [])
-  const person = sex === 'F' ? 'la patiente' : 'le patient'
+  const person = civility(sex)
   const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && !taken.has(id)))] : []
   const proposed = reply.valeurs && typeof reply.valeurs === 'object' && !Array.isArray(reply.valeurs) ? reply.valeurs as Record<string, unknown> : {}
   const values: Record<string, string> = {}

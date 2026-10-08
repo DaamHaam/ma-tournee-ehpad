@@ -381,3 +381,5 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .result-tools .format-bar button, .ai-tools .icon-button { min-width:34px; min-height:36px; padding:.1rem .25rem; }
 .ai-tools { gap:.25rem; }
 .result-tools .validate-button { min-height:36px; padding:.15rem .55rem; }
+/* Onglet Bilans : le nom passe avant l’étiquette du type de bilan, qui se réduit la première. */
+.bilan-summary .kind-tag { flex:0 1000 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

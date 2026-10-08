@@ -4,6 +4,8 @@ import { marcheEquilibreHtml } from '../../domain/marcheEquilibre'
 import { bilanHtml, htmlToText, sanitizeBilanHtml, textToHtml } from './richText'
 
 export const KIND_LABEL: Record<BilanKind, string> = { bilan: 'Bilan', tinetti: 'Tinetti', marcheEquilibre: 'Marche / équilibre' }
+// Étiquette courte de la liste des bilans, pour laisser la place au nom.
+export const KIND_SHORT: Record<BilanKind, string> = { ...KIND_LABEL, marcheEquilibre: 'Marche/éq.' }
 // Texte dicté d’un test, filtré comme un bilan.
 export function testNotesHtml(record: Pick<TestRecord, 'notes' | 'notesHtml'>): string { return sanitizeBilanHtml(record.notesHtml ?? textToHtml(record.notes)) }
 // Texte d’un test prêt à copier : texte retouché s’il existe ; pour le Tinetti, sinon score calculé + observations de l’IA
