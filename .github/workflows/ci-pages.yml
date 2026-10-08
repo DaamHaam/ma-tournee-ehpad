@@ -46,9 +46,11 @@ jobs:
         run: npm run build
         working-directory: bmad-cy
 
+      # Habituellement moins d'une minute ; borné pour échouer vite si le téléchargement se bloque.
       - name: Installer les navigateurs Playwright
         run: npx playwright install --with-deps webkit chromium
         working-directory: bmad-cy
+        timeout-minutes: 10
 
       - name: Vérifier les parcours de production
         run: npm run test:e2e

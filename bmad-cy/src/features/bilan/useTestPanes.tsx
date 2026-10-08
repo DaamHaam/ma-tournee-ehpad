@@ -40,9 +40,15 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
       right={<><BarButton label="Ouvrir le clavier" icon={ICONS.keyboard} onClick={() => toggleKeyboard(true)} /><BarButton label="Effacer" icon={ICONS.erase} onClick={() => editor.current?.deleteBackward()} /></>} />
   }
   // ⚠ du Résultat : retour au formulaire, sur le premier point à vérifier.
+  // Défilement vertical du seul formulaire (scrollIntoView ferait aussi glisser les volets et ramènerait au formulaire
+  // quelqu’un qui en est reparti entre-temps).
   const showFirstDoubt = () => {
     goTo(0)
-    window.setTimeout(() => panes.current?.querySelector('.pane .row-doubt')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350)
+    const pane = panes.current?.querySelector<HTMLElement>('.pane')
+    const doubt = pane?.querySelector<HTMLElement>('.row-doubt')
+    if (!pane || !doubt) return
+    const top = pane.scrollTop + doubt.getBoundingClientRect().top - pane.getBoundingClientRect().top - pane.clientHeight / 2
+    pane.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
   }
   return { panes, pane, keyboard, goTo, onScroll, insertDictation, footer, showFirstDoubt }
 }
