@@ -4,7 +4,7 @@ import { applyOrder, careDefaults, DURATION_UNITS, effectivePrescriptionEnd, has
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 // GRP, sexe, attente et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
-// La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas complète (sinon la fin calculée l’emporte).
+// La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
 const NOT_IMPORTED = ['group', 'sex', 'waiting', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
 type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit'
@@ -198,7 +198,7 @@ export class TourRepository {
     await this.database.transaction('rw', this.database.patients, this.database.days, async () => {
       if (await this.database.patients.update(id, normalized) === 0) throw new Error('Ce patient n’existe plus.')
       const patient = await this.database.patients.get(id)
-      // Date et durée connues : la fin de prescription se recalcule.
+      // Date de prescription connue : la fin se recalcule (durée absente = 1 an).
       if (patient && effectivePrescriptionEnd(patient) !== patient.prescriptionEnd) await this.database.patients.update(id, { prescriptionEnd: effectivePrescriptionEnd(patient) })
       if (patient) await this.refreshSnapshots([patient])
     })

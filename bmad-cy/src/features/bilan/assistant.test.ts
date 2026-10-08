@@ -27,7 +27,7 @@ describe('assistant de rédaction', () => {
   it('lit la réponse JSON, filtre le HTML et ignore les lignes non cotées', () => {
     const reply = parseTinettiReply('```json\n{"cotations":{"e1":1,"e2":1,"e3":5,"zz":1},"observations":"Marche <b>lente</b><script>x</script>\\nAide","a_verifier":[{"ligne":"e1","raison":"dit stable"},{"ligne":"e2","raison":"appui d’un bras"},{"ligne":"e4","raison":"non coté"},{"ligne":"zz"}]}\n```', { e1: 0 })
     // e1 reste à la cotation du kinésithérapeute ; e2 est cotée par l’IA ; e3 (hors options) et zz (inconnue) sont ignorées.
-    expect(reply).toEqual({ observations: 'Marche <b>lente</b>x<br>Aide', checks: [{ row: 'e1', reason: 'dit stable' }, { row: 'e2', reason: 'appui d’un bras' }], scores: { e2: 1 } })
+    expect(reply).toEqual({ observations: 'Marche <b>lente</b>x<br>Aide', checks: [{ row: 'e1', reason: 'dit stable' }, { row: 'e2', reason: 'appui d’un bras' }, { row: 'e4', reason: 'non coté' }], scores: { e2: 1 } })
     expect(() => parseTinettiReply('pas de json', {})).toThrow('illisible')
   })
   it('nettoie un texte corrigé', () => {

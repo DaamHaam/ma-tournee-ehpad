@@ -28,6 +28,7 @@ export function ReviewAnswers({ stats, scores, checks, filled, request, notice, 
         </li>
       }))}</ul>
       {!!missing.length && <p className="save-hint">Non cotés : {missing.join(', ')}.</p>}
+      {items.flatMap(item => item.rows.filter(row => scores[row.id] === undefined && doubts.has(row.id)).map(row => <p key={row.id} className="doubt-note">⚠ {item.number}. {item.title}{row.sub ? ` – ${row.sub}` : ''} : {doubts.get(row.id) || 'à vérifier'}</p>))}
       {request && <details className="sent-data"><summary>Données envoyées à l’IA</summary>{stats && <p className="save-hint">Réponse en {String(stats.seconds).replace('.', ',')} s · {stats.promptTokens ?? '?'} jetons envoyés, {stats.completionTokens ?? '?'} reçus{stats.reasoningTokens ? `, dont ${stats.reasoningTokens} de réflexion` : ''}.</p>}<pre>{JSON.stringify(JSON.parse(request), null, 1)}</pre></details>}
     </div>
     <div className="action-row synthesis-actions"><button type="button" onClick={onBack}>Retour à la grille</button><button type="button" className="primary" onClick={onNext}>Valider</button></div>

@@ -223,22 +223,42 @@ describe('stockage local', () => {
     migrated.close(); await migrated.delete()
   })
 
-  it('calcule la fin de prescription dès que date et durée sont connues, sinon la laisse saisissable', async () => {
+  it('calcule la fin de prescription dès que la date est connue (1 an sans durée), sinon la laisse saisissable', async () => {
     const id = await repository.addPatient({ lastName: 'Fictif', firstName: 'Epsilon', room: '', priority: '' })
     await repository.updatePatient(id, { prescriptionEnd: '2026-11-30', prescriptionLabel: '  Rééducation à la marche ' })
     expect(await database.patients.get(id)).toMatchObject({ prescriptionEnd: '2026-11-30', prescriptionLabel: 'Rééducation à la marche' })
     await repository.updatePatient(id, { prescriptionDate: '2026-01-31' })
-    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-11-30')
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2027-01-31')
     await repository.updatePatient(id, { prescriptionDuration: 1 })
     expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-02-28')
     await repository.updatePatient(id, { prescriptionUnit: 'weeks' })
     expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-02-07')
+    await repository.updatePatient(id, { prescriptionUnit: 'years', prescriptionDuration: 2 })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2028-01-31')
     await repository.updatePatient(id, { prescriptionDuration: null })
-    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-02-07')
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2027-01-31')
+    await repository.updatePatient(id, { prescriptionDate: '' })
+    expect((await database.patients.get(id))?.prescriptionEnd).toBe('2027-01-31')
     await repository.updatePatient(id, { prescriptionEnd: '2026-03-01' })
     expect((await database.patients.get(id))?.prescriptionEnd).toBe('2026-03-01')
     await expect(repository.updatePatient(id, { prescriptionDuration: 0 })).rejects.toThrow('Durée')
     await expect(repository.updatePatient(id, { prescriptionDate: '2026-02-30' })).rejects.toThrow('Date de prescription')
+  })
+
+  it('migre une base v6 : une prescription datée sans durée finit 1 an plus tard', async () => {
+    const name = `test-migration-v7-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(6).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    const base = { ...careDefaults(), firstName: 'Zêta', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01' }
+    await legacy.table('patients').bulkAdd([
+      { ...base, id: 'p1', lastName: 'Fictif', prescriptionDate: '2026-10-01', prescriptionEnd: '' },
+      { ...base, id: 'p2', lastName: 'Essai', prescriptionEnd: '2026-12-15' },
+    ])
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect((await migrated.patients.get('p1'))?.prescriptionEnd).toBe('2027-10-01')
+    expect((await migrated.patients.get('p2'))?.prescriptionEnd).toBe('2026-12-15')
+    migrated.close(); await migrated.delete()
   })
 
   it('l’import garde la prescription d’un patient reconnu ; sa fin calculée l’emporte sur la fin importée', async () => {

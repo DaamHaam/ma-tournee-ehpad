@@ -5,9 +5,11 @@ export interface Identity { id: string; lastName: string; firstName: string; roo
 // sex : F, H ou vide ; sert seulement aux accords du texte rédigé par l’IA (envoyé sans nom).
 export type Sex = '' | 'F' | 'H'
 // waiting : patient en attente d’une séance, signalé par un « ! » rouge devant son nom.
-// Prescription en cours : intitulé libre, date locale et durée ; prescriptionEnd en découle quand date et durée sont connues, sinon il se saisit à la main.
-export type DurationUnit = 'weeks' | 'months'
-export const DURATION_UNITS: DurationUnit[] = ['weeks', 'months']
+// Prescription en cours : intitulé, durée et fin facultatifs. Dès que la date est connue, prescriptionEnd en découle (durée absente = 1 an) ;
+// sans date, la fin se saisit à la main.
+export type DurationUnit = 'weeks' | 'months' | 'years'
+export const DURATION_UNITS: DurationUnit[] = ['weeks', 'months', 'years']
+export const DEFAULT_PRESCRIPTION = { amount: 1, unit: 'years' as DurationUnit }
 export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
@@ -98,17 +100,20 @@ export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   return items.sort((x, y) => (x.at ?? '\uffff').localeCompare(y.at ?? '\uffff') || (rank.get(x.id) ?? Infinity) - (rank.get(y.id) ?? Infinity) || x.kind.localeCompare(y.kind))
 }
 export function hasBilanOrTest(entry: Entry): boolean { return (entry.bilan ?? '').trim() !== '' || Object.values(entry.tests ?? {}).some(hasTestContent) }
-// Fin de prescription : date + durée. En mois, le jour est ramené au dernier jour du mois s’il n’existe pas (31 janvier + 1 mois = 28 ou 29 février).
+// Fin de prescription : date + durée (1 an sans durée). En mois ou en années, le jour est ramené au dernier jour du mois s’il n’existe pas
+// (31 janvier + 1 mois = 28 ou 29 février ; 29 février + 1 an = 28 février).
 export function prescriptionEndDate(start: string, amount: number | null, unit: DurationUnit): string | null {
-  if (!validDate(start) || amount === null || !Number.isInteger(amount) || amount <= 0) return null
+  if (!validDate(start)) return null
+  if (amount === null) return prescriptionEndDate(start, DEFAULT_PRESCRIPTION.amount, DEFAULT_PRESCRIPTION.unit)
+  if (!Number.isInteger(amount) || amount <= 0) return null
   if (unit === 'weeks') { const end = parseDate(start); end.setDate(end.getDate() + amount * 7); return localDate(end) }
   const [year, month, day] = start.split('-').map(Number)
-  const total = month - 1 + amount
+  const total = month - 1 + (unit === 'years' ? amount * 12 : amount)
   const endYear = year + Math.floor(total / 12), endMonth = total % 12
   const lastDay = new Date(endYear, endMonth + 1, 0).getDate()
   return localDate(new Date(endYear, endMonth, Math.min(day, lastDay), 12))
 }
-// Fin calculée si la prescription est complète, sinon la fin saisie à la main.
+// Fin calculée dès que la date de prescription est connue, sinon la fin saisie à la main.
 export function effectivePrescriptionEnd(care: Pick<PatientCare, 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'prescriptionEnd'>): string {
   return prescriptionEndDate(care.prescriptionDate, care.prescriptionDuration, care.prescriptionUnit) ?? care.prescriptionEnd
 }

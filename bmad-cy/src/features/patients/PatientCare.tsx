@@ -17,7 +17,7 @@ export function FollowUps({ patient }: { patient: Patient }) {
   return <div className="follow-ups">{followUp('evalDates', 'Éval')}{followUp('transDates', 'Trans')}</div>
 }
 
-// Prescription en cours : la fin se calcule dès que date et durée sont connues ; sinon elle reste saisissable à la main.
+// Prescription en cours, tous champs facultatifs : la fin se calcule dès que la date est connue (1 an sans durée) ; sans date, elle se saisit à la main.
 function Prescription({ patient, today }: { patient: Patient; today: string }) {
   const { run } = useSave()
   const update = (patch: Parameters<typeof repository.updatePatient>[1]) => void run(() => repository.updatePatient(patient.id, patch))
@@ -36,8 +36,8 @@ function Prescription({ patient, today }: { patient: Patient; today: string }) {
     <label>Date de prescription <input type="date" value={patient.prescriptionDate} onChange={event => update({ prescriptionDate: event.target.value })} /></label>
     <fieldset className="duration-field"><legend>Durée</legend><div className="duration-inputs">
       <input type="number" inputMode="numeric" min={1} step={1} aria-label="Durée de la prescription" defaultValue={patient.prescriptionDuration ?? ''} onChange={event => saveDuration(event.currentTarget)} onBlur={event => resetDuration(event.currentTarget)} />
-      <select aria-label="Unité de durée" value={patient.prescriptionUnit} onChange={event => update({ prescriptionUnit: event.target.value as Patient['prescriptionUnit'] })}><option value="weeks">semaines</option><option value="months">mois</option></select>
-    </div></fieldset>
+      <select aria-label="Unité de durée" value={patient.prescriptionUnit} onChange={event => update({ prescriptionUnit: event.target.value as Patient['prescriptionUnit'] })}><option value="weeks">semaines</option><option value="months">mois</option><option value="years">ans</option></select>
+    </div>{patient.prescriptionDate && patient.prescriptionDuration === null && <span className="subtle duration-default">par défaut 1 an</span>}</fieldset>
     <label>Fin d’ordonnance <input type="date" value={patient.prescriptionEnd} readOnly={computed} disabled={computed} onChange={event => update({ prescriptionEnd: event.target.value })} />{computed && <span className="subtle">calculée</span>}</label>
     {status.level !== 'none' && <p className={`prescription-status ${status.level}`} role="status">{prescriptionText(status)}</p>}
   </div>

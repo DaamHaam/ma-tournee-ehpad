@@ -311,3 +311,7 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .copy-all-list span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .copy-all-list button { flex:none; color:var(--accent); }
 .copy-all-list button.copied { border-color:#2e7a4b; color:#2e7a4b; }
+.duration-default { display:block; margin-top:.3rem; font-size:.78rem; font-weight:500; }
+/* Min / Max : petits boutons discrets en tête de grille, remplissent les lignes vides. */
+.fill-buttons { display:flex; justify-content:flex-end; gap:.35rem; margin:.1rem 0 -.2rem; }
+.fill-buttons button { min-height:32px; min-width:44px; padding:.15rem .5rem; border-color:var(--line); color:var(--muted); font-size:.74rem; font-weight:650; }

@@ -42,6 +42,12 @@ export const TINETTI_INTERPRETATION = 'Un score inférieur à 26 signifie géné
 const rowsOf = (section: TestSection) => section.items.flatMap(item => item.rows)
 const rowMax = (testRow: TestRow) => Math.max(...testRow.options.map(option => option.score))
 
+// Raccourci de cotation : toutes les lignes encore vides prennent leur cotation maximale (ou minimale) ; les lignes cochées ne bougent pas.
+export function fillEmptyRows(scores: Record<string, number>, level: 'max' | 'min'): Record<string, number> {
+  const filled = { ...scores }
+  for (const testRow of TINETTI.flatMap(rowsOf)) if (filled[testRow.id] === undefined) filled[testRow.id] = level === 'max' ? rowMax(testRow) : Math.min(...testRow.options.map(option => option.score))
+  return filled
+}
 export interface SectionScore { score: number; max: number; complete: boolean }
 export function sectionScore(section: TestSection, scores: Record<string, number>): SectionScore {
   const rows = rowsOf(section)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { previousTest, TINETTI, tinettiInterpretation, tinettiResultHtml, tinettiScore } from './tinetti'
+import { fillEmptyRows, previousTest, TINETTI, tinettiInterpretation, tinettiResultHtml, tinettiScore } from './tinetti'
 
 const all = (value: (max: number) => number) => Object.fromEntries(TINETTI.flatMap(section => section.items.flatMap(item => item.rows)).map(row => [row.id, value(row.options.length - 1)]))
 
@@ -29,5 +29,14 @@ describe('test de Tinetti', () => {
     const days: Parameters<typeof previousTest>[0] = [{ date: '2026-06-01', entries: { p: record(0) } }, { date: '2026-08-01', entries: { p: record(1) } }, { date: '2026-10-05', entries: { p: record(1) } }, { date: '2026-07-01', entries: { q: record(1) } }]
     expect(previousTest(days, 'p', '2026-10-05', 'tinetti')).toMatchObject({ date: '2026-08-01' })
     expect(previousTest(days, 'p', '2026-06-01', 'tinetti')).toBeNull()
+  })
+
+  it('remplit les lignes vides au maximum ou au minimum sans toucher aux lignes cochées', () => {
+    const max = fillEmptyRows({ e2: 1 }, 'max')
+    expect(Object.keys(max)).toHaveLength(20)
+    expect(max.e2).toBe(1)
+    expect(tinettiScore(max).total).toBe(27)
+    const min = fillEmptyRows({ e2: 1 }, 'min')
+    expect(tinettiScore(min)).toMatchObject({ total: 1, complete: true })
   })
 })

@@ -2,6 +2,8 @@ import type { Sex } from '../../domain/model'
 import { TINETTI, validScore, type AiCheck } from '../../domain/tinetti'
 import { sanitizeBilanHtml } from './richText'
 
+const TINETTI_ROWS = new Set(TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => row.id))))
+
 export const ANALYSIS_MODEL_SETTING = 'analysisModel'
 export const promptSetting = (kind: string) => `prompt.${kind}`
 export const ANONYMOUS = '[patient]'
@@ -61,11 +63,11 @@ export function parseTinettiReply(content: string, scores: Record<string, number
   const reply = data as { observations?: unknown; a_verifier?: unknown; cotations?: unknown }
   const proposed = reply.cotations && typeof reply.cotations === 'object' && !Array.isArray(reply.cotations) ? reply.cotations as Record<string, unknown> : {}
   const filled = Object.fromEntries(Object.entries(proposed).filter(([row, score]) => scores[row] === undefined && validScore(row, score))) as Record<string, number>
-  const merged = { ...filled, ...scores }
   const observations = typeof reply.observations === 'string' ? sanitizeBilanHtml(reply.observations.replace(/\n/g, '<br>')) : ''
   const checks = Array.isArray(reply.a_verifier) ? reply.a_verifier.flatMap(item => {
     const check = item as { ligne?: unknown; raison?: unknown }
-    return typeof check.ligne === 'string' && merged[check.ligne] !== undefined ? [{ row: check.ligne, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
+    // Voyant sur une ligne de la grille, cotée ou non (consigne improbable laissée sans cotation).
+    return typeof check.ligne === 'string' && TINETTI_ROWS.has(check.ligne) ? [{ row: check.ligne, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
   }) : []
   return { observations, checks, scores: filled }
 }

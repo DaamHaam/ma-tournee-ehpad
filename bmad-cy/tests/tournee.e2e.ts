@@ -439,7 +439,9 @@ test.describe('dictée', () => {
     await expect(tries.getByRole('radio', { name: /^1 – / })).toHaveAttribute('aria-checked', 'true')
     await expect(tries.getByRole('radio', { name: /^1 – / })).toContainText('✨')
     await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('note')).toHaveText('⚠ dictée : se lève sans les bras')
-    await expect(page.getByText(/^✓ Synthèse faite en [0-9,]+ s · 2 ⚠$/)).toBeVisible()
+    // Un voyant peut porter sur une ligne restée non cotée (consigne improbable) : il reste affiché sous la ligne.
+    await expect(page.getByRole('radiogroup', { name: '15. Tronc' }).getByRole('note')).toHaveText('⚠ non coté')
+    await expect(page.getByText(/^✓ Synthèse faite en [0-9,]+ s · 3 ⚠$/)).toBeVisible()
     // « Voir » rouvre l’écran 1 sans nouvel appel ; « Valider » passe à la transmission en plein écran.
     const calls = bodies.length
     await page.getByRole('button', { name: 'Voir' }).click()
@@ -594,9 +596,15 @@ test('prescription : fin calculée depuis la date et la durée, surveillance ora
   await page.getByRole('link', { name: /Martin Alice/ }).click()
   await page.getByLabel('Intitulé de la prescription').fill('Rééducation à la marche')
   await page.getByLabel('Date de prescription').fill('2026-09-01')
+  const end = page.getByLabel(/Fin d’ordonnance/)
+  // Date seule : 1 an par défaut, sans rien d’autre à remplir.
+  await expect(end).toHaveValue('2027-09-01')
+  await expect(end).toBeDisabled()
+  await expect(page.getByText('par défaut 1 an')).toBeVisible()
+  await expect(page.locator('.prescription-status')).toHaveText('Fin dans 329 j')
   await page.getByLabel('Durée de la prescription').fill('1')
   await page.getByLabel('Durée de la prescription').blur()
-  const end = page.getByLabel(/Fin d’ordonnance/)
+  await expect(page.getByText('par défaut 1 an')).toHaveCount(0)
   await expect(end).toHaveValue('2026-10-01')
   await expect(end).toBeDisabled()
   await expect(page.getByRole('combobox', { name: 'Unité de durée' })).toHaveValue('months')
@@ -671,4 +679,24 @@ test('onglet Bilans : « Tout copier » met bout à bout les bilans d’un patie
   await page.getByRole('link', { name: '← Patients' }).click()
   await page.getByRole('link', { name: /Bernard Louis/ }).click()
   await expect(page.getByRole('checkbox', { name: 'Trans' })).not.toBeChecked()
+})
+
+test('Tinetti : Max et Min remplissent les lignes vides, sans toucher aux lignes cochées', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-25')
+  await openBilan(page, 'Robert Paul', 'Test de Tinetti')
+  await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / }).click()
+  await page.getByRole('button', { name: 'Lignes vides au maximum' }).click()
+  await expect(page.getByLabel('Total 27 sur 28')).toBeVisible()
+  await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('button', { name: 'Lignes vides au minimum' })).toBeDisabled()
+  // Décocher une ligne puis compléter au minimum : seule cette ligne passe à 0.
+  await page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^1 – / }).click()
+  await expect(page.getByLabel('Total 26 sur 28')).toBeVisible()
+  await page.getByRole('button', { name: 'Lignes vides au minimum' }).click()
+  await expect(page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^0 – / })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByLabel('Total 26 sur 28')).toBeVisible()
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await page.getByRole('link', { name: 'Bilans' }).click()
+  await page.getByLabel('Date').fill('2026-09-25')
+  await expect(page.getByText('Tinetti 26/28')).toBeVisible()
 })

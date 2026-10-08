@@ -5,7 +5,7 @@ import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { fullName, parseDate, validDate, type Entry, type Sex } from '../../domain/model'
-import { hasTestContent, previousTest, TINETTI, tinettiScore, type TestRecord } from '../../domain/tinetti'
+import { fillEmptyRows, hasTestContent, previousTest, TINETTI, tinettiScore, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import type { ChatResult } from './openrouter'
@@ -78,6 +78,14 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     if (marked) setAi(nextAi)
     void run(() => repository.setTest(date, id, 'tinetti', marked ? { scores: next, aiFilled: nextAi.filled, aiChecks: nextAi.checks } : { scores: next }))
   }
+  // Min / Max : remplit d’un coup les lignes vides, à corriger ensuite ligne par ligne.
+  const fillEmpty = (level: 'max' | 'min') => {
+    if (synthesis?.status === 'loading') return
+    const next = fillEmptyRows(scores, level)
+    if (Object.keys(next).length === Object.keys(scores).length) return
+    setScores(next); changed.current = true; setResultHtml('')
+    void run(() => repository.setTest(date, id, 'tinetti', { scores: next }))
+  }
   const saveNotes = useCallback((html: string, text: string) => {
     latestNotes.current = html; setNotesHtml(html); changed.current = true; setResultHtml('')
     void run(() => repository.setTest(date, id, 'tinetti', { notes: text, notesHtml: html }))
@@ -141,7 +149,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     {synthesis?.status === 'error' && <p className="field-error" role="alert">{synthesis.message}</p>}
     {previous && <p className="previous-note">★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}
     <div className="panes" ref={panes} onScroll={event => { const box = event.currentTarget; showPane(Math.round(box.scrollLeft / Math.max(1, box.clientWidth))) }}>
-      <div className="pane" role="tabpanel" aria-label="Grille">{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
+      <div className="pane" role="tabpanel" aria-label="Grille"><div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={synthesis?.status === 'loading' || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
         <h2 className="section-title">{section.title} <span>{sections[section.id].score}/{sections[section.id].max}</span></h2>
         <p className="pane-instructions">{section.instructions}</p>
         {section.items.map(item => <div key={item.number} className="test-item">

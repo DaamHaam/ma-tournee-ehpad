@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { careDefaults, type Day, type Patient } from '../domain/model'
+import { careDefaults, effectivePrescriptionEnd, type Day, type Patient } from '../domain/model'
 export interface OrderTemplate { weekday: number; order: string[] }
 export interface Setting { key: string; value: string }
 // Réglages propres à l’appareil, jamais exportés dans la sauvegarde ni remplacés par une restauration.
@@ -32,6 +32,10 @@ export class TourDatabase extends Dexie {
     this.version(6).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       const defaults = careDefaults()
       for (const key of ['prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const) if (patient[key] === undefined) patient[key] = defaults[key]
+    }))
+    // v7 : une date de prescription sans durée vaut 1 an ; la fin des prescriptions déjà datées est recalculée.
+    this.version(7).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Patient) => {
+      patient.prescriptionEnd = effectivePrescriptionEnd(patient)
     }))
   }
 }

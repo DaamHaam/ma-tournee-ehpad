@@ -105,10 +105,15 @@ describe('règles du domaine', () => {
     // Passage à l’heure d’hiver (25 octobre 2026) sans glissement de jour.
     expect(prescriptionEndDate('2026-10-24', 1, 'weeks')).toBe('2026-10-31')
     expect(prescriptionEndDate('', 1, 'months')).toBeNull()
-    expect(prescriptionEndDate('2026-01-31', null, 'months')).toBeNull()
+    expect(prescriptionEndDate('2026-10-01', 2, 'years')).toBe('2028-10-01')
+    expect(prescriptionEndDate('2028-02-29', 1, 'years')).toBe('2029-02-28')
+    // Sans durée : 1 an, quelle que soit l’unité choisie.
+    expect(prescriptionEndDate('2026-01-31', null, 'months')).toBe('2027-01-31')
+    expect(prescriptionEndDate('2026-01-31', null, 'weeks')).toBe('2027-01-31')
     expect(prescriptionEndDate('2026-01-31', 0, 'months')).toBeNull()
     expect(prescriptionEndDate('2026-02-30', 1, 'months')).toBeNull()
     expect(effectivePrescriptionEnd({ prescriptionDate: '', prescriptionDuration: 3, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2026-12-01')
+    expect(effectivePrescriptionEnd({ prescriptionDate: '2026-09-01', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2027-09-01')
     expect(effectivePrescriptionEnd({ prescriptionDate: '2026-09-01', prescriptionDuration: 3, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2026-12-01')
     expect(effectivePrescriptionEnd({ prescriptionDate: '2026-09-01', prescriptionDuration: 2, prescriptionUnit: 'months', prescriptionEnd: '2026-12-01' })).toBe('2026-11-01')
   })
