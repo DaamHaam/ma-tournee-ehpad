@@ -1,4 +1,4 @@
-import { careDefaults, DURATION_UNITS, validDate, type Day, type Patient } from '../../domain/model'
+import { careDefaults, DURATION_UNITS, effectivePrescriptionEnd, validDate, type Day, type Patient } from '../../domain/model'
 import type { OrderTemplate, Setting } from '../../storage/database'
 import type { BackupData } from '../../storage/repository'
 
@@ -30,7 +30,8 @@ function checkPatient(value: unknown): Patient {
   if (patient.prescriptionDate && !validDate(patient.prescriptionDate)) throw new Error(INVALID)
   if (patient.prescriptionDuration !== null && !(Number.isInteger(patient.prescriptionDuration) && patient.prescriptionDuration > 0)) throw new Error(INVALID)
   if (!DURATION_UNITS.includes(patient.prescriptionUnit)) throw new Error(INVALID)
-  return patient
+  // Fin recalculée depuis la date : une sauvegarde antérieure à la règle « date seule = 1 an » peut porter une fin vide ou périmée.
+  return { ...patient, prescriptionEnd: effectivePrescriptionEnd(patient) }
 }
 // Identité retenue par une journée : le nom est exigé, les autres champs anciens ou absents sont complétés.
 function checkSnapshot(value: unknown, id: string): Day['entries'][string]['patient'] {

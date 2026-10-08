@@ -48,6 +48,9 @@ describe('sauvegarde complète', () => {
     expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ prescriptionEnd: '2026-12-15', prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months' })
     Object.assign(legacy.patients[0], { prescriptionLabel: 'Marche', prescriptionDate: '2026-09-15', prescriptionDuration: 3, prescriptionUnit: 'weeks' })
     expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ prescriptionLabel: 'Marche', prescriptionDate: '2026-09-15', prescriptionDuration: 3, prescriptionUnit: 'weeks' })
+    legacy.patients[0].prescriptionDuration = null
+    legacy.patients[0].prescriptionEnd = ''
+    expect(parseBackup(JSON.stringify(legacy)).patients[0].prescriptionEnd).toBe('2027-09-15')
     for (const [key, value] of [['prescriptionDuration', '3'], ['prescriptionUnit', 'jours'], ['prescriptionDate', '15/09/2026']] as const) {
       const broken = structuredClone(legacy)
       broken.patients[0][key] = value
