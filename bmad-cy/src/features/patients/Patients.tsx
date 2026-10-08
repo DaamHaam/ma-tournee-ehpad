@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { BilanActions } from '../bilan/BilanActions'
 import { bilanHtml } from '../bilan/richText'
 import { itemHtml } from '../bilan/display'
-import { hasTestContent } from '../../domain/tinetti'
+import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { dateLabel, fullName, hasTrace, parseDate, validDate, type Patient } from '../../domain/model'
@@ -125,7 +125,12 @@ export function PatientDetail() {
       <ol>{history.map(day => {
         const entry = day.entries[id]
         return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}</span></Link>{entry.bilan?.trim() && <div className="history-bilan-row"><p className="history-bilan" dangerouslySetInnerHTML={{ __html: bilanHtml(entry) }} /><BilanActions date={day.date} id={id} name={fullName(patient)} html={bilanHtml(entry)} /></div>}
-          {entry.tests?.tinetti && hasTestContent(entry.tests.tinetti) && <div className="history-bilan-row"><p className="history-bilan" dangerouslySetInnerHTML={{ __html: itemHtml({ kind: 'tinetti', text: entry.tests.tinetti.notes, record: entry.tests.tinetti }) }} /><BilanActions date={day.date} id={id} name={fullName(patient)} html={itemHtml({ kind: 'tinetti', text: entry.tests.tinetti.notes, record: entry.tests.tinetti })} kind="tinetti" /></div>}</li>
+          {TEST_TYPES.map(kind => {
+            const record = entry.tests?.[kind]
+            if (!record || !hasTestContent(record)) return null
+            const html = itemHtml({ kind, text: record.notes, record })
+            return <div key={kind} className="history-bilan-row"><p className="history-bilan" dangerouslySetInnerHTML={{ __html: html }} /><BilanActions date={day.date} id={id} name={fullName(patient)} html={html} kind={kind} /></div>
+          })}</li>
       })}</ol>
     </section>}
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>

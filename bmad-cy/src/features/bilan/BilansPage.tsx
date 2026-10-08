@@ -33,11 +33,11 @@ export function BilansPage() {
         const key = `${date}:${bilan.id}:${bilan.kind}`
         const expanded = !!open[key]
         const html = itemHtml(bilan)
-        const score = bilan.record ? tinettiScore(bilan.record.scores) : null
+        const score = bilan.kind === 'tinetti' && bilan.record ? tinettiScore(bilan.record.scores) : null
         return <li key={key} className={bilan.copied ? 'copied' : ''}>
           <div className="bilan-row">
             <button type="button" className="bilan-summary" aria-expanded={expanded} onClick={() => setOpen(current => ({ ...current, [key]: !expanded }))}>
-              <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{score && <span className="kind-tag">{KIND_LABEL[bilan.kind]} {score.total}/{score.max}</span>}{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
+              <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{bilan.kind !== 'bilan' && <span className="kind-tag">{KIND_LABEL[bilan.kind]}{score && ` ${score.total}/${score.max}`}</span>}{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
             </button>
             <BilanActions date={date} id={bilan.id} name={name} html={html} kind={bilan.kind} />
           </div>

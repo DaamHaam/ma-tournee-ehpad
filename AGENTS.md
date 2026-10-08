@@ -47,11 +47,12 @@ npm run test:e2e
 
 - `bmad-cy/src/App.tsx` : coque, navigation et état global de sauvegarde.
 - `bmad-cy/src/domain/model.ts` : types et règles métier pures.
-- `bmad-cy/src/domain/tinetti.ts` : grille de Tinetti, score, interprétation et résultat à copier.
+- `bmad-cy/src/domain/tinetti.ts` : grille de Tinetti, score, interprétation et résultat à copier ; types communs des tests (`TestType`, `TestRecord`).
+- `bmad-cy/src/domain/marcheEquilibre.ts` : bilan flexible marche / équilibre (sous-modules, rubriques, compte rendu mis en forme, ★ précédents).
 - `bmad-cy/src/storage/database.ts` : schéma Dexie/IndexedDB.
 - `bmad-cy/src/storage/repository.ts` : accès aux patients, journées et traces.
 - `bmad-cy/src/features/journee/` : tournée quotidienne, ordre, pointage et notes.
-- `bmad-cy/src/features/bilan/` : bilan du jour et test de Tinetti en plein écran, dictée OpenRouter, assistant de rédaction IA (`prompts.ts` : prompts par défaut, `assistant.ts` : anonymisation et lecture des réponses) et leurs réglages, onglet Bilans (copie, suppression).
+- `bmad-cy/src/features/bilan/` : bilan du jour, test de Tinetti et bilan marche / équilibre (`MarcheEquilibrePage.tsx`) en plein écran, dictée OpenRouter, assistant de rédaction IA (`prompts.ts` : prompts par défaut, `assistant.ts` : anonymisation et lecture des réponses) et leurs réglages, onglet Bilans (copie, suppression).
 - `bmad-cy/src/features/patients/` : liste, ajout, édition, historique, archivage et suppression.
 - `bmad-cy/src/features/exports/` : génération et partage de l’export TXT.
 - `bmad-cy/tests/` : parcours Playwright de production.
@@ -68,6 +69,7 @@ npm run test:e2e
 - Consulter une journée passée ne la crée ni ne la modifie ; seule une saisie explicite l’enregistre.
 - Un bilan est stocké en texte brut (`bilan`) et, s’il est mis en forme, en HTML restreint (`bilanHtml` : seulement `<b>`, `<i>`, `<u>`, `<br>`, toujours filtré par `sanitizeBilanHtml` avant affichage ou copie).
 - Les tests standardisés (Tinetti d’abord) sont rangés dans `entries[id].tests[type]`, un par type et par jour ; leur score est calculé par l’application. Copier un test le marque copié et coche l’évaluation du jour de la copie.
+- Le bilan marche / équilibre est un bilan flexible rangé comme un test (`tests.marcheEquilibre`) : choix multiples cochés dans `choices` (identifiant `clé.rang`, rang dans la liste du catalogue : ne jamais réordonner ni retirer une option, n’en ajouter qu’en fin de liste), textes, nombres et choix uniques dans `values`. Le compte rendu ne montre que les choix cochés et les champs remplis, dans l’ordre fixe du catalogue d’origine et avec sa mise en forme ; il se retouche avant copie, et toute modification du formulaire le régénère. Sa copie est enveloppée dans un bloc à chasse fixe, texte brut en CRLF. Les tests standardisés qu’il contient (TUG, 10 m, 6 min…) affichent ★ leur dernière mesure antérieure.
 - Copier un bilan (onglet Bilans, historique ou page du bilan) le marque comme copié et coche la transmission du jour de la copie dans la fiche ; modifier le bilan retire la marque « copié », le supprimer ne décoche pas la transmission.
 - L’import de patients conserve l’identifiant d’un patient déjà connu (même nom et prénom, sans tenir compte de la casse ni des accents).
 - La prescription en cours (intitulé, date locale, durée en semaines, mois ou années, tous facultatifs) fixe la fin d’ordonnance : dès que la date est connue, `prescriptionEnd` est recalculée par `prescriptionEndDate` (`domain/model.ts`, durée absente = 1 an, fin de mois ramenée au dernier jour) et n’est plus saisissable ; sans date, elle reste saisie à la main. L’import ne touche ni l’intitulé, ni la date, ni la durée, et la fin calculée d’un patient reconnu l’emporte sur la fin importée. Surveillance : orange quand la fin tombe dans les 15 jours, rouge une fois dépassée.

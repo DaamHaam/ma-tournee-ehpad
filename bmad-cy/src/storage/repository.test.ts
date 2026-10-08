@@ -332,6 +332,14 @@ describe('stockage local', () => {
     await repository.setTest('2026-09-08', alice.id, 'tinetti', { scores: {} })
     expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests).toBeUndefined()
     await expect(repository.markTestCopied('2026-09-08', alice.id, 'tinetti')).rejects.toThrow('Ce test n’existe plus.')
+    // Bilan flexible : changer les choix efface la retouche du compte rendu.
+    await repository.setTest('2026-09-08', alice.id, 'marcheEquilibre', { choices: ['marche.1'], values: { tug: '18' } })
+    await repository.setTest('2026-09-08', alice.id, 'marcheEquilibre', { resultHtml: 'Retouché' })
+    await repository.setTest('2026-09-08', alice.id, 'marcheEquilibre', { values: { tug: '17' } })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.marcheEquilibre).toMatchObject({ choices: ['marche.1'], values: { tug: '17' } })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.marcheEquilibre?.resultHtml).toBeUndefined()
+    await repository.setTest('2026-09-08', alice.id, 'marcheEquilibre', { choices: [], values: {} })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests).toBeUndefined()
   })
 
   it('annule un bilan en le remettant tel qu’à l’ouverture', async () => {

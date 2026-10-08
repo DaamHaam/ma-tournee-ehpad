@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DayBilan, Identity } from '../../domain/model'
-import { joinBilans, multiBilanGroups, testCopyHtml } from './display'
+import { clipboardContent, joinBilans, multiBilanGroups, testCopyHtml } from './display'
 
 describe('texte d’un test à copier', () => {
   const base = { scores: { e1: 1 }, notes: 'marche lente', notesHtml: 'marche lente' }
@@ -9,6 +9,15 @@ describe('texte d’un test à copier', () => {
     expect(testCopyHtml({ ...base, aiObservations: 'Marche <b>lente</b>.', aiSource: 'marche lente' })).toMatch(/<b>1\/28<\/b>.*Marche <b>lente<\/b>\.$/)
     expect(testCopyHtml({ ...base, aiObservations: 'Ancienne synthèse.', aiSource: 'autre dictée' })).toMatch(/marche lente$/)
     expect(testCopyHtml(base)).toMatch(/^<u><b>Tinetti<\/b><\/u> : <b>1\/28<\/b>/)
+  })
+  it('génère le bilan marche / équilibre et le copie en chasse fixe avec des fins de ligne CRLF', () => {
+    const html = testCopyHtml({ scores: {}, notes: '', choices: ['marche.1'] }, 'marcheEquilibre')
+    expect(html).toBe('<i><u>Évaluation kiné marche / équilibre</u></i><br><i>Marche</i> : possible seul')
+    expect(testCopyHtml({ scores: {}, notes: '', choices: ['marche.1'], resultHtml: 'Retouché' }, 'marcheEquilibre')).toBe('Retouché')
+    const copied = clipboardContent('marcheEquilibre', html)
+    expect(copied.html).toMatch(/^<div style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;white-space:pre-wrap;"><i><u>Évaluation/)
+    expect(copied.text).toBe('Évaluation kiné marche / équilibre\r\nMarche : possible seul')
+    expect(clipboardContent('tinetti', 'a<br>b')).toEqual({ html: 'a<br>b', text: 'a\nb' })
   })
 })
 

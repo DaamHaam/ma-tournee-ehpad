@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
-// « + » sur la carte propose bilan libre ou Tinetti.
+// « + » sur la carte propose bilan libre, Tinetti ou bilan marche / équilibre.
 async function openBilan(page: Page, name: string, choice = 'Bilan libre') {
   await page.getByRole('button', { name: `Bilan pour ${name}` }).click()
   await page.getByRole('link', { name: choice }).click()
@@ -320,6 +320,58 @@ test('Tinetti : cotation, volets, dictée, copie qui coche Éval, consultation e
   await page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^1 – / }).click()
   await page.getByRole('button', { name: 'Annuler et quitter' }).click()
   await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).not.toHaveClass(/filled/)
+})
+
+test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouchable, copie et ★', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
+  await expect(page.getByRole('tab', { name: 'Formulaire' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: 'évaluation de suivi' }).click()
+  await page.getByRole('tab', { name: 'Marche', exact: true }).click()
+  await page.getByRole('group', { name: 'Aide technique', exact: true }).getByRole('checkbox', { name: 'avec un rollator' }).click()
+  await page.getByRole('group', { name: 'Marche', exact: true }).getByRole('checkbox', { name: 'possible avec une surveillance' }).click()
+  await page.getByRole('textbox', { name: 'Test des 10m – Temps' }).fill('18')
+  await page.getByRole('textbox', { name: 'Test des 10m – Nombre de pas' }).fill('24')
+  await expect(page.getByLabel('3 rubriques renseignées')).toBeVisible()
+  await page.getByRole('tab', { name: 'Traitement' }).click()
+  const means = page.getByRole('group', { name: 'Moyens', exact: true })
+  await means.getByRole('checkbox', { name: 'travail des réactions parachute' }).click()
+  await means.getByRole('checkbox', { name: 'travail de l’équilibre' }).click()
+  await expect(means.getByRole('checkbox', { name: 'travail de l’équilibre' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('tab', { name: 'Résultat' }).click()
+  const result = page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })
+  const expected = '<i><u>Évaluation kiné marche / équilibre</u></i><br><b><u>Contexte</u></b> : évaluation de suivi<br><i>Marche</i> : possible avec une surveillance, avec un rollator<br>Test des 10m : 18sec et 24 pas<br><b><u>Traitement kiné</u></b> : travail de l’équilibre et des réactions parachute'
+  await expect(result).toContainText('Test des 10m : 18sec et 24 pas')
+  await page.evaluate(() => {
+    const store = window as unknown as { copied?: { html: string; text: string } }
+    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
+  })
+  await page.getByRole('button', { name: 'Copier' }).click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { copied?: { html: string } }).copied?.html)).toBe(`<div style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;white-space:pre-wrap;">${expected}</div>`)
+  expect(await page.evaluate(() => (window as unknown as { copied: { text: string } }).copied.text)).toContain('Évaluation kiné marche / équilibre\r\nContexte : évaluation de suivi\r\n')
+  // Retouche du résultat : copiée telle quelle, puis effacée par un changement du formulaire.
+  await result.evaluate((element: HTMLElement) => { element.append(' fin'); element.dispatchEvent(new Event('input', { bubbles: true })) })
+  await expect(page.getByText('Texte retouché')).toBeVisible()
+  await page.getByRole('tab', { name: 'Formulaire' }).click()
+  await means.getByRole('checkbox', { name: 'pédalier' }).click()
+  await page.getByRole('tab', { name: 'Résultat' }).click()
+  await expect(result).toContainText('réactions parachute, pédalier')
+  await expect(page.getByText('Texte retouché')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
+  await page.getByRole('link', { name: 'Bilans' }).click()
+  await page.getByLabel('Date').fill('2026-09-22')
+  await expect(page.getByText('Marche / équilibre')).toBeVisible()
+
+  // Bilan suivant : ★ sur les choix et sur la dernière mesure du test des 10 m.
+  await page.goto('/#/?date=2026-09-25')
+  await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
+  await expect(page.getByText('★ bilan précédent du 22/09/2026')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: /évaluation de suivi/ })).toContainText('★')
+  await page.getByRole('tab', { name: 'Marche', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Test des 10m' })).toContainText('18sec et 24 pas · 22/09/2026')
+  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
+  await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).not.toHaveClass(/filled/)
 })
 
 // En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.

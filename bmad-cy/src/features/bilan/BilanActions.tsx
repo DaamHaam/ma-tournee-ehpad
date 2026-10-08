@@ -11,7 +11,7 @@ function Icon({ d }: { d: string }) { return <svg viewBox="0 0 24 24" width="20"
 export function BilanActions({ date, id, name, html, kind = 'bilan' }: { date: string; id: string; name: string; html: string; kind?: BilanKind }) {
   const { run } = useSave()
   const { copied, copy } = useBilanCopy(date, id, kind)
-  const what = kind === 'bilan' ? 'le bilan' : `le ${KIND_LABEL[kind]}`
+  const what = kind === 'bilan' ? 'le bilan' : kind === 'marcheEquilibre' ? 'le bilan marche / équilibre' : `le ${KIND_LABEL[kind]}`
   const remove = () => { if (window.confirm(`Supprimer ${what} du ${parseDate(date).toLocaleDateString('fr-FR')} de ${name} ?`)) void run(() => kind === 'bilan' ? repository.deleteBilan(date, id) : repository.deleteTest(date, id, kind)) }
   return <div className="bilan-actions">
     <button type="button" className={`icon-button${copied ? ' copied' : ''}`} aria-label={copied === null ? `Copier ${what} de ${name}` : copied ? 'Copié' : 'Copie impossible'} title="Copier" onClick={() => void copy(html)}>{copied ? <span aria-hidden="true">✓</span> : <Icon d={COPY} />}</button>

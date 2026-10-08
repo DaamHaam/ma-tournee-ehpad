@@ -315,3 +315,24 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 /* Min / Max : petits boutons discrets en tête de grille, remplissent les lignes vides. */
 .fill-buttons { display:flex; justify-content:flex-end; gap:.35rem; margin:.1rem 0 -.2rem; }
 .fill-buttons button { min-height:32px; min-width:44px; padding:.15rem .5rem; border-color:var(--line); color:var(--muted); font-size:.74rem; font-weight:650; }
+
+/* Bilan marche / équilibre : sous-modules en onglets (deux rangées), rubriques à cocher, champs courts. */
+.module-tabs { position:sticky; top:0; z-index:1; display:grid; grid-template-columns:repeat(4,1fr); gap:.3rem; padding:.3rem 0 .4rem; background:#f6f7f9; }
+.module-tabs button { position:relative; min-height:34px; padding:.15rem .2rem; font-size:.74rem; }
+.module-tabs button[aria-selected="true"] { border-color:var(--accent); background:var(--accent); color:#fff; }
+.module-count { position:absolute; top:-5px; right:-4px; min-width:17px; height:17px; padding:0 .25rem; border-radius:9px; background:#2e7a4b; color:#fff; font-size:.64rem; font-weight:800; line-height:17px; }
+.flex-rubric { display:grid; gap:.3rem; margin-bottom:.8rem; }
+.flex-rubric h3 { margin:.2rem 0 0; color:var(--accent); font-size:.9rem; font-weight:800; }
+.flex-rubric.filled h3::after { content:" ✓"; color:#2e7a4b; }
+.flex-options { display:grid; gap:.3rem; }
+.flex-options.compact { display:flex; flex-wrap:wrap; align-items:center; }
+.flex-options.compact .row-sub { flex-basis:100%; }
+.flex-options.compact .test-option { min-width:44px; justify-content:center; padding:.3rem .6rem; }
+.flex-options.compact .option-label { flex:none; }
+.test-option[aria-checked="true"] .previous-mark { color:#ffd76a; }
+.flex-field { gap:.2rem; font-size:.78rem; color:var(--muted); }
+.flex-field input, .flex-field textarea { min-height:40px; padding:.45rem .6rem; }
+.flex-number { display:flex; align-items:center; gap:.4rem; color:var(--ink); font-weight:600; }
+.flex-number input { max-width:7rem; }
+.previous-measure { margin:0; color:#9a6b00; font-size:.75rem; }
+.flex-page .notes-pane .bilan-text { font-size:13px; line-height:1.4; }

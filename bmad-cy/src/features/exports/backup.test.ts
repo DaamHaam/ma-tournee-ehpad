@@ -21,6 +21,11 @@ describe('sauvegarde complète', () => {
     withBilan.days[0].entries.p1.tests.tinetti.scores.e1 = 'un'
     expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
     withBilan.days[0].entries.p1.tests.tinetti.scores.e1 = 1
+    withBilan.days[0].entries.p1.tests.marcheEquilibre = { scores: {}, notes: '', choices: ['marche.1'], values: { tug: '18' } }
+    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1.tests?.marcheEquilibre).toMatchObject({ choices: ['marche.1'], values: { tug: '18' } })
+    withBilan.days[0].entries.p1.tests.marcheEquilibre.values.tug = 18
+    expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+    delete withBilan.days[0].entries.p1.tests.marcheEquilibre
     withBilan.days[0].entries.p1.bilanCopied = 'oui'
     expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
   })

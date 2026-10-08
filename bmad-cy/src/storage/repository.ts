@@ -100,13 +100,13 @@ export class TourRepository {
   }
   async deleteBilan(date: string, id: string): Promise<void> { await this.setBilan(date, id, '') }
   // Test standardisé du jour : modifier le décoche « copié » ; vidé (ni cotation ni texte), il disparaît.
-  async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml' | 'aiObservations' | 'aiChecks' | 'aiFilled' | 'aiSource'>>, now = new Date().toISOString()): Promise<void> {
+  async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml' | 'aiObservations' | 'aiChecks' | 'aiFilled' | 'aiSource' | 'choices' | 'values'>>, now = new Date().toISOString()): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
       const record: TestRecord = { scores: {}, notes: '', at: now, ...entry.tests?.[type], ...patch }
       delete record.copied
-      // Le texte validé ne vaut que pour la cotation et la dictée qu’il résume.
-      if (patch.resultHtml === undefined && (patch.scores !== undefined || patch.notes !== undefined)) delete record.resultHtml
+      // Le texte validé ne vaut que pour la cotation (ou les choix du bilan flexible) et la dictée qu’il résume.
+      if (patch.resultHtml === undefined && (patch.scores !== undefined || patch.notes !== undefined || patch.choices !== undefined || patch.values !== undefined)) delete record.resultHtml
       if (!record.resultHtml?.trim()) delete record.resultHtml
       if (!record.notes.trim()) delete record.notesHtml
       const tests = { ...entry.tests }

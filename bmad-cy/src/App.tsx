@@ -8,6 +8,7 @@ import { ExportPage } from './features/exports/ExportPage'
 import { BilanPage } from './features/bilan/BilanPage'
 import { BilansPage } from './features/bilan/BilansPage'
 import { TinettiPage } from './features/bilan/TinettiPage'
+import { MarcheEquilibrePage } from './features/bilan/MarcheEquilibrePage'
 function Icon({ d }: { d: string }) { return <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg> }
 function App() {
   const [ready, setReady] = useState(false)
@@ -19,7 +20,7 @@ function App() {
   useEffect(() => { void run(() => repository.initialize()).then(ok => { if (ok) setReady(true) }) }, [run])
   return <HashRouter><SaveContext value={{ run }}>
     {error && <div className="error-banner" role="alert"><strong>Échec de l’enregistrement.</strong> {error}{!ready && <p><button onClick={() => void run(() => repository.initialize()).then(ok => setReady(ok))}>Réessayer</button></p>}</div>}
-    <main>{ready && <Routes><Route path="/" element={<Journee />} /><Route path="/patients" element={<Patients />} /><Route path="/patients/:id" element={<PatientDetail />} /><Route path="/bilans" element={<BilansPage />} /><Route path="/tinetti/:date/:id" element={<TinettiPage />} /><Route path="/bilan/:date/:id" element={<BilanPage />} /><Route path="/settings" element={<ExportPage />} /><Route path="/export" element={<Navigate replace to="/settings" />} /><Route path="*" element={<Navigate replace to="/" />} /></Routes>}</main>
+    <main>{ready && <Routes><Route path="/" element={<Journee />} /><Route path="/patients" element={<Patients />} /><Route path="/patients/:id" element={<PatientDetail />} /><Route path="/bilans" element={<BilansPage />} /><Route path="/tinetti/:date/:id" element={<TinettiPage />} /><Route path="/marcheEquilibre/:date/:id" element={<MarcheEquilibrePage />} /><Route path="/bilan/:date/:id" element={<BilanPage />} /><Route path="/settings" element={<ExportPage />} /><Route path="/export" element={<Navigate replace to="/settings" />} /><Route path="*" element={<Navigate replace to="/" />} /></Routes>}</main>
     <nav className="bottom-nav" aria-label="Navigation principale"><NavLink to="/" end aria-label="Journée" title="Journée"><Icon d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></NavLink><NavLink to="/patients" aria-label="Patients" title="Patients"><Icon d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" /></NavLink><NavLink to="/bilans" aria-label="Bilans" title="Bilans"><Icon d="M8 4h8v3H8zM6 5.5H5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1M8 12h8M8 16h5" /></NavLink><NavLink to="/settings" aria-label="Réglages / Export" title="Réglages / Export"><Icon d="M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6" /></NavLink><span className="app-version" aria-label={`Version ${__APP_VERSION__}`}>v{__APP_VERSION__}</span></nav>
   </SaveContext></HashRouter>
 }
