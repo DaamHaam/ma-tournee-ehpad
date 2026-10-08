@@ -15,3 +15,7 @@
 
 - Import livré par copier-coller (voir `tech-spec-import-patients-suivi.md`). Reste à décider : un export du tableau patient dans le même format (story 8.1) pour le réimporter ailleurs.
 - Filtre « prescriptions proches de fin » (story 6.3) désormais possible grâce à la date de fin d’ordonnance.
+
+## Après le bilan marche / équilibre (v0.22.0)
+
+- Idée (2026-10-08) : antécédents dans la fiche patient, en deux parties — ceux qui concernent directement la kiné en séance, et les autres. Les bilans (dont marche / équilibre) reprendraient seulement les antécédents kiné ; aujourd’hui la rubrique Antécédents du bilan est un texte libre.
