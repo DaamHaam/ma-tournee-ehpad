@@ -51,6 +51,8 @@ export function useDictation(insert: (text: string) => void, afterLeave: (text: 
     hasKey: !!settings?.key,
     disabled: !recording && (transcribing || !settings?.key || !online),
     hint: !settings ? '' : !settings.key ? 'Pour dicter ici, ajoutez une clé OpenRouter dans Réglages. Le micro du clavier reste disponible.' : !online ? 'Hors ligne : utilisez le micro du clavier.' : '',
-    status: recording ? `Enregistrement ${formatDuration(elapsed)} / ${formatDuration(MAX_DICTATION_SECONDS)}` : transcribing ? 'Transcription…' : '',
+    // Durée seule ; le micro clignote vite pendant les 30 dernières secondes avant l’arrêt automatique.
+    status: recording ? formatDuration(elapsed) : transcribing ? 'Transcription…' : '',
+    ending: recording && elapsed >= MAX_DICTATION_SECONDS - 30,
   }
 }

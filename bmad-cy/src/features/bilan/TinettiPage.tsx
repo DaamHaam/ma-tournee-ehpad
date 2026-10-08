@@ -8,7 +8,7 @@ import { fullName, parseDate, validDate, type Entry, type Sex } from '../../doma
 import { fillEmptyRows, hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
-import { anonymizeWithMap, civility, parseTinettiReply, restoreNames, tinettiRequest } from './assistant'
+import { anonymizeWithMap, finishAiText, parseTinettiReply, tinettiRequest } from './assistant'
 import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLine, testCopyHtml, testNotesHtml } from './display'
@@ -108,7 +108,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
       const answer = await assistant.ask('tinetti', sent, true)
       const reply = parseTinettiReply(answer.content, base)
       const merged = { ...reply.scores, ...base }
-      const next = { observations: sanitizeBilanHtml(restoreNames(reply.observations, found, civility(sex))), checks: reply.checks, filled: Object.keys(reply.scores), source }
+      const next = { observations: sanitizeBilanHtml(finishAiText(reply.observations, found, sex)), checks: reply.checks, filled: Object.keys(reply.scores), source }
       setScores(merged); setAi(next); regenerate()
       await run(() => repository.setTest(date, id, 'tinetti', { scores: merged, aiObservations: next.observations, aiChecks: next.checks, aiFilled: next.filled, aiSource: source }))
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Intégration impossible.') }

@@ -383,3 +383,15 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .result-tools .validate-button { min-height:36px; padding:.15rem .55rem; }
 /* Onglet Bilans : le nom passe avant l’étiquette du type de bilan, qui se réduit la première. */
 .bilan-summary .kind-tag { flex:0 1000 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Micro flottant du formulaire bien centré. */
+.bilan-dictation.floating .dictation-bar { display:flex; justify-content:center; }
+.mic.ending { animation:blink .5s ease-in-out infinite; }
+@keyframes blink { 50% { opacity:.25; } }
+/* Clavier ouvert : une seule rangée (G I S, micro, flèche) juste au-dessus du clavier, le texte prend toute la hauteur. */
+.tinetti-page.keyboard-open .notes-pane .result-tools { order:2; }
+/* Volets d’un bord à l’autre de l’écran : le Résultat prend toute la largeur, ✨ et ⚠ se placent contre le bord gauche. */
+.tinetti-page .panes { margin:0 -1.3rem; }
+.tinetti-page .panes > .pane { padding-left:1.3rem; padding-right:1.3rem; }
+.tinetti-page .panes > .result-pane { padding-left:0; padding-right:0; }
+.result-pane > :not(.bilan-text) { margin-left:1.3rem; margin-right:1.3rem; }
+.result-pane .bilan-text { border-left:0; border-right:0; border-radius:0; padding-left:1.75rem; padding-right:1.3rem; }

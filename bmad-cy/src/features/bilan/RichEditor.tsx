@@ -6,6 +6,7 @@ export type Command = 'bold' | 'italic' | 'underline'
 export type FormatState = Record<Command, boolean>
 export interface RichEditorHandle {
   insertText: (text: string) => void
+  insertDictation: (text: string) => void
   insertLineBreak: () => void
   deleteBackward: () => void
   setKeyboard: (open: boolean) => void
@@ -103,6 +104,17 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
     if (!focused()) selection.removeAllRanges()
     emit()
   }
+  // Dictée : posée à la suite du texte, chaque nouvelle dictée commence sur une nouvelle ligne (on dicte sans regarder) ;
+  // insérée au milieu du texte (correction), elle reste à la place du curseur.
+  const insertDictation = (text: string) => {
+    if (!box.current) return
+    const range = current()
+    const before = document.createRange(); before.setStart(box.current, 0); before.setEnd(range.startContainer, range.startOffset)
+    const after = document.createRange(); after.setStart(range.endContainer, range.endOffset); after.setEnd(box.current, box.current.childNodes.length)
+    const head = textOf(before)
+    if (head.trim() && !textOf(after).trim() && !/\n\s*$/.test(head)) insertLineBreak()
+    insertText(text)
+  }
   // Collage en texte brut : chaque retour à la ligne du texte collé devient un <br>.
   const paste = (text: string) => text.split(/\r\n|\r|\n/).forEach((line, index) => { if (index) insertLineBreak(); insertText(line, false) })
   const format = (command: Command) => {
@@ -121,6 +133,7 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
       emit()
     },
     insertText: text => insertText(text),
+    insertDictation,
     insertLineBreak,
     deleteBackward,
     // Le mode clavier ne s’applique qu’au prochain focus : on retire puis redonne le focus dans le même geste.

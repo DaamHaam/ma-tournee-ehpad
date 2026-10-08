@@ -426,16 +426,21 @@ test.describe('dictée', () => {
     await bilan.evaluate(element => { const range = document.createRange(); range.setStart(element.firstChild!, 0); range.collapse(true); getSelection()!.removeAllRanges(); getSelection()!.addRange(range) })
     for (let step = 0; step < 6; step++) await bilan.press('ArrowRight')
     await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
-    await expect(page.getByText(/Enregistrement 0:0\d \/ 5:00/)).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /^0:0\d$/ })).toBeVisible()
     await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
     await expect(bilan).toHaveText('Début. Milieu dicté. Fin.')
     await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
     await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
     await expect(bilan).toHaveText('Début. Milieu dicté. Suite dictée. Fin.')
     expect(sent).toEqual(['Bearer sk-or-v1-test1234', 'Bearer sk-or-v1-test1234'])
+    // Dictée posée à la suite du texte : elle commence sur une nouvelle ligne.
+    await bilan.evaluate(element => { const range = document.createRange(); range.selectNodeContents(element); range.collapse(false); getSelection()!.removeAllRanges(); getSelection()!.addRange(range) })
+    await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
+    await page.getByRole('button', { name: 'Arrêter la dictée' }).click()
+    await expect.poll(() => bilan.innerHTML()).toMatch(/Fin\.<br>Suite dictée\.(<br>)?$/)
     await page.getByRole('link', { name: 'Retour à la journée' }).click()
     await openBilan(page, 'Martin Alice')
-    await expect(bilan).toHaveText('Début. Milieu dicté. Suite dictée. Fin.')
+    await expect.poll(() => bilan.innerHTML()).toBe('Début. Milieu dicté. Suite dictée. Fin.<br>Suite dictée.')
   })
 
   test('assistant IA simulé : Tinetti, dictée intégrée dans le volet Résultat, retouche et validation ; correction du bilan libre', async ({ page }) => {
@@ -485,8 +490,8 @@ test.describe('dictée', () => {
     await resultPane.getByRole('button', { name: 'Intégrer la dictée' }).click()
     await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
     await expect.poll(() => result.innerHTML()).toContain('<b>4/28</b>')
-    // Plus de [patient] dans un texte de l’IA : le nom revient à sa place (ici, nombre de [patient] différent de l’envoi).
-    await expect(result).toContainText('Marche prudente avec Petit.')
+    // Plus de [patient] dans un texte de l’IA : la civilité (Mme, la fiche dit F), jamais le nom.
+    await expect(result).toContainText('Marche prudente avec Mme.')
     await expect(result).not.toContainText('[patient]')
     const request = bodies.at(-1)!
     expect(request.model).toBe('deepseek/modele-test')
@@ -533,7 +538,7 @@ test.describe('dictée', () => {
     const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Petit Jeanne' })
     await bilan.fill('bonjour Jeanne, la patiente marche lentment.')
     await page.getByRole('button', { name: 'Corriger avec l’IA' }).click()
-    await expect(bilan).toHaveText('Bonjour Jeanne, la patiente marche lentement.')
+    await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement.')
     const correction = bodies.at(-1)!
     expect(correction.response_format).toBeUndefined()
     expect(correction.messages[1].content).toBe('Sexe : patiente\n\nTexte :\nbonjour [patient], la patiente marche lentment.')

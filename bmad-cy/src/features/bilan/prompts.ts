@@ -38,7 +38,7 @@ Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les li
    - garde chaque information clinique utile et regroupe-la par thème (équilibre, marche, aides techniques, comportement, autres), sans titres ;
    - supprime les répétitions, hésitations et mots parasites (« merci », « euh »…) ;
    - corrige l’orthographe, la grammaire, la ponctuation et les accords selon "patient" ;
-   - garde chaque [patient] exactement à sa place sans en ajouter, et garde les civilités dictées (« Me », « Mme », « Mr », « M. ») telles quelles ; n’écris jamais « le patient » ou « la patiente » à la place d’un nom ou d’une civilité ;
+   - civilités : garde chaque civilité dictée à sa place, abrégée en « Mr » (monsieur) ou « Mme » (madame) ; ne la remplace jamais par [patient] et n’ajoute jamais de [patient] ; n’écris jamais « le patient » ni « la patiente » (le texte est collé dans le dossier de la personne : on sait de qui on parle) ;
    - n’invente rien, ne pose aucun diagnostic, ne recopie ni les cotations ni le score (l’application les affiche) ; les consignes de cotation (« item 3, score 1 », « tout au maximum ») servent à coter et n’entrent pas dans les observations ;
    - mets en gras avec <b> les éléments les plus importants (risque de chute, aide technique, chute récente), avec parcimonie ; seules les balises <b>, <i>, <u> et <br> sont permises ;
    - si la dictée est vide ou ne contient que des consignes de cotation, renvoie une chaîne vide.
@@ -68,10 +68,10 @@ Règles propres au bilan marche / équilibre (bilan flexible : seules les lignes
    - nombre : le chiffre seul, sans unité, converti dans l’unité du champ (« TUG en 18 secondes » → "tug": "18" ; « 10 mètres en 22 secondes et 30 pas » → "test10m.temps": "22", "test10m.pas": "30" ; « une minute dix » pour un champ en secondes → "70") ;
    - choix unique : exactement une des options (« EVA à 4 » → "eva": "4") ;
    - texte : bref et propre (« trajet chambre-RDC en deux minutes trente » → "trajet.duree": "2 min 30 s") ;
-   - une précision qui concerne une rubrique sans correspondre à aucune de ses options va dans le champ « Autre » de cette rubrique (identifiant en ".autre"), s’il est vide ;
-   - toute autre information clinique utile de la dictée, hors formulaire, va dans "commentaires.ia" : phrases courtes, corrigées, accordées selon "patient", sans répétition ni mot parasite ; rien s’il n’y en a pas ;
+   - une précision qui se rattache à une rubrique, mais qu’aucune de ses options ne dit exactement (diagnostic, cause, détail, degré, nuance), va dans le champ « Autre » de cette rubrique (identifiant en ".autre"), s’il est vide : elle complète les cases cochées de cette rubrique, elle ne va jamais dans les commentaires. Exemple : Troubles complémentaires a « déficit visuel » et « troubles cognitifs » cochés, la dictée précise « maladie d’Alzheimer » → "troublesComplementaires.autre": "maladie d’Alzheimer" ; le compte rendu affichera « Troubles complémentaires : déficit visuel, troubles cognitifs, maladie d’Alzheimer ». De même « flexum de genou d’environ 25° » → "raideurs.autre", « déambulateur prêté par l’EHPAD » → "aideTechnique.autre" ;
+   - avant de mettre une information dans "commentaires.ia", cherche toujours la rubrique à laquelle elle se rattache ; seule une information utile qui ne se rattache à aucune rubrique va dans "commentaires.ia" : phrases courtes, corrigées, accordées selon "patient", sans répétition ni mot parasite ; rien s’il n’y en a pas ;
    - les consignes de remplissage (« coche… », « mets… ») servent à remplir et ne vont jamais dans les textes.
-   Dans les valeurs, n’écris ni nom de personne ni [patient] : garde la civilité dictée (« Me », « Mr ») ou tourne la phrase sans sujet ; n’écris jamais « le patient » ni « la patiente ».
+   Dans les valeurs, n’écris ni nom de personne ni [patient] : garde la civilité dictée, abrégée en « Mr » ou « Mme », ou tourne la phrase sans sujet ; n’écris jamais « le patient » ni « la patiente ».
 4. "a_verifier" est un voyant d’alerte, à n’utiliser que si la dictée contredit ce qui est coché ou rempli (par exemple « marche impossible » cochée alors que la dictée décrit une marche), ou si elle est vague et que tu as dû interpréter. "champ" est l’identifiant du champ concerné ; la raison (moins de 12 mots) dit précisément ce qui est ambigu ou contradictoire. En général, la liste est vide ou très courte.
 
 Réponds uniquement par un objet JSON de la forme :
@@ -81,7 +81,7 @@ Réponds uniquement par un objet JSON de la forme :
 - Corrige l’orthographe, la grammaire, la ponctuation et les accords selon le sexe indiqué.
 - Supprime les hésitations et mots parasites évidents.
 - Ne change ni le sens, ni les termes techniques, ni les chiffres, ni l’ordre des informations ; n’ajoute ni ne retire aucune information clinique.
-- Garde chaque [patient] exactement à sa place, sans en ajouter ni en retirer, et garde les civilités dictées (« Me », « Mme », « Mr », « M. ») telles quelles : ne les remplace jamais par [patient], « le patient » ou « la patiente ».
+- Garde chaque [patient] exactement à sa place, sans en ajouter ni en retirer. Garde chaque civilité dictée à sa place, abrégée en « Mr » (monsieur) ou « Mme » (madame) : ne la remplace jamais par [patient], « le patient » ou « la patiente ».
 - Conserve les balises <b>, <i>, <u> et <br> existantes et n’en ajoute aucune autre.
 
 Réponds uniquement par le texte corrigé, sans commentaire ni guillemets.`,

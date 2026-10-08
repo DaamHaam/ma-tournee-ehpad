@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anonymize, anonymizeWithMap, marcheRequest, parseMarcheReply, restoreNames, parseCorrection, parseTinettiReply, sexLabel, tinettiRequest } from './assistant'
+import { anonymize, anonymizeWithMap, finishAiText, marcheRequest, parseMarcheReply, restoreNames, parseCorrection, parseTinettiReply, sexLabel, tinettiRequest } from './assistant'
 
 describe('assistant de rédaction', () => {
   it('retire nom et prénom sans tenir compte de la casse ni des accents', () => {
@@ -10,9 +10,11 @@ describe('assistant de rédaction', () => {
     expect(anonymize('Texte', [''])).toBe('Texte')
     const { text, found } = anonymizeWithMap('Mme Lefèvre marche, Hélène sourit.', ['Lefèvre', 'Hélène'])
     expect(restoreNames(text.replace('marche', 'marche lentement'), found)).toBe('Mme Lefèvre marche lentement, Hélène sourit.')
-    // Nombre différent de [patient] : le nom reprend toutes les places ; sans nom, la civilité, jamais [patient].
-    expect(restoreNames('[patient] seul, [patient] et [patient]', found)).toBe('Lefèvre seul, Lefèvre et Lefèvre')
-    expect(restoreNames('Que [patient] comprend', [], 'Me')).toBe('Que Me comprend')
+    expect(restoreNames('[patient] seul', found)).toBe('[patient] seul')
+    // Texte de l’IA : la civilité (jamais le nom), rien derrière une civilité déjà écrite ; sexe inconnu, les mots dictés ; monsieur/madame abrégés.
+    expect(finishAiText('Que [patient] comprend. Mme [patient] marche, madame sourit.', ['Lefèvre', 'Lefèvre'], 'F')).toBe('Que Mme comprend. Mme marche, Mme sourit.')
+    expect(finishAiText('[patient] marche avec Monsieur Durand.', ['Lefèvre'], 'H')).toBe('Mr marche avec Mr Durand.')
+    expect(finishAiText('Que [patient] comprend.', ['Lefèvre'], '')).toBe('Que Lefèvre comprend.')
   })
   it('envoie la grille cochée et la dictée, sans identité', () => {
     const request = JSON.parse(tinettiRequest({ e1: 1 }, 'Marche lente', 'F'))
@@ -65,7 +67,7 @@ describe('prompts modifiés dans l’app', () => {
       a_verifier: [{ champ: 'marche.3', raison: 'surveillance ou guidance ?' }, { champ: 'perimetre.distance', raison: 'distance estimée' }, { champ: 'zz', raison: 'x' }],
     }) + '\n```', { choices: ['contexte.1'], values: { tug: '18' } }, 'F')
     expect(reply.choices).toEqual(['marche.3', 'aideTechnique.8'])
-    expect(reply.values).toEqual({ 'test10m.temps': '22', seances: '2', 'commentaires.ia': 'Me souriante.', 'trajet.duree': '2 min 30 s' })
+    expect(reply.values).toEqual({ 'test10m.temps': '22', seances: '2', 'commentaires.ia': 'Mme souriante.', 'trajet.duree': '2 min 30 s' })
     expect(reply.checks).toEqual([{ row: 'marche', reason: 'surveillance ou guidance ?' }, { row: 'perimetre', reason: 'distance estimée' }])
     expect(() => parseMarcheReply('rien', {}, 'F')).toThrow('illisible')
   })

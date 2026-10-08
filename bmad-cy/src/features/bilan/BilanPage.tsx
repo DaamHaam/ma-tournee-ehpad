@@ -6,7 +6,7 @@ import { repository, type BilanSnapshot } from '../../storage/repository'
 import { validDate, type Entry, type Sex } from '../../domain/model'
 import { db } from '../../storage/database'
 import { useAssistant } from './useAssistant'
-import { anonymizeWithMap, civility, parseCorrection, restoreNames, sexLabel } from './assistant'
+import { anonymizeWithMap, finishAiText, parseCorrection, sexLabel } from './assistant'
 import { useBilanCopy } from './useBilanCopy'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { appendText, bilanHtml, htmlToText, sanitizeBilanHtml } from './richText'
@@ -45,7 +45,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
   useBlockEdgeSwipe()
   const save = useCallback((value: string, text: string) => { latest.current = value; setHtml(value); void run(() => repository.setBilan(date, id, text, value)) }, [date, id, run])
   const dictation = useDictation(
-    useCallback((text: string) => editor.current?.insertText(text), []),
+    useCallback((text: string) => editor.current?.insertDictation(text), []),
     // Page quittée pendant la transcription : la dictée s’ajoute en fin de bilan.
     useCallback(async (text: string) => { const value = appendText(latest.current, text); latest.current = value; await run(() => repository.setBilan(date, id, htmlToText(value), value)) }, [date, id, run]),
   )
@@ -56,7 +56,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
     setCorrection({ busy: true })
     try {
       const { text, found } = anonymizeWithMap(latest.current, [entry.patient.lastName, entry.patient.firstName])
-      const corrected = sanitizeBilanHtml(restoreNames(parseCorrection((await assistant.ask('correction', `Sexe : ${sexLabel(sex)}\n\nTexte :\n${text}`, false)).content), found, civility(sex)))
+      const corrected = sanitizeBilanHtml(finishAiText(parseCorrection((await assistant.ask('correction', `Sexe : ${sexLabel(sex)}\n\nTexte :\n${text}`, false)).content), found, sex))
       const previous = latest.current
       editor.current?.setHtml(corrected)
       setCorrection({ previous })

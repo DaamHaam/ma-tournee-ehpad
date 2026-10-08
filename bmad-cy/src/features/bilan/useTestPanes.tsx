@@ -23,19 +23,21 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   }
   useKeyboardLost(keyboard, () => { editorOf(current.current)?.current?.setKeyboard(false); setKeyboard(false) })
   const goTo = (index: number) => { const box = panes.current; if (box) box.scrollTo({ left: index * box.clientWidth, behavior: 'smooth' }) }
-  // Fin de glissement : le volet est recalé s’il est resté à cheval (le bas d’écran change de hauteur pendant le geste).
+  // Le volet actif (et donc le bas d’écran, dont la hauteur change d’un volet à l’autre) ne change qu’une fois le glissement
+  // terminé : redimensionner l’écran pendant le geste laissait la page à cheval sur deux volets.
   const settle = useRef<number | undefined>(undefined)
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const box = event.currentTarget
-    show(Math.round(box.scrollLeft / Math.max(1, box.clientWidth)))
     window.clearTimeout(settle.current)
     settle.current = window.setTimeout(() => {
-      const left = Math.round(box.scrollLeft / Math.max(1, box.clientWidth)) * box.clientWidth
+      const index = Math.round(box.scrollLeft / Math.max(1, box.clientWidth))
+      const left = index * box.clientWidth
       if (Math.abs(box.scrollLeft - left) > 1) box.scrollTo({ left, behavior: 'smooth' })
-    }, 160)
+      show(index)
+    }, 120)
   }
   const target = useRef(NOTES_PANE)
-  const insertDictation = useCallback((text: string) => (target.current === RESULT_PANE ? result : notes).current?.insertText(text), [notes, result])
+  const insertDictation = useCallback((text: string) => (target.current === RESULT_PANE ? result : notes).current?.insertDictation(text), [notes, result])
   // La destination de la dictée est fixée au lancement de l’enregistrement.
   const routeDictation = (dictation: ReturnType<typeof useDictation>): ReturnType<typeof useDictation> => ({
     ...dictation, toggle: async () => { if (!dictation.recording) target.current = current.current === RESULT_PANE ? RESULT_PANE : NOTES_PANE; await dictation.toggle() },

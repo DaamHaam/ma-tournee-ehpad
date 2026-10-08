@@ -23,7 +23,7 @@ describe('texte enrichi des bilans', () => {
   })
   it('ajoute une dictée en fin de bilan', () => {
     expect(appendText('', ' Début ')).toBe('Début')
-    expect(appendText('<b>Début</b>', 'suite <1>')).toBe('<b>Début</b> suite &lt;1&gt;')
+    expect(appendText('<b>Début</b>', 'suite <1>')).toBe('<b>Début</b><br>suite &lt;1&gt;')
     expect(appendText('Ligne<br>', 'suite')).toBe('Ligne<br>suite')
   })
 })

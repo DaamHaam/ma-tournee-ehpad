@@ -32,9 +32,9 @@ export function textToHtml(text: string): string { return escapeHtml(text).repla
 // HTML affichable d’un bilan : sa version enrichie si elle existe, sinon le texte brut des anciens bilans.
 export function bilanHtml(entry: { bilan?: string; bilanHtml?: string }): string { return sanitizeBilanHtml(entry.bilanHtml ?? textToHtml(entry.bilan ?? '')) }
 
-// Ajout en fin de bilan (dictée revenue après avoir quitté la page).
+// Ajout en fin de bilan (dictée revenue après avoir quitté la page) : sur une nouvelle ligne, comme toute nouvelle dictée.
 export function appendText(html: string, text: string): string {
   const piece = escapeHtml(text.trim())
   if (!piece) return html
-  return html && !/(\s|<br>)$/.test(html) ? `${html} ${piece}` : `${html}${piece}`
+  return htmlToText(html).trim() && !/<br>$/.test(html) ? `${html}<br>${piece}` : `${html}${piece}`
 }

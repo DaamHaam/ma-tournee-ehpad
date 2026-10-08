@@ -26,7 +26,7 @@ function MicIcon({ recording, size }: { recording: boolean; size: number }) {
 // Bas de page de dictée : messages, puis boutons de gauche facultatifs, micro, boutons de droite facultatifs.
 // floating : seul le micro, posé par-dessus le contenu (formulaire qui descend jusqu’en bas de l’écran).
 export function DictationFooter({ dictation, left, right, extra, floating }: { dictation: ReturnType<typeof useDictation>; left?: ReactNode; right?: ReactNode; extra?: ReactNode; floating?: boolean }) {
-  const { error, pending, transcribing, hint, hasKey, status, recording, disabled, toggle, retry, dismiss } = dictation
+  const { error, pending, transcribing, hint, hasKey, status, recording, ending, disabled, toggle, retry, dismiss } = dictation
   return <footer className={`bilan-dictation${floating ? ' floating' : ''}`}>
     {extra}
     {error && <p className="field-error" role="alert">{error}</p>}
@@ -35,7 +35,7 @@ export function DictationFooter({ dictation, left, right, extra, floating }: { d
     <p className="dictation-status" role="status">{status}</p>
     <div className="dictation-bar">
       {floating ? null : <span className="bar-group">{left ?? <span className="bar-spacer" />}</span>}
-      <button type="button" className={`mic${recording ? ' recording' : ''}`} aria-label={recording ? 'Arrêter la dictée' : 'Démarrer la dictée'} disabled={disabled} onClick={() => void toggle()}><MicIcon recording={recording} size={30} /></button>
+      <button type="button" className={`mic${recording ? ' recording' : ''}${ending ? ' ending' : ''}`} aria-label={recording ? 'Arrêter la dictée' : 'Démarrer la dictée'} disabled={disabled} onClick={() => void toggle()}><MicIcon recording={recording} size={30} /></button>
       {floating ? null : <span className="bar-group">{right ?? <span className="bar-spacer" />}</span>}
     </div>
   </footer>
@@ -43,11 +43,11 @@ export function DictationFooter({ dictation, left, right, extra, floating }: { d
 
 // Clavier ouvert : petit micro (dicter tout en gardant le clavier) et flèche pour rentrer le clavier, au-dessus du clavier.
 export function KeyboardBar({ dictation, onHide }: { dictation: ReturnType<typeof useDictation>; onHide: () => void }) {
-  const { error, status, recording, disabled, toggle } = dictation
+  const { error, status, recording, ending, disabled, toggle } = dictation
   return <div className="keyboard-bar">
     {error && <span className="field-error" role="alert">{error}</span>}
     <span className="dictation-status" role="status">{status}</span>
-    <button type="button" className={`mic small${recording ? ' recording' : ''}`} aria-label={recording ? 'Arrêter la dictée' : 'Démarrer la dictée'} disabled={disabled} onPointerDown={event => event.preventDefault()} onClick={() => void toggle()}><MicIcon recording={recording} size={18} /></button>
+    <button type="button" className={`mic small${recording ? ' recording' : ''}${ending ? ' ending' : ''}`} aria-label={recording ? 'Arrêter la dictée' : 'Démarrer la dictée'} disabled={disabled} onPointerDown={event => event.preventDefault()} onClick={() => void toggle()}><MicIcon recording={recording} size={18} /></button>
     <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={onHide}><Icon d={ICONS.hide} /></button>
   </div>
 }
