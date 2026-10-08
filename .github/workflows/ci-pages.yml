@@ -46,11 +46,17 @@ jobs:
         run: npm run build
         working-directory: bmad-cy
 
-      # Habituellement moins d'une minute ; borné pour échouer vite si le téléchargement se bloque.
+      # Habituellement moins d'une minute, mais l'installation se bloque parfois chez GitHub :
+      # chaque essai est coupé au bout de 4 minutes et relancé, trois fois au plus.
       - name: Installer les navigateurs Playwright
-        run: npx playwright install --with-deps webkit chromium
+        run: |
+          for attempt in 1 2 3; do
+            timeout 240 npx playwright install --with-deps webkit chromium && exit 0
+            echo "Installation des navigateurs bloquée ou échouée (essai $attempt), nouvel essai."
+          done
+          exit 1
         working-directory: bmad-cy
-        timeout-minutes: 10
+        timeout-minutes: 14
 
       - name: Vérifier les parcours de production
         run: npm run test:e2e
