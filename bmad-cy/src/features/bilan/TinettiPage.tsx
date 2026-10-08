@@ -5,13 +5,13 @@ import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { fullName, parseDate, validDate, type Entry, type Sex } from '../../domain/model'
-import { fillEmptyRows, hasTestContent, previousTest, TINETTI, tinettiScore, type TestRecord } from '../../domain/tinetti'
+import { fillEmptyRows, hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, parseTinettiReply, restoreNames, tinettiRequest } from './assistant'
 import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
-import { testCopyHtml, testNotesHtml } from './display'
+import { markLine, testCopyHtml, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
@@ -117,6 +117,10 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source }
   const generated = testCopyHtml({ ...record, resultHtml: '' })
   const shown = resultHtml || generated
+  // À l’écran seulement : ✨ en marge du score si l’IA a coté des lignes (⚠ s’il y a des doutes) et des observations qu’elle a rédigées.
+  const fresh = ai.observations !== undefined && ai.source === record.notes
+  const [scoreLine, ...details] = tinettiResultHtml({ scores }).split('<br>')
+  const marked = resultHtml || [markLine(scoreLine, ai.filled.length > 0, ai.checks.length > 0), ...details, ...(fresh && ai.observations ? [markLine(sanitizeBilanHtml(ai.observations), true)] : fresh ? [] : [testNotesHtml(record)].filter(html => htmlToText(html).trim()))].join('<br>')
   const editResult = (html: string) => {
     const value = html === sanitizeBilanHtml(generated) ? '' : html
     setResultHtml(value); changed.current = true
@@ -157,8 +161,8 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
           </div>)}
         </div>)}
       </section>)}</div>
-      <NotesPane editor={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} onChange={saveNotes} />
-      <ResultPane editor={result} version={version} initialHtml={shown} label={`Résultat Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
+      <NotesPane editor={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} />
+      <ResultPane editor={result} version={version} initialHtml={marked} label={`Résultat Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
     </div>
     {screen.footer(dictation)}
   </TestPage>

@@ -44,3 +44,10 @@ export function joinBilans(htmls: string[]): { html: string; text: string } {
   const pieces = htmls.map(html => sanitizeBilanHtml(html)).filter(html => htmlToText(html).trim())
   return { html: pieces.join('<br><br>'), text: pieces.map(html => htmlToText(html)).join('\n\n') }
 }
+
+// Marques de marge du Résultat (✨ ligne complétée par l’IA, ⚠ à vérifier) : une classe sur la ligne, dessinée en CSS,
+// jamais dans le texte enregistré ni copié (le filtre du bilan retire ces balises).
+export function markLine(html: string, ai: boolean, doubt = false): string { return ai || doubt ? `<span class="ai-line${doubt ? ' doubt' : ''}">${html}</span>` : html }
+export function markLines(lines: { rubrics: string[]; html: string }[], ai: Set<string | undefined>, doubt: Set<string>): string {
+  return lines.map(line => markLine(line.html, line.rubrics.some(rubric => ai.has(rubric)), line.rubrics.some(rubric => doubt.has(rubric)))).join('<br>')
+}

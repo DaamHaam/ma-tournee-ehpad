@@ -6,13 +6,13 @@ import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { fullName, parseDate, validDate, type Entry, type Sex } from '../../domain/model'
 import type { AiCheck, TestRecord } from '../../domain/tinetti'
-import { choiceId, hasFlexContent, MARCHE_EQUILIBRE, marcheEquilibreHtml, previousMarcheEquilibre, rubricFilled, rubricOfKey, type FlexControl, type FlexRubric, type PreviousFlex } from '../../domain/marcheEquilibre'
+import { choiceId, hasFlexContent, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreLines, previousMarcheEquilibre, rubricFilled, rubricOfKey, type FlexControl, type FlexRubric, type PreviousFlex } from '../../domain/marcheEquilibre'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, marcheRequest, parseMarcheReply } from './assistant'
 import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
-import { testNotesHtml } from './display'
+import { markLines, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
@@ -67,6 +67,10 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   const input = { choices, values }
   const generated = marcheEquilibreHtml(input)
   const shown = resultHtml || generated
+  // À l’écran seulement : ✨ en marge des lignes que l’IA a complétées, ⚠ de celles à vérifier (rien de cela n’est copié).
+  const aiRubrics = new Set(ai.filled.map(key => rubricOfKey(key)?.id))
+  const doubtRubrics = new Set(ai.checks.map(check => check.row))
+  const marked = resultHtml || markLines(marcheEquilibreLines(input), aiRubrics, doubtRubrics)
   // Une saisie à la main dans une rubrique efface les marques de l’IA sur ce champ et les voyants de la rubrique.
   const touch = (key: string) => {
     const rubric = rubricOfKey(key)?.id
@@ -146,8 +150,8 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.pane} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <FlexForm input={input} ai={ai} busy={busy} previous={previous} onToggle={toggle} onValue={setValue} />
-      <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} onChange={saveNotes} />
-      <ResultPane editor={result} version={version} initialHtml={shown} label={`Compte rendu marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
+      <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} />
+      <ResultPane editor={result} version={version} initialHtml={marked} label={`Compte rendu marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
     </div>
     {screen.footer(dictation)}
   </TestPage>
@@ -213,7 +217,7 @@ function Control({ control, title, input, ai, busy, last, onToggle, onValue }: {
   const name = control.label ? `${title} – ${control.label}` : title
   const star = <span className="previous-mark" title="Choix du bilan précédent">★</span>
   const sparkle = <span className="ai-mark" title="Ajouté par l’IA d’après la dictée">✨</span>
-  const fieldLabel = <span>{control.kind !== 'multi' && control.kind !== 'single' && control.label}{ai.includes(control.key) && <> {sparkle}</>}</span>
+  const fieldLabel = (control.kind === 'number' || control.kind === 'text') && (control.label || ai.includes(control.key)) ? <span>{control.label}{ai.includes(control.key) && <> {sparkle}</>}</span> : null
   switch (control.kind) {
     case 'multi': return <div className="flex-options" role="group" aria-label={name}>
       {control.label && <p className="row-sub">{control.label}</p>}

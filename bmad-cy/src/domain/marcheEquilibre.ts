@@ -10,7 +10,7 @@ import type { TestRecord } from './tinetti'
 export type FlexControl =
   | { kind: 'multi'; key: string; label?: string; options: string[] }
   | { kind: 'single'; key: string; label?: string; options: string[]; compact?: boolean }
-  | { kind: 'number'; key: string; label: string; unit: string }
+  | { kind: 'number'; key: string; label?: string; unit: string }
   | { kind: 'text'; key: string; label: string; long?: boolean; ai?: boolean }
 // ai : champ rempli seulement par l’assistant IA (affiché dans le formulaire dès qu’il a une valeur).
 // test : test standardisé suivi dans le temps (★ dernière mesure).
@@ -43,7 +43,7 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
   { id: 'transferts', title: 'Transferts', rubrics: [
     group('verticalisation', 'Verticalisation', ['seul sans accoudoirs', 'seul avec accoudoirs', 'seul avec accoudoirs, mais une aide est recommandée', 'avec aide légère', 'avec aide modérée (un soignant nécessaire)', 'avec aide importante (deux soignants nécessaires)', 'plusieurs tentatives sont nécessaires', 'avec verticalisateur uniquement', 'avec lève-malade (impossibilité)', 'présence d’une rétropulsion modérée', 'présence d’une rétropulsion sévère']),
     { id: 'allongeAssis', title: 'Passage allongé-assis au bord du lit', controls: [{ kind: 'single', key: 'allongeAssis', options: ['réalisé seul', 'réalisé avec une aide légère', 'réalisé avec une aide modérée', 'réalisé avec une aide importante'] }] },
-    { id: 'assisDebout30s', title: 'Assis-debout en 30s', test: true, controls: [{ kind: 'number', key: 'assisDebout30s', label: 'Passages', unit: 'passages' }] },
+    { id: 'assisDebout30s', title: 'Assis-debout en 30s', test: true, controls: [{ kind: 'number', key: 'assisDebout30s', unit: 'passages' }] },
     group('passageDeboutAssis', 'Passage debout-assis', ['possible seul', 'impossible seul', 'utilise les accoudoirs', 'ne saisit pas les accoudoirs', 'précipitation', 'panique', 'tendance à la rétropulsion', 'perte du schéma moteur', 'risque de chute à ce moment']),
     group('transferts', 'Transferts et pivots', ['réalisés seul', 'réalisés seul mais avec risque de chute', 'réalisés seul avec rollator', 'réalisés avec rollator et un soignant', 'réalisés avec un soignant', 'réalisés avec deux soignants', 'réalisés avec verticalisateur', 'réalisés avec lève-malade', 'pivot possible', 'pivot difficile']),
     { id: 'tug', title: 'Timed Up and Go', test: true, controls: [{ kind: 'number', key: 'tug', label: 'Temps', unit: 'sec' }] },
@@ -71,7 +71,7 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
     { id: 'test6min', title: 'Test des 6min', test: true, controls: [{ kind: 'number', key: 'test6min', label: 'Distance', unit: 'm' }] },
     group('doubleTache', 'Test de double tâche', ['s’arrête de marcher en parlant, double tâche cognitive et motrice difficile', 'ne s’arrête pas de marcher en parlant, double tâche cognitive et motrice possible']),
     { id: 'escaliers', title: 'Escaliers', controls: [
-      { kind: 'number', key: 'escaliers.marches', label: 'Marches montées', unit: 'marches' },
+      { kind: 'number', key: 'escaliers.marches', unit: 'marches montées' },
       { kind: 'multi', key: 'escaliers.pas', options: ['pas alternés', 'sans alternance des pas'] },
       { kind: 'text', key: otherKey('escaliers'), label: 'Autre' },
     ] },
@@ -200,13 +200,18 @@ const BEFORE = ['contexte', 'atcd']
 const AFTER = ['assisDebout30s', 'passageDeboutAssis', 'transferts', 'tug', 'stationDebout', 'marche', 'marcheArriere', 'perimetre', 'trajet', 'test10m', 'analyseMarche', 'test6min', 'doubleTache', 'equilibre', 'escaliers', 'objectifs', 'moyens', 'seances', 'commentaires']
 const LABEL: Record<Style, (label: string) => string> = { bu: label => `<b><u>${label}</u></b>`, i: label => `<i>${label}</i>`, plain: label => label, sub: label => `- <i>${label}</i>` }
 const render = (item: Line) => `${LABEL[item.style](escapeHtml(item.label))} : ${item.content}`
-const lines = (ids: string[], input: FlexInput) => ids.map(id => rubricLine(id, input)).filter((item): item is Line => !!item).map(render)
+// La ligne Marche porte aussi l’aide technique.
+const SOURCES: Record<string, string[]> = { marche: ['marche', 'aideTechnique'] }
+export interface ReportLine { rubrics: string[]; html: string }
+const lines = (ids: string[], input: FlexInput): ReportLine[] => ids.flatMap(id => { const item = rubricLine(id, input); return item ? [{ rubrics: SOURCES[id] ?? [id], html: render(item) }] : [] })
 
-// Compte rendu mis en forme : titre toujours présent, une ligne par rubrique renseignée, rubriques vides omises avec leur titre.
-export function marcheEquilibreHtml(input: FlexInput): string {
+// Lignes du compte rendu avec les rubriques dont elles viennent (pour marquer à l’écran celles que l’IA a complétées).
+export function marcheEquilibreLines(input: FlexInput): ReportLine[] {
   const observations = lines(OBSERVATIONS, input)
-  return [`<i><u>${MARCHE_EQUILIBRE_TITLE}</u></i>`, ...lines(BEFORE, input), ...(observations.length ? ['<b><u>Observations</u></b>', ...observations] : []), ...lines(AFTER, input)].join('<br>')
+  return [{ rubrics: [], html: `<i><u>${MARCHE_EQUILIBRE_TITLE}</u></i>` }, ...lines(BEFORE, input), ...(observations.length ? [{ rubrics: [], html: '<b><u>Observations</u></b>' }, ...observations] : []), ...lines(AFTER, input)]
 }
+// Compte rendu mis en forme : titre toujours présent, une ligne par rubrique renseignée, rubriques vides omises avec leur titre.
+export function marcheEquilibreHtml(input: FlexInput): string { return marcheEquilibreLines(input).map(item => item.html).join('<br>') }
 export function marcheEquilibreText(input: FlexInput): string { return htmlToText(marcheEquilibreHtml(input)) }
 
 export function hasFlexContent(input: FlexInput): boolean { return !!input.choices?.length || Object.values(input.values ?? {}).some(value => value.trim() !== '') }

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type RefObject, type UIEvent } from 'react'
 import type { RichEditorHandle } from './RichEditor'
 import { BarButton, DictationFooter, KeyboardBar } from './screen'
-import { ICONS } from './screenUtils'
+import { ICONS, useKeyboardLost } from './screenUtils'
 import type { useDictation } from './useDictation'
 
 // Écran des tests à trois volets que l’on fait glisser : formulaire (ou grille), dictée, résultat.
@@ -21,8 +21,19 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
     if (keyboard) { editorOf(current.current)?.current?.setKeyboard(false); setKeyboard(false) }
     current.current = index; setPane(index)
   }
+  useKeyboardLost(keyboard, () => { editorOf(current.current)?.current?.setKeyboard(false); setKeyboard(false) })
   const goTo = (index: number) => { const box = panes.current; if (box) box.scrollTo({ left: index * box.clientWidth, behavior: 'smooth' }) }
-  const onScroll = (event: UIEvent<HTMLDivElement>) => { const box = event.currentTarget; show(Math.round(box.scrollLeft / Math.max(1, box.clientWidth))) }
+  // Fin de glissement : le volet est recalé s’il est resté à cheval (le bas d’écran change de hauteur pendant le geste).
+  const settle = useRef<number | undefined>(undefined)
+  const onScroll = (event: UIEvent<HTMLDivElement>) => {
+    const box = event.currentTarget
+    show(Math.round(box.scrollLeft / Math.max(1, box.clientWidth)))
+    window.clearTimeout(settle.current)
+    settle.current = window.setTimeout(() => {
+      const left = Math.round(box.scrollLeft / Math.max(1, box.clientWidth)) * box.clientWidth
+      if (Math.abs(box.scrollLeft - left) > 1) box.scrollTo({ left, behavior: 'smooth' })
+    }, 160)
+  }
   const target = useRef(NOTES_PANE)
   const insertDictation = useCallback((text: string) => (target.current === RESULT_PANE ? result : notes).current?.insertText(text), [notes, result])
   // La destination de la dictée est fixée au lancement de l’enregistrement.
@@ -33,7 +44,7 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   const footer = (dictation: ReturnType<typeof useDictation>) => {
     const editor = editorOf(pane)
     const routed = routeDictation(dictation)
-    if (keyboard) return <KeyboardBar dictation={routed} onHide={() => toggleKeyboard(false)} />
+    if (keyboard) return null
     if (!editor) return <DictationFooter dictation={routed} floating />
     return <DictationFooter dictation={routed}
       left={<BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />}
@@ -50,5 +61,7 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
     const top = pane.scrollTop + doubt.getBoundingClientRect().top - pane.getBoundingClientRect().top - pane.clientHeight / 2
     pane.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
   }
-  return { panes, pane, keyboard, goTo, onScroll, insertDictation, footer, showFirstDoubt }
+  // Clavier ouvert : petit micro et flèche dans la barre d’outils du volet (plus de rangée perdue au-dessus du clavier).
+  const keyboardTools = (dictation: ReturnType<typeof useDictation>) => keyboard ? <KeyboardBar dictation={routeDictation(dictation)} onHide={() => toggleKeyboard(false)} /> : null
+  return { panes, pane, keyboard, goTo, onScroll, insertDictation, footer, keyboardTools, showFirstDoubt }
 }

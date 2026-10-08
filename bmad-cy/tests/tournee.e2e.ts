@@ -580,6 +580,9 @@ test.describe('dictée', () => {
     await expect(result).toContainText('Marche : possible avec une surveillance, avec un rollator')
     await expect(result).toContainText('Timed Up and Go : 18sec')
     await expect(result).toContainText('Autres commentaires : Souriante.')
+    // ✨ en marge des lignes complétées par l’IA, ⚠ sur celle à vérifier ; rien de tout cela n’est copié.
+    await expect(result.locator('.ai-line')).toHaveCount(3)
+    await expect(result.locator('.ai-line.doubt')).toContainText('Marche :')
     const sent = bodies.at(-1)!.messages[1].content
     expect(sent).not.toMatch(/Petit|Jeanne/)
     expect(JSON.parse(sent).dictee).toBe('[patient] marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
@@ -606,9 +609,8 @@ test.describe('dictée', () => {
     await expect(result).toContainText('Marche : possible avec une guidance')
     await expect(result).not.toContainText('rollator')
     await expect(resultPane.getByRole('button', { name: 'Intégrer la dictée' })).toBeVisible()
-    // Corbeille : efface toute la dictée, après confirmation.
+    // Corbeille : efface toute la dictée, sans confirmation.
     await page.getByRole('tab', { name: 'Dictée' }).click()
-    page.once('dialog', dialog => void dialog.accept())
     await page.getByRole('button', { name: 'Effacer toute la dictée' }).click()
     await expect(notes).toHaveText('')
     await page.getByRole('tab', { name: 'Résultat' }).click()

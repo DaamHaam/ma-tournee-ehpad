@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { audioExtension, formatDuration, NETWORK_ERROR, spacing, transcriptionError } from './dictation'
-import { checkKey, transcribe } from './openrouter'
+import { checkKey, TIMEOUT_ERROR, transcribe } from './openrouter'
 
 describe('dictée des bilans', () => {
   it('ajoute les espaces nécessaires autour d’une dictée', () => {
@@ -40,6 +40,9 @@ describe('dictée des bilans', () => {
     await expect(transcribe(audio, 'k', 'm', async () => Response.json({ error: { message: 'No auth' } }, { status: 401 }))).rejects.toThrow(/Clé OpenRouter refusée/)
     await expect(transcribe(audio, 'k', 'm', async () => Response.json({ text: '  ' }))).rejects.toThrow('Aucune parole reconnue.')
     await expect(transcribe(audio, 'k', 'm', async () => { throw new TypeError('offline') })).rejects.toThrow(NETWORK_ERROR)
+    // Réseau muet : l’attente s’arrête au lieu de rester sur « Transcription… ».
+    const silent = (_url: string | URL | Request, init?: RequestInit) => new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('abandon', 'AbortError'))))
+    await expect(transcribe(audio, 'k', 'm', silent as typeof fetch, 0.05)).rejects.toThrow(TIMEOUT_ERROR)
     await expect(checkKey('k', async () => new Response('{}', { status: 401 }))).rejects.toThrow(/refusée/)
     await expect(checkKey('k', async () => Response.json({ data: {} }))).resolves.toBeUndefined()
   })

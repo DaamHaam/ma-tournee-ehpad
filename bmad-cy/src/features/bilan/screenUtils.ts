@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Zone réellement visible : sur iPhone, le clavier ouvert la réduit sans redimensionner la page.
 export function useVisibleViewport() {
@@ -47,4 +47,27 @@ export function useBlockEdgeSwipe() {
     document.addEventListener('touchstart', block, { passive: false })
     return () => { document.removeEventListener('touchstart', block); root.style.overscrollBehaviorX = previous }
   }, [])
+}
+
+// Clavier rentré par iOS sans passer par la flèche (lancement du micro, demande d’autorisation…) : l’écran revient au mode dictée
+// au lieu de garder la barre du clavier sans clavier.
+export function useKeyboardLost(active: boolean, onLost: () => void) {
+  const lost = useRef(onLost)
+  useEffect(() => { lost.current = onLost })
+  useEffect(() => {
+    if (!active) return
+    let timer: number | undefined
+    const check = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        const editing = (document.activeElement as HTMLElement | null)?.isContentEditable
+        const viewport = window.visualViewport
+        if (!editing || (viewport && window.innerHeight - viewport.height < 120)) lost.current()
+      }, 700)
+    }
+    const viewport = window.visualViewport
+    document.addEventListener('focusout', check)
+    viewport?.addEventListener('resize', check)
+    return () => { window.clearTimeout(timer); document.removeEventListener('focusout', check); viewport?.removeEventListener('resize', check) }
+  }, [active])
 }

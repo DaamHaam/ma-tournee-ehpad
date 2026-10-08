@@ -12,7 +12,7 @@ import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } fr
 import { appendText, bilanHtml, htmlToText, sanitizeBilanHtml } from './richText'
 import { useDictation } from './useDictation'
 import { BarButton, DictationFooter, KeyboardBar, ScreenHeader } from './screen'
-import { backTarget, ICONS, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
+import { backTarget, ICONS, useBlockEdgeSwipe, useKeyboardLost, useVisibleViewport } from './screenUtils'
 
 // Bilan libre du jour en plein écran ; ne part pas dans l’export TXT.
 export function BilanPage() {
@@ -64,6 +64,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
   }
   const undoCorrection = () => { if (correction.previous !== undefined) editor.current?.setHtml(correction.previous); setCorrection({}) }
   const toggleKeyboard = (open: boolean) => { editor.current?.setKeyboard(open); setKeyboard(open) }
+  useKeyboardLost(keyboard, () => toggleKeyboard(false))
   // ✕ : quitte en remettant le bilan tel qu’il était à l’ouverture.
   const cancel = async () => {
     if (latest.current !== initial.html) await run(() => repository.restoreBilan(date, id, initial.snapshot))
