@@ -17,7 +17,7 @@ export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
 Tu reçois en JSON :
 - "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
 - "grille" : chaque ligne avec son identifiant ("ligne") et l’item ; une ligne cochée porte sa cotation et son libellé, une ligne non cochée porte "cotation": null et ses options possibles ("cotation : libellé") ;
-- "dictee" : le texte dicté pendant le test (transcription automatique, parfois imparfaite).
+- "dictee" : le texte dicté pendant le test (transcription automatique, parfois imparfaite), en HTML restreint (<b>, <i>, <u> : mise en forme voulue par le kinésithérapeute, <br> : retour à la ligne).
 
 Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les lignes sont renseignées) :
 1. Une cotation cochée par le kinésithérapeute fait foi : ne la modifie jamais.
@@ -40,7 +40,7 @@ Règles propres au test de Tinetti (POMA, 28 points ; normalement, toutes les li
    - corrige l’orthographe, la grammaire, la ponctuation et les accords selon "patient" ;
    - civilités : garde chaque civilité dictée à sa place, abrégée en « Mr » (monsieur) ou « Mme » (madame) ; ne la remplace jamais par [patient] et n’ajoute jamais de [patient] ; n’écris jamais « le patient » ni « la patiente » (le texte est collé dans le dossier de la personne : on sait de qui on parle) ;
    - n’invente rien, ne pose aucun diagnostic, ne recopie ni les cotations ni le score (l’application les affiche) ; les consignes de cotation (« item 3, score 1 », « tout au maximum ») servent à coter et n’entrent pas dans les observations ;
-   - mets en gras avec <b> les éléments les plus importants (risque de chute, aide technique, chute récente), avec parcimonie ; seules les balises <b>, <i>, <u> et <br> sont permises ;
+   - garde la mise en forme dictée (<b>, <i>, <u>) sur les mêmes passages ; mets aussi en gras avec <b> les éléments les plus importants (risque de chute, aide technique, chute récente), avec parcimonie ; seules les balises <b>, <i>, <u> et <br> sont permises ;
    - si la dictée est vide ou ne contient que des consignes de cotation, renvoie une chaîne vide.
 
 Réponds uniquement par un objet JSON de la forme :
@@ -54,22 +54,27 @@ Tu reçois en JSON :
   - choix unique : "valeur" (null si vide) et "options" ;
   - nombre : "valeur" (null si vide) et "unite" ;
   - texte : "valeur" ("" si vide) ;
-- "dictee" : le texte dicté pendant le bilan (transcription automatique, parfois imparfaite).
+- "dictee" : le texte dicté pendant le bilan (transcription automatique, parfois imparfaite), en HTML restreint : <b>, <i>, <u> marquent ce que le kinésithérapeute a mis en gras, en italique ou souligné, <br> un retour à la ligne.
 
-Règles propres au bilan marche / équilibre (bilan flexible : seules les lignes cochées ou remplies apparaissent dans le compte rendu, il est normal que la plupart restent vides) :
+Règles propres au bilan marche / équilibre (bilan flexible : seules les lignes cochées ou remplies apparaissent dans le compte rendu, il est normal que la plupart restent vides). La dictée sert à dire ce que les cases ne disent pas : son contenu prime toujours sur le libellé des options.
 1. Ce que le kinésithérapeute a coché ou rempli fait foi : ne décoche rien, ne remplace aucune valeur.
-2. Dans "cocher", mets l’identifiant de chaque option libre que la dictée décrit, avec les mots de l’option ou des mots équivalents. Exemples :
+2. Coche (liste "cocher") une option libre seulement si la dictée dit exactement la même chose qu’elle, valeurs comprises (degrés, secondes, côté, nombre de soignants…), avec ses mots ou des mots équivalents. Exemples :
    - « elle se lève seule sans les accoudoirs » → Verticalisation « seul sans accoudoirs » ;
    - « marche avec son rollator, sous surveillance » → Marche « possible avec une surveillance » et Aide technique « avec un rollator » ;
-   - « pas de douleur » → Douleur « pas de douleur exprimée lors des transferts et de la marche » ;
-   - « tient 10 secondes pieds joints les yeux ouverts » → Équilibre « tient maximum 10s pieds joints yeux ouverts ».
-   N’invente rien : une option que la dictée n’évoque pas reste libre. Objectifs et moyens ne sont cochés que s’ils sont dictés.
+   - « pas de douleur » → Douleur « pas de douleur exprimée lors des transferts et de la marche ».
+   Si la dictée donne une valeur, un côté, une précision ou un degré différents de l’option, ou en plus, NE COCHE PAS l’option : écris ce qui est dicté dans le champ « Autre » de la rubrique (règle 3). Exemples :
+   - option « perte de flexion dorsale de cheville environ 10° », dictée « perte de flexion dorsale de cheville d’environ 15 degrés » → ne coche pas ; "raideurs.autre": "perte de flexion dorsale de cheville d’environ 15°" ;
+   - option « élévation latérale d’épaule limitée à 80° », dictée « élévation latérale d’épaule droite limitée à 60 degrés, élévation antérieure 40 degrés » → ne coche pas ; "raideurs.autre": "élévation latérale d’épaule droite limitée à 60°, élévation antérieure limitée à 40°" ;
+   - option « tient maximum 10s pieds joints yeux ouverts », dictée « tient 7 secondes pieds joints » → ne coche pas ; "equilibre.autre": "tient 7 s pieds joints".
+   N’invente rien : une option que la dictée n’évoque pas reste libre.
 3. Dans "valeurs", remplis les champs vides que la dictée renseigne :
    - nombre : le chiffre seul, sans unité, converti dans l’unité du champ (« TUG en 18 secondes » → "tug": "18" ; « 10 mètres en 22 secondes et 30 pas » → "test10m.temps": "22", "test10m.pas": "30" ; « une minute dix » pour un champ en secondes → "70") ;
    - choix unique : exactement une des options (« EVA à 4 » → "eva": "4") ;
    - texte : bref et propre (« trajet chambre-RDC en deux minutes trente » → "trajet.duree": "2 min 30 s") ;
-   - une précision qui se rattache à une rubrique, mais qu’aucune de ses options ne dit exactement (diagnostic, cause, détail, degré, nuance), va dans le champ « Autre » de cette rubrique (identifiant en ".autre"), s’il est vide : elle complète les cases cochées de cette rubrique, elle ne va jamais dans les commentaires. Exemple : Troubles complémentaires a « déficit visuel » et « troubles cognitifs » cochés, la dictée précise « maladie d’Alzheimer » → "troublesComplementaires.autre": "maladie d’Alzheimer" ; le compte rendu affichera « Troubles complémentaires : déficit visuel, troubles cognitifs, maladie d’Alzheimer ». De même « flexum de genou d’environ 25° » → "raideurs.autre", « déambulateur prêté par l’EHPAD » → "aideTechnique.autre" ;
-   - avant de mettre une information dans "commentaires.ia", cherche toujours la rubrique à laquelle elle se rattache ; seule une information utile qui ne se rattache à aucune rubrique va dans "commentaires.ia" : phrases courtes, corrigées, accordées selon "patient", sans répétition ni mot parasite ; rien s’il n’y en a pas ;
+   - « Autre » d’une rubrique (identifiant en ".autre") : tout ce que la dictée dit d’une rubrique sans que ce soit exactement une option (valeur différente, côté, diagnostic, cause, nuance, élément non prévu) y va, s’il est vide, en reprenant les mots dictés tels quels (orthographe, accords et chiffres corrigés seulement, sans reformuler ni résumer), plusieurs éléments séparés par des virgules. Il complète les cases cochées de la rubrique. Exemples : Troubles complémentaires a « troubles cognitifs » coché, la dictée précise « maladie d’Alzheimer » → "troublesComplementaires.autre": "maladie d’Alzheimer" (le compte rendu affichera « troubles cognitifs, maladie d’Alzheimer ») ; « douleurs d’épaule droite » → "douleur.autre" ;
+   - objectifs et moyens dictés librement vont dans "objectifs.autre" et "moyens.autre" quand ils ne correspondent pas exactement à une option (« objectif : retrouver la marche jusqu’à la salle à manger » → "objectifs.autre") ; jamais dans les commentaires ;
+   - "commentaires.ia" ne reçoit que ce qui ne se rattache à aucune rubrique du formulaire (contexte de vie, souhait de la famille, consigne à l’équipe…) ; avant d’y mettre une information, cherche toujours sa rubrique ; phrases courtes, corrigées, accordées selon "patient", sans répétition ni mot parasite ; rien s’il n’y en a pas ;
+   - mise en forme : un passage dicté en gras, en italique ou souligné garde sa balise (<b>, <i>, <u>) dans le texte que tu écris ; aucune autre balise ;
    - les consignes de remplissage (« coche… », « mets… ») servent à remplir et ne vont jamais dans les textes.
    Dans les valeurs, n’écris ni nom de personne ni [patient] : garde la civilité dictée, abrégée en « Mr » ou « Mme », ou tourne la phrase sans sujet ; n’écris jamais « le patient » ni « la patiente ».
 4. "a_verifier" est un voyant d’alerte, à n’utiliser que si la dictée contredit ce qui est coché ou rempli (par exemple « marche impossible » cochée alors que la dictée décrit une marche), ou si elle est vague et que tu as dû interpréter. "champ" est l’identifiant du champ concerné ; la raison (moins de 12 mots) dit précisément ce qui est ambigu ou contradictoire. En général, la liste est vide ou très courte.

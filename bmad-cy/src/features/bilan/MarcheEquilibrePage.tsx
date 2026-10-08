@@ -14,6 +14,7 @@ import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLines, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
+import type { Reasoning } from './openrouter'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
@@ -21,6 +22,8 @@ import { useTestPanes } from './useTestPanes'
 
 const KIND = 'marcheEquilibre'
 const shortDate = (date: string) => parseDate(date).toLocaleDateString('fr-FR')
+// Champ texte affiché sans la mise en forme (reprise de la dictée par l’IA), qui reste dans le compte rendu tant qu’on ne le retouche pas.
+const plain = (value: string | undefined) => (value ?? '').replace(/<\/?(?:b|i|u)>|<br\s*\/?>/g, '')
 const without = (values: Record<string, string>, keys: string[]) => Object.fromEntries(Object.entries(values).filter(([key]) => !keys.includes(key)))
 
 // Bilan marche / équilibre en plein écran : volets Formulaire (sous-modules à la suite, onglets pour y sauter), Dictée et Résultat
@@ -54,6 +57,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   // filled : choix et champs remplis par l’IA (✨) ; checks : voyants ⚠ par rubrique ; source : dictée intégrée.
   const [ai, setAi] = useState<{ filled: string[]; checks: AiCheck[]; source?: string }>({ filled: initial?.aiFilled ?? [], checks: initial?.aiChecks ?? [], source: initial?.aiSource })
   const [busy, setBusy] = useState(false)
+  const [seconds, setSeconds] = useState<number | null>(null)
   const [error, setError] = useState('')
   const assistant = useAssistant()
   const changed = useRef(false)
@@ -120,9 +124,11 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     try {
       const source = htmlToText(latestNotes.current)
       const base = { choices: choices.filter(choice => !ai.filled.includes(choice)), values: without(values, ai.filled) }
-      const { text, found } = anonymizeWithMap(source, [entry.patient.lastName, entry.patient.firstName])
+      const { text, found } = anonymizeWithMap(sanitizeBilanHtml(latestNotes.current), [entry.patient.lastName, entry.patient.firstName])
       const sent = marcheRequest(base, text, sex)
+      setSeconds(null)
       const answer = await assistant.ask(KIND, sent, true)
+      setSeconds(answer.seconds)
       const reply = parseMarcheReply(answer.content, base, sex, found)
       const merged = { choices: [...base.choices, ...reply.choices], values: { ...reply.values, ...base.values } }
       const next = { filled: [...reply.choices, ...Object.keys(reply.values)], checks: reply.checks, source }
@@ -143,6 +149,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     state: busy ? 'loading' as const : ai.source === undefined ? 'none' as const : ai.source !== notesText ? 'stale' as const : 'done' as const,
     checks: ai.checks.length, error, unavailable: assistant.unavailable, canRun: !!notesText.trim(),
     run: () => void integrate(), undo: undoIntegration, showChecks: screen.showFirstDoubt,
+    reasoning: assistant.reasoning, setReasoning: (level: Reasoning) => void run(() => assistant.setReasoning(level)), seconds,
   }
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Marche / équilibre</span>}
@@ -234,7 +241,7 @@ function Control({ control, title, input, ai, busy, last, onToggle, onValue }: {
     case 'text':
       if (control.ai && !values[control.key]) return null
       return <label className="flex-field">{fieldLabel}{control.long
-        ? <textarea rows={3} aria-label={name} value={values[control.key] ?? ''} disabled={busy} onChange={event => onValue(control.key, event.target.value)} />
-        : <input type="text" aria-label={name} value={values[control.key] ?? ''} disabled={busy} onChange={event => onValue(control.key, event.target.value)} />}</label>
+        ? <textarea rows={3} aria-label={name} value={plain(values[control.key])} disabled={busy} onChange={event => onValue(control.key, event.target.value)} />
+        : <input type="text" aria-label={name} value={plain(values[control.key])} disabled={busy} onChange={event => onValue(control.key, event.target.value)} />}</label>
   }
 }

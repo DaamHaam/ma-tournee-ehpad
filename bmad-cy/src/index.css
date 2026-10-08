@@ -395,3 +395,8 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 .tinetti-page .panes > .result-pane { padding-left:0; padding-right:0; }
 .result-pane > :not(.bilan-text) { margin-left:1.3rem; margin-right:1.3rem; }
 .result-pane .bilan-text { border-left:0; border-right:0; border-radius:0; padding-left:1.75rem; padding-right:1.3rem; }
+/* Réflexion de l’IA, réglable depuis le Résultat pour essayer un bilan difficile. */
+.reasoning-row { display:flex; align-items:center; gap:.25rem; color:var(--muted); font-size:.74rem; font-weight:700; }
+.reasoning-row button { min-height:28px; padding:.05rem .45rem; border-radius:8px; font-size:.72rem; color:var(--muted); }
+.reasoning-row button[aria-checked="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.reasoning-time { margin-left:auto; font-variant-numeric:tabular-nums; }

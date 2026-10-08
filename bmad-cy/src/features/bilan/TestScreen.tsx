@@ -3,6 +3,7 @@ import { useState, type ReactNode, type RefObject } from 'react'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { Icon } from './screen'
 import { ICONS } from './screenUtils'
+import type { Reasoning } from './openrouter'
 
 export function PaneTabs({ tabs, pane, goTo }: { tabs: string[]; pane: number; goTo: (index: number) => void }) {
   return <div className="pane-tabs" role="tablist" aria-label="Volets">
@@ -31,7 +32,12 @@ export interface Integration {
   run: () => void
   undo: () => void
   showChecks: () => void
+  // Réflexion du modèle pour la prochaine intégration (réglage gardé sur l’iPhone) et durée de la dernière.
+  reasoning: Reasoning
+  setReasoning: (level: Reasoning) => void
+  seconds: number | null
 }
+const LEVELS: { level: Reasoning; label: string }[] = [{ level: 'none', label: 'Non' }, { level: 'low', label: 'Faible' }, { level: 'medium', label: 'Moyenne' }, { level: 'high', label: 'Forte' }]
 
 // Volet Résultat : une seule barre (G I S, ✨ intégrer ou relancer, ↶ annuler l’intégration, ⚠ points à vérifier, Valider),
 // puis le compte rendu tiré du formulaire (et de la dictée intégrée), retouchable. Valider enregistre et revient.
@@ -51,6 +57,11 @@ export function ResultPane({ editor, version, initialHtml, label, keyboard, tool
       </span>
       <button type="button" className="primary validate-button" onClick={onValidate}>Valider</button></>}
     </div>
+    {!keyboard && <div className="reasoning-row" role="radiogroup" aria-label="Réflexion de l’IA">
+      <span>Réflexion</span>
+      {LEVELS.map(item => <button key={item.level} type="button" role="radio" aria-checked={ai.reasoning === item.level} disabled={ai.state === 'loading'} onClick={() => ai.setReasoning(item.level)}>{item.label}</button>)}
+      {ai.seconds !== null && <span className="reasoning-time">{String(ai.seconds).replace('.', ',')} s</span>}
+    </div>}
     {ai.error && <p className="field-error" role="alert">{ai.error}</p>}
     <RichEditor key={version} ref={editor} initialHtml={initialHtml} label={label} keyboard={keyboard} placeholder="Résultat" onChange={html => onChange(html)} onFormatState={setFormat} />
   </section>

@@ -107,12 +107,18 @@ export function rubricOfKey(key: string): FlexRubric | undefined { return RUBRIC
 const MULTI = new Map([...RUBRICS.values()].flatMap(rubric => rubric.controls).flatMap(control => control.kind === 'multi' ? [[control.key, control.options] as const] : []))
 const keysOf = (rubric: FlexRubric) => rubric.controls.map(control => control.key)
 
+// Texte d’un champ : échappé, sauf la mise en forme reprise de la dictée par l’IA (<b>, <i>, <u>, <br>) ; une balise mal fermée est retirée.
+export function fieldHtml(value: string): string {
+  let html = escapeHtml(value).replace(/&lt;(\/?)([biu])&gt;/g, '<$1$2>').replace(/&lt;br\s*\/?&gt;|\r?\n/g, '<br>')
+  for (const tag of ['b', 'i', 'u']) if ((html.match(new RegExp(`<${tag}>`, 'g')) ?? []).length !== (html.match(new RegExp(`</${tag}>`, 'g')) ?? []).length) html = html.replace(new RegExp(`</?${tag}>`, 'g'), '')
+  return html
+}
 // Lecture des champs : libellés cochés (ordre du catalogue, sans doublon), texte rogné, nombre arrondi (0 compris, vide = absent).
 function reader(input: FlexInput) {
   const choices = new Set(input.choices ?? [])
   const values = input.values ?? {}
   const text = (key: string) => (values[key] ?? '').trim()
-  const html = (key: string) => escapeHtml(text(key)).replace(/\r?\n/g, '<br>')
+  const html = (key: string) => fieldHtml(text(key))
   const multi = (key: string): string[] => [...new Set((MULTI.get(key) ?? []).filter((_, index) => choices.has(choiceId(key, index))))]
   const number = (key: string): number | null => {
     const raw = text(key).replace(',', '.')

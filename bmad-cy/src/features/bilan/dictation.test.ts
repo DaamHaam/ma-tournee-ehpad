@@ -57,6 +57,9 @@ describe('appel au modèle d’analyse', () => {
     expect(result).toEqual({ content: '{"ok":1}', seconds: 3.2, promptTokens: 900, completionTokens: 120, reasoningTokens: 0 })
     const body = JSON.parse((fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
     expect(body).toMatchObject({ model: 'deepseek/x', reasoning: { enabled: false }, provider: { sort: 'latency' }, response_format: { type: 'json_object' } })
+    // Réflexion choisie dans le Résultat : niveau transmis au modèle.
+    await chat('k', 'deepseek/x', 'système', 'texte', true, fetcher, () => clock, 'medium')
+    expect(JSON.parse((fetcher.mock.calls[1] as unknown as [string, RequestInit])[1].body as string).reasoning).toEqual({ effort: 'medium' })
   })
   it('refait l’appel sans l’option si le modèle impose sa réflexion', async () => {
     const { chat } = await import('./openrouter')

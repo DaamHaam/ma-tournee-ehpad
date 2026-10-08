@@ -46,9 +46,11 @@ export interface ChatResult { content: string; seconds: number; promptTokens?: n
 // Appel unique au modèle d’analyse (une seule passe) ; json demande une réponse au format JSON.
 // Rapidité : réflexion du modèle désactivée (jetons de raisonnement inutiles ici) et hébergeur le plus réactif.
 // Si le modèle impose sa réflexion et refuse l’option, l’appel est refait une fois sans elle.
-export async function chat(key: string, model: string, system: string, user: string, json: boolean, fetcher: Fetch = fetch, now: () => number = () => performance.now()): Promise<ChatResult> {
+// Réflexion du modèle : désactivée par défaut (réponse en 1 à 2 s) ; faible, moyenne ou forte pour un bilan difficile, plus lente.
+export type Reasoning = 'none' | 'low' | 'medium' | 'high'
+export async function chat(key: string, model: string, system: string, user: string, json: boolean, fetcher: Fetch = fetch, now: () => number = () => performance.now(), reasoning: Reasoning = 'none'): Promise<ChatResult> {
   const started = now()
-  return withTimeout(90, async signal => {
+  return withTimeout(reasoning === 'none' ? 90 : 240, async signal => {
   const send = async (fast: boolean) => {
     try {
       return await fetcher(`${OPENROUTER_API}/chat/completions`, {
@@ -56,7 +58,7 @@ export async function chat(key: string, model: string, system: string, user: str
         body: JSON.stringify({
           model, temperature: 0.2, messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
           ...(json ? { response_format: { type: 'json_object' } } : {}),
-          ...(fast ? { reasoning: { enabled: false }, provider: { sort: 'latency' } } : {}),
+          ...(fast ? { reasoning: reasoning === 'none' ? { enabled: false } : { effort: reasoning }, provider: { sort: 'latency' } } : {}),
         }),
       })
     } catch (cause) { if (signal.aborted) throw cause; throw new Error(NETWORK_ERROR) }

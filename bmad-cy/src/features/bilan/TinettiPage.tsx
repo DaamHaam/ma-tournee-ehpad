@@ -13,6 +13,7 @@ import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLine, testCopyHtml, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
+import type { Reasoning } from './openrouter'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
@@ -48,6 +49,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   // Dernière intégration IA, gardée pour la revoir sans nouvel appel.
   const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource })
   const [busy, setBusy] = useState(false)
+  const [seconds, setSeconds] = useState<number | null>(null)
   const [error, setError] = useState('')
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
@@ -103,9 +105,11 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     try {
       const source = htmlToText(latestNotes.current)
       const base = Object.fromEntries(Object.entries(scores).filter(([row]) => !ai.filled.includes(row)))
-      const { text, found } = anonymizeWithMap(source, [entry.patient.lastName, entry.patient.firstName])
+      const { text, found } = anonymizeWithMap(sanitizeBilanHtml(latestNotes.current), [entry.patient.lastName, entry.patient.firstName])
       const sent = tinettiRequest(base, text, sex)
+      setSeconds(null)
       const answer = await assistant.ask('tinetti', sent, true)
+      setSeconds(answer.seconds)
       const reply = parseTinettiReply(answer.content, base)
       const merged = { ...reply.scores, ...base }
       const next = { observations: sanitizeBilanHtml(finishAiText(reply.observations, found, sex)), checks: reply.checks, filled: Object.keys(reply.scores), source }
@@ -139,6 +143,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     state: busy ? 'loading' as const : ai.source === undefined ? 'none' as const : ai.source !== notesText ? 'stale' as const : 'done' as const,
     checks: ai.checks.length, error, unavailable: assistant.unavailable, canRun: !!notesText.trim(),
     run: () => void integrate(), undo: undoIntegration, showChecks: screen.showFirstDoubt,
+    reasoning: assistant.reasoning, setReasoning: (level: Reasoning) => void run(() => assistant.setReasoning(level)), seconds,
   }
   const sections = { equilibre: score.equilibre, marche: score.marche }
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>

@@ -6,6 +6,7 @@ import { sanitizeBilanHtml } from './richText'
 const TINETTI_ROWS = new Set(TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => row.id))))
 
 export const ANALYSIS_MODEL_SETTING = 'analysisModel'
+export const REASONING_SETTING = 'analysisReasoning'
 export const promptSetting = (kind: string) => `prompt.${kind}`
 export const ANONYMOUS = '[patient]'
 

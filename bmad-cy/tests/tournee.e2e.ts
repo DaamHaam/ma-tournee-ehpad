@@ -581,6 +581,9 @@ test.describe('dictée', () => {
     const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
     const result = page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })
     await expect(result).not.toContainText('Marche :')
+    // Réflexion réglable depuis le Résultat : le niveau part avec la demande.
+    await resultPane.getByRole('radio', { name: 'Moyenne' }).click()
+    await expect(resultPane.getByRole('radio', { name: 'Moyenne' })).toHaveAttribute('aria-checked', 'true')
     await resultPane.getByRole('button', { name: 'Intégrer la dictée' }).click()
     await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
     await expect(resultPane.getByRole('button', { name: '1 point à vérifier' })).toBeVisible()
@@ -590,6 +593,8 @@ test.describe('dictée', () => {
     // ✨ en marge des lignes complétées par l’IA, ⚠ sur celle à vérifier ; rien de tout cela n’est copié.
     await expect(result.locator('.ai-line')).toHaveCount(3)
     await expect(result.locator('.ai-line.doubt')).toContainText('Marche :')
+    expect((bodies.at(-1) as unknown as { reasoning: unknown }).reasoning).toEqual({ effort: 'medium' })
+    await expect(resultPane.getByText(/^[0-9,]+ s$/)).toBeVisible()
     const sent = bodies.at(-1)!.messages[1].content
     expect(sent).not.toMatch(/Petit|Jeanne/)
     expect(JSON.parse(sent).dictee).toBe('[patient] marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')

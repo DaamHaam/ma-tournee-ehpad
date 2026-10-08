@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choiceId, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreText, previousMarcheEquilibre, rubricFilled } from './marcheEquilibre'
+import { choiceId, fieldHtml, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreText, previousMarcheEquilibre, rubricFilled } from './marcheEquilibre'
 import { hasTestContent } from './tinetti'
 
 // Identifiant d’un choix d’après son libellé, pour écrire les tests lisiblement.
@@ -85,5 +85,10 @@ describe('bilan marche / équilibre', () => {
     const previous = previousMarcheEquilibre(days, 'p', '2026-10-08')
     expect(previous.last?.date).toBe('2026-09-01')
     expect(previous.measures).toEqual({ tug: { date: '2026-09-01', text: '18sec' }, test10m: { date: '2026-06-01', text: '15sec' } })
+  })
+  it('garde la mise en forme dictée dans les champs, échappe le reste', () => {
+    expect(fieldHtml('<b>maladie</b> d’Alzheimer & <script>')).toBe('<b>maladie</b> d’Alzheimer &amp; &lt;script&gt;')
+    expect(fieldHtml('<i>non fermé, ligne\nsuivante')).toBe('non fermé, ligne<br>suivante')
+    expect(marcheEquilibreHtml({ values: { 'raideurs.autre': 'perte de flexion dorsale de cheville d’environ <u>15°</u>' } })).toContain('- <i>Mobilités</i> : perte de flexion dorsale de cheville d’environ <u>15°</u>')
   })
 })
