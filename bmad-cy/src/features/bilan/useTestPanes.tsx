@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type RefObject, type UIEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject, type UIEvent } from 'react'
 import type { RichEditorHandle } from './RichEditor'
 import { BarButton, DictationFooter, KeyboardBar } from './screen'
 import { ICONS, useKeyboardLost } from './screenUtils'
@@ -17,8 +17,10 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   const [keyboard, setKeyboard] = useState(false)
   const editorOf = (index: number) => index === NOTES_PANE ? notes : index === RESULT_PANE ? result : null
   const toggleKeyboard = (open: boolean) => { editorOf(current.current)?.current?.setKeyboard(open); setKeyboard(open) }
-  // Aller sur un volet par son onglet : l’onglet s’allume tout de suite.
-  const goToTab = (index: number) => { setTab(index); goTo(index) }
+  // Aller sur un volet par son onglet : l’onglet s’allume tout de suite et ne suit plus le défilement avant l’arrivée
+  // (sinon il repasserait par les onglets intermédiaires).
+  const heading = useRef<number | null>(null)
+  const goToTab = (index: number) => { heading.current = index; setTab(index); goTo(index) }
   // Quitter un volet referme le clavier.
   const show = (index: number) => {
     if (index === current.current) return
@@ -33,15 +35,18 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const box = event.currentTarget
     const near = Math.round(box.scrollLeft / Math.max(1, box.clientWidth))
-    if (near !== tab) setTab(near)
+    if (heading.current === null && near !== tab) setTab(near)
     window.clearTimeout(settle.current)
     settle.current = window.setTimeout(() => {
+      heading.current = null
       const index = Math.round(box.scrollLeft / Math.max(1, box.clientWidth))
+      setTab(index)
       const left = index * box.clientWidth
       if (Math.abs(box.scrollLeft - left) > 1) box.scrollTo({ left, behavior: 'smooth' })
       show(index)
     }, 120)
   }
+  useEffect(() => () => window.clearTimeout(settle.current), [])
   const target = useRef(NOTES_PANE)
   const insertDictation = useCallback((text: string) => (target.current === RESULT_PANE ? result : notes).current?.insertDictation(text), [notes, result])
   // La destination de la dictée est fixée au lancement de l’enregistrement.

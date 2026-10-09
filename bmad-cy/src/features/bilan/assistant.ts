@@ -99,8 +99,8 @@ function readJson(content: string): Record<string, unknown> {
 }
 
 // Contenu envoyé pour le bilan marche / équilibre : formulaire (cochés en libellés, options libres avec leur identifiant)
-// et dictée anonymisée, sans aucune identité.
-export function marcheRequest(input: FlexInput, dictation: string, sex: Sex): string {
+// et dictée anonymisée, sans aucune identité : les textes saisis dans le formulaire sont anonymisés comme la dictée.
+export function marcheRequest(input: FlexInput, dictation: string, sex: Sex, names: string[] = []): string {
   const choices = new Set(input.choices ?? [])
   const values = input.values ?? {}
   const formulaire = MARCHE_EQUILIBRE.flatMap(module => module.rubrics.map(rubric => ({
@@ -114,7 +114,7 @@ export function marcheRequest(input: FlexInput, dictation: string, sex: Sex): st
         }
         case 'single': return { ...base, type: 'choix unique', valeur: values[control.key] || null, options: control.options }
         case 'number': return { ...base, type: 'nombre', unite: control.unit, valeur: values[control.key] || null }
-        case 'text': return { ...base, type: 'texte', valeur: values[control.key] ?? '' }
+        case 'text': return { ...base, type: 'texte', valeur: anonymize(values[control.key] ?? '', names) }
       }
     }),
   })))

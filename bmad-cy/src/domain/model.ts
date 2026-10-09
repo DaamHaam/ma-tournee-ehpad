@@ -1,4 +1,5 @@
 import { hasTestContent, type TestRecord, type TestType } from './tinetti'
+import { hasFlexContent } from './marcheEquilibre'
 export type SessionType = 'A' | 'B' | null
 export type Mood = -3 | -2 | -1 | 0 | 1 | 2 | 3 | null
 export interface Identity { id: string; lastName: string; firstName: string; room: string; priority: string; demo: boolean }
@@ -90,12 +91,17 @@ export function entryVisible(entry: Entry, patient: Pick<Patient, 'archived'> | 
 // Bilans et tests d’une journée dans l’ordre où ils ont été commencés ; ceux sans heure (anciens) suivent l’ordre de la tournée.
 export type BilanKind = 'bilan' | TestType
 export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text: string; html?: string; record?: TestRecord; copied: boolean; at?: string }
+// Un bilan marche / équilibre ne se copie que par son compte rendu : sans formulaire rempli ni résultat retouché (dictée seule),
+// il reste enregistré mais n’a rien à copier dans l’onglet Bilans.
+function listedTest(kind: TestType, record: TestRecord): boolean {
+  return kind === 'marcheEquilibre' ? hasFlexContent(record) || !!record.resultHtml?.trim() : hasTestContent(record)
+}
 export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   const rank = new Map(day.order.map((id, index) => [id, index]))
   const items: DayBilan[] = []
   for (const [id, entry] of Object.entries(day.entries)) {
     if ((entry.bilan ?? '').trim()) items.push({ id, kind: 'bilan', patient: entry.patient, text: entry.bilan!, html: entry.bilanHtml, copied: !!entry.bilanCopied, at: entry.bilanAt })
-    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (hasTestContent(record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, copied: !!record.copied, at: record.at || undefined })
+    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (listedTest(kind, record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, copied: !!record.copied, at: record.at || undefined })
   }
   return items.sort((x, y) => (x.at ?? '\uffff').localeCompare(y.at ?? '\uffff') || (rank.get(x.id) ?? Infinity) - (rank.get(y.id) ?? Infinity) || x.kind.localeCompare(y.kind))
 }

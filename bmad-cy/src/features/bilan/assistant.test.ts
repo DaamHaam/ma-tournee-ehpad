@@ -60,6 +60,12 @@ describe('prompts modifiés dans l’app', () => {
     const tug = request.formulaire.find((rubric: { rubrique: string }) => rubric.rubrique === 'Timed Up and Go')
     expect(tug.champs[0]).toEqual({ id: 'tug', titre: 'Temps', type: 'nombre', unite: 'sec', valeur: '18' })
   })
+  it('bilan marche / équilibre : anonymise aussi les textes saisis dans le formulaire', () => {
+    const sent = marcheRequest({ values: { atcd: 'Mme Lefèvre : PTH droite', 'equilibre.autre': 'Hélène oscille', commentaires: 'RAS' } }, '', 'F', ['Lefèvre', 'Hélène'])
+    expect(sent).not.toMatch(/Lefèvre|Hélène/)
+    expect(sent).toContain('Mme [patient] : PTH droite')
+    expect(sent).toContain('[patient] oscille')
+  })
   it('bilan marche / équilibre : ne garde que des ajouts sur ce qui est libre et rattache les voyants à leur rubrique', () => {
     const reply = parseMarcheReply('```json\n' + JSON.stringify({
       cocher: ['marche.3', 'aideTechnique.8', 'contexte.1', 'marche.99', 'inconnu.1', 'marche.3'],

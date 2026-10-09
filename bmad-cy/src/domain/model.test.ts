@@ -11,6 +11,13 @@ describe('règles du domaine', () => {
     } })
     expect(bilans.map(bilan => [bilan.id, bilan.copied])).toEqual([['c', false], ['b', true], ['a', false], ['e', false]])
   })
+  it('n’affiche un bilan marche / équilibre que s’il a un compte rendu à copier', () => {
+    const identity = { id: 'p', lastName: 'P', firstName: '', room: '', priority: '', demo: false }
+    const day = (marcheEquilibre: object) => ({ order: ['p'], entries: { p: { patient: identity, session: null, note: '', tests: { marcheEquilibre: { scores: {}, notes: '', at: '', ...marcheEquilibre } } } } })
+    expect(dayBilans(day({ notes: 'dictée seule' }))).toEqual([])
+    expect(dayBilans(day({ notes: 'dictée', choices: ['marche.0'] }))).toHaveLength(1)
+    expect(dayBilans(day({ resultHtml: 'texte retouché' }))).toHaveLength(1)
+  })
   it('bascule A/B de façon exclusive et réversible', () => {
     expect(toggleSession(null, 'A')).toBe('A')
     expect(toggleSession('A', 'B')).toBe('B')

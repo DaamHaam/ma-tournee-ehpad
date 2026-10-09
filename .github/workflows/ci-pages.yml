@@ -46,12 +46,18 @@ jobs:
         run: npm run build
         working-directory: bmad-cy
 
+      # Les paquets système (apt) passent d'abord, sans coupure : un apt interrompu laisserait un verrou et ferait échouer les essais suivants.
+      - name: Installer les dépendances système des navigateurs
+        run: npx playwright install-deps webkit chromium
+        working-directory: bmad-cy
+        timeout-minutes: 10
+
       # Habituellement moins d'une minute, mais l'installation se bloque parfois chez GitHub :
       # chaque essai est coupé au bout de 4 minutes et relancé, trois fois au plus.
       - name: Installer les navigateurs Playwright
         run: |
           for attempt in 1 2 3; do
-            timeout 240 npx playwright install --with-deps webkit chromium && exit 0
+            timeout 240 npx playwright install webkit chromium && exit 0
             echo "Installation des navigateurs bloquée ou échouée (essai $attempt), nouvel essai."
           done
           exit 1

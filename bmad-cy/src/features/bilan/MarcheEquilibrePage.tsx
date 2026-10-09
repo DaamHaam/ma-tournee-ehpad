@@ -122,8 +122,9 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     try {
       const source = htmlToText(latestNotes.current)
       const base = { choices: choices.filter(choice => !ai.filled.includes(choice)), values: without(values, ai.filled) }
-      const { text, found } = anonymizeWithMap(sanitizeBilanHtml(latestNotes.current), [entry.patient.lastName, entry.patient.firstName])
-      const sent = marcheRequest(base, text, sex)
+      const names = [entry.patient.lastName, entry.patient.firstName]
+      const { text, found } = anonymizeWithMap(sanitizeBilanHtml(latestNotes.current), names)
+      const sent = marcheRequest(base, text, sex, names)
       const answer = await assistant.ask(KIND, sent, true)
       const reply = parseMarcheReply(answer.content, base, sex, found, text)
       const merged = { choices: [...base.choices, ...reply.choices], values: { ...reply.values, ...base.values } }
