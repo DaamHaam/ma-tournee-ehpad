@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anonymize, anonymizeWithMap, finishAiText, marcheRequest, parseMarcheReply, restoreNames, parseCorrection, parseTinettiReply, sexLabel, tinettiRequest } from './assistant'
+import { anonymize, anonymizeWithMap, applyDictatedFormatting, finishAiText, marcheRequest, parseMarcheReply, restoreNames, parseCorrection, parseTinettiReply, sexLabel, tinettiRequest } from './assistant'
 
 describe('assistant de rédaction', () => {
   it('retire nom et prénom sans tenir compte de la casse ni des accents', () => {
@@ -70,5 +70,11 @@ describe('prompts modifiés dans l’app', () => {
     expect(reply.values).toEqual({ 'test10m.temps': '22', seances: '2', 'commentaires.ia': 'Mme souriante.', 'trajet.duree': '2 min 30 s' })
     expect(reply.checks).toEqual([{ row: 'marche', reason: 'surveillance ou guidance ?' }, { row: 'perimetre', reason: 'distance estimée' }])
     expect(() => parseMarcheReply('rien', {}, 'F')).toThrow('illisible')
+  })
+  it('remet la mise en forme dictée dans le texte de l’IA, une fois, sans couper un mot', () => {
+    const dictation = 'Elle a une <b>maladie d’Alzheimer</b> et des <u>chutes</u> ; <i>fatigue</i>.'
+    expect(applyDictatedFormatting('troubles cognitifs, maladie d\'Alzheimer, chutes répétées, fatigues', dictation)).toBe('troubles cognitifs, <b>maladie d\'Alzheimer</b>, <u>chutes</u> répétées, fatigues')
+    expect(applyDictatedFormatting('<b>maladie d’Alzheimer</b>', dictation)).toBe('<b>maladie d’Alzheimer</b>')
+    expect(applyDictatedFormatting('rien à voir', '')).toBe('rien à voir')
   })
 })

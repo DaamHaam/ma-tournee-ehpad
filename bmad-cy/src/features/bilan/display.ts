@@ -47,7 +47,7 @@ export function joinBilans(htmls: string[]): { html: string; text: string } {
   return { html: pieces.join('<br><br>'), text: pieces.map(html => htmlToText(html)).join('\n\n') }
 }
 
-// Marques de marge du Résultat (✨ ligne complétée par l’IA, ⚠ à vérifier) : une classe sur la ligne, dessinée en CSS,
+// Lignes du Résultat écrites ou complétées par l’IA (violet) ou à vérifier (orange) : une classe sur la ligne, colorée en CSS,
 // jamais dans le texte enregistré ni copié (le filtre du bilan retire ces balises).
 export function markLine(html: string, ai: boolean, doubt = false): string { return ai || doubt ? `<span class="ai-line${doubt ? ' doubt' : ''}">${html}</span>` : html }
 export function markLines(lines: { rubrics: string[]; html: string }[], ai: Set<string | undefined>, doubt: Set<string>): string {

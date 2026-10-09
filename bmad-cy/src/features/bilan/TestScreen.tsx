@@ -3,7 +3,6 @@ import { useState, type ReactNode, type RefObject } from 'react'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
 import { Icon } from './screen'
 import { ICONS } from './screenUtils'
-import type { Reasoning } from './openrouter'
 
 export function PaneTabs({ tabs, pane, goTo }: { tabs: string[]; pane: number; goTo: (index: number) => void }) {
   return <div className="pane-tabs" role="tablist" aria-label="Volets">
@@ -12,12 +11,12 @@ export function PaneTabs({ tabs, pane, goTo }: { tabs: string[]; pane: number; g
 }
 
 // Volet Dictée : mise en forme et corbeille (efface toute la dictée, sans confirmation) ; clavier ouvert, petit micro et flèche à la place.
-export function NotesPane({ editor, initialHtml, label, keyboard, tools, onChange }: { editor: RefObject<RichEditorHandle | null>; initialHtml: string; label: string; keyboard: boolean; tools?: ReactNode; onChange: (html: string, text: string) => void }) {
+export function NotesPane({ editor, initialHtml, label, tools, onChange, onFocus }: { editor: RefObject<RichEditorHandle | null>; initialHtml: string; label: string; tools?: ReactNode; onChange: (html: string, text: string) => void; onFocus: () => void }) {
   const [format, setFormat] = useState<FormatState>({ bold: false, italic: false, underline: false })
   const clear = () => editor.current?.setHtml('')
   return <section className="pane notes-pane" role="tabpanel" aria-label="Dictée">
     <div className="result-tools"><FormatButtons editor={editor} state={format} />{tools ?? <button type="button" className="icon-button danger" aria-label="Effacer toute la dictée" title="Effacer toute la dictée" onPointerDown={event => event.preventDefault()} onClick={clear}><Icon d={ICONS.trash} size={20} /></button>}</div>
-    <RichEditor ref={editor} initialHtml={initialHtml} label={label} keyboard={keyboard} placeholder="Dictée" onChange={onChange} onFormatState={setFormat} />
+    <RichEditor ref={editor} initialHtml={initialHtml} label={label} placeholder="Dictée" onChange={onChange} onFocus={onFocus} onFormatState={setFormat} />
   </section>
 }
 
@@ -32,18 +31,13 @@ export interface Integration {
   run: () => void
   undo: () => void
   showChecks: () => void
-  // Réflexion du modèle pour la prochaine intégration (réglage gardé sur l’iPhone) et durée de la dernière.
-  reasoning: Reasoning
-  setReasoning: (level: Reasoning) => void
-  seconds: number | null
 }
-const LEVELS: { level: Reasoning; label: string }[] = [{ level: 'none', label: 'Non' }, { level: 'low', label: 'Faible' }, { level: 'medium', label: 'Moyenne' }, { level: 'high', label: 'Forte' }]
 
 // Volet Résultat : une seule barre (G I S, ✨ intégrer ou relancer, ↶ annuler l’intégration, ⚠ points à vérifier, Valider),
 // puis le compte rendu tiré du formulaire (et de la dictée intégrée), retouchable. Valider enregistre et revient.
-export function ResultPane({ editor, version, initialHtml, label, keyboard, tools, ai, onChange, onValidate }: {
-  editor: RefObject<RichEditorHandle | null>; version: number; initialHtml: string; label: string; keyboard: boolean; tools?: ReactNode
-  ai: Integration; onChange: (html: string) => void; onValidate: () => void
+export function ResultPane({ editor, version, initialHtml, label, tools, ai, onChange, onFocus, onValidate }: {
+  editor: RefObject<RichEditorHandle | null>; version: number; initialHtml: string; label: string; tools?: ReactNode
+  ai: Integration; onChange: (html: string) => void; onFocus: () => void; onValidate: () => void
 }) {
   const [format, setFormat] = useState<FormatState>({ bold: false, italic: false, underline: false })
   const runLabel = ai.state === 'none' ? 'Intégrer la dictée' : ai.state === 'stale' ? 'Relancer l’intégration (dictée modifiée depuis)' : 'Relancer l’intégration'
@@ -57,13 +51,8 @@ export function ResultPane({ editor, version, initialHtml, label, keyboard, tool
       </span>
       <button type="button" className="primary validate-button" onClick={onValidate}>Valider</button></>}
     </div>
-    {!keyboard && <div className="reasoning-row" role="radiogroup" aria-label="Réflexion de l’IA">
-      <span>Réflexion</span>
-      {LEVELS.map(item => <button key={item.level} type="button" role="radio" aria-checked={ai.reasoning === item.level} disabled={ai.state === 'loading'} onClick={() => ai.setReasoning(item.level)}>{item.label}</button>)}
-      {ai.seconds !== null && <span className="reasoning-time">{String(ai.seconds).replace('.', ',')} s</span>}
-    </div>}
     {ai.error && <p className="field-error" role="alert">{ai.error}</p>}
-    <RichEditor key={version} ref={editor} initialHtml={initialHtml} label={label} keyboard={keyboard} placeholder="Résultat" onChange={html => onChange(html)} onFormatState={setFormat} />
+    <RichEditor key={version} ref={editor} initialHtml={initialHtml} label={label} placeholder="Résultat" onChange={html => onChange(html)} onFocus={onFocus} onFormatState={setFormat} />
   </section>
 }
 

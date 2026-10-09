@@ -8,12 +8,11 @@ import { fullName, parseDate, validDate, type Entry, type Sex } from '../../doma
 import { fillEmptyRows, hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
-import { anonymizeWithMap, finishAiText, parseTinettiReply, tinettiRequest } from './assistant'
+import { anonymizeWithMap, applyDictatedFormatting, finishAiText, parseTinettiReply, tinettiRequest } from './assistant'
 import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLine, testCopyHtml, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
-import type { Reasoning } from './openrouter'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
@@ -49,7 +48,6 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   // Dernière intégration IA, gardée pour la revoir sans nouvel appel.
   const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource })
   const [busy, setBusy] = useState(false)
-  const [seconds, setSeconds] = useState<number | null>(null)
   const [error, setError] = useState('')
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
@@ -107,12 +105,10 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
       const base = Object.fromEntries(Object.entries(scores).filter(([row]) => !ai.filled.includes(row)))
       const { text, found } = anonymizeWithMap(sanitizeBilanHtml(latestNotes.current), [entry.patient.lastName, entry.patient.firstName])
       const sent = tinettiRequest(base, text, sex)
-      setSeconds(null)
       const answer = await assistant.ask('tinetti', sent, true)
-      setSeconds(answer.seconds)
       const reply = parseTinettiReply(answer.content, base)
       const merged = { ...reply.scores, ...base }
-      const next = { observations: sanitizeBilanHtml(finishAiText(reply.observations, found, sex)), checks: reply.checks, filled: Object.keys(reply.scores), source }
+      const next = { observations: sanitizeBilanHtml(applyDictatedFormatting(finishAiText(reply.observations, found, sex), text)), checks: reply.checks, filled: Object.keys(reply.scores), source }
       setScores(merged); setAi(next); regenerate()
       await run(() => repository.setTest(date, id, 'tinetti', { scores: merged, aiObservations: next.observations, aiChecks: next.checks, aiFilled: next.filled, aiSource: source }))
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Intégration impossible.') }
@@ -121,7 +117,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source }
   const generated = testCopyHtml({ ...record, resultHtml: '' })
   const shown = resultHtml || generated
-  // À l’écran seulement : ✨ en marge du score si l’IA a coté des lignes (⚠ s’il y a des doutes) et des observations qu’elle a rédigées.
+  // À l’écran seulement : score en violet si l’IA a coté des lignes (orange s’il y a des doutes), observations rédigées en violet.
   const fresh = ai.observations !== undefined && ai.source === record.notes
   const [scoreLine, ...details] = tinettiResultHtml({ scores }).split('<br>')
   const marked = resultHtml || [markLine(scoreLine, ai.filled.length > 0, ai.checks.length > 0), ...details, ...(fresh && ai.observations ? [markLine(sanitizeBilanHtml(ai.observations), true)] : fresh ? [] : [testNotesHtml(record)].filter(html => htmlToText(html).trim()))].join('<br>')
@@ -143,14 +139,13 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     state: busy ? 'loading' as const : ai.source === undefined ? 'none' as const : ai.source !== notesText ? 'stale' as const : 'done' as const,
     checks: ai.checks.length, error, unavailable: assistant.unavailable, canRun: !!notesText.trim(),
     run: () => void integrate(), undo: undoIntegration, showChecks: screen.showFirstDoubt,
-    reasoning: assistant.reasoning, setReasoning: (level: Reasoning) => void run(() => assistant.setReasoning(level)), seconds,
   }
   const sections = { equilibre: score.equilibre, marche: score.marche }
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient}
       tools={<span className="total-badge" aria-label={`Total ${score.total} sur ${score.max}`}>Tinetti {score.total}/{score.max}</span>}
       copied={copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
-    <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.pane} goTo={screen.goTo} />
+    <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <div className="pane" role="tabpanel" aria-label="Grille">{previous && <p className="previous-note">★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}<div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={busy || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
         <h2 className="section-title">{section.title} <span>{sections[section.id].score}/{sections[section.id].max}</span></h2>
@@ -166,8 +161,8 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
           </div>)}
         </div>)}
       </section>)}</div>
-      <NotesPane editor={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} />
-      <ResultPane editor={result} version={version} initialHtml={marked} label={`Résultat Tinetti pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
+      <NotesPane editor={editor} initialHtml={startNotes} label={`Observations Tinetti pour ${name}`} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} onFocus={screen.onEditorFocus(1)} />
+      <ResultPane editor={result} version={version} initialHtml={marked} label={`Résultat Tinetti pour ${name}`} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onFocus={screen.onEditorFocus(2)} onValidate={() => navigate(back)} />
     </div>
     {screen.footer(dictation)}
   </TestPage>

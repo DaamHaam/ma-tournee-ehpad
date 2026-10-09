@@ -11,10 +11,14 @@ const RESULT_PANE = 2
 export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: RefObject<RichEditorHandle | null>) {
   const panes = useRef<HTMLDivElement>(null)
   const [pane, setPane] = useState(0)
+  // Onglet surligné : suit le doigt pendant le glissement, alors que le volet actif (bas d’écran) attend la fin du geste.
+  const [tab, setTab] = useState(0)
   const current = useRef(0)
   const [keyboard, setKeyboard] = useState(false)
   const editorOf = (index: number) => index === NOTES_PANE ? notes : index === RESULT_PANE ? result : null
   const toggleKeyboard = (open: boolean) => { editorOf(current.current)?.current?.setKeyboard(open); setKeyboard(open) }
+  // Aller sur un volet par son onglet : l’onglet s’allume tout de suite.
+  const goToTab = (index: number) => { setTab(index); goTo(index) }
   // Quitter un volet referme le clavier.
   const show = (index: number) => {
     if (index === current.current) return
@@ -28,6 +32,8 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   const settle = useRef<number | undefined>(undefined)
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const box = event.currentTarget
+    const near = Math.round(box.scrollLeft / Math.max(1, box.clientWidth))
+    if (near !== tab) setTab(near)
     window.clearTimeout(settle.current)
     settle.current = window.setTimeout(() => {
       const index = Math.round(box.scrollLeft / Math.max(1, box.clientWidth))
@@ -42,15 +48,19 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   const routeDictation = (dictation: ReturnType<typeof useDictation>): ReturnType<typeof useDictation> => ({
     ...dictation, toggle: async () => { if (!dictation.recording) target.current = current.current === RESULT_PANE ? RESULT_PANE : NOTES_PANE; await dictation.toggle() },
   })
-  // Formulaire : micro seul, flottant. Dictée et Résultat : ⏎ à gauche, clavier et ⌫ à droite. Clavier ouvert : petit micro et flèche.
+  // Toucher le texte d’un volet ouvre le clavier : la rangée du clavier remplace le bas d’écran. Le volet touché devient
+  // le volet actif tout de suite (sinon la fin d’une glissade en cours refermerait le clavier).
+  const onEditorFocus = (index: number) => () => {
+    if (current.current !== index) { current.current = index; setPane(index); setTab(index) }
+    setKeyboard(true)
+  }
+  // Formulaire : micro seul, flottant. Dictée et Résultat : ⏎ et micro. Clavier ouvert : petit micro et flèche au-dessus du clavier.
   const footer = (dictation: ReturnType<typeof useDictation>) => {
     const editor = editorOf(pane)
     const routed = routeDictation(dictation)
     if (keyboard) return null
     if (!editor) return <DictationFooter dictation={routed} floating />
-    return <DictationFooter dictation={routed}
-      left={<BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />}
-      right={<><BarButton label="Ouvrir le clavier" icon={ICONS.keyboard} onClick={() => toggleKeyboard(true)} /><BarButton label="Effacer" icon={ICONS.erase} onClick={() => editor.current?.deleteBackward()} /></>} />
+    return <DictationFooter dictation={routed} left={<BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />} />
   }
   // ⚠ du Résultat : retour au formulaire, sur le premier point à vérifier.
   // Défilement vertical du seul formulaire (scrollIntoView ferait aussi glisser les volets et ramènerait au formulaire
@@ -65,5 +75,5 @@ export function useTestPanes(notes: RefObject<RichEditorHandle | null>, result: 
   }
   // Clavier ouvert : petit micro et flèche dans la barre d’outils du volet (plus de rangée perdue au-dessus du clavier).
   const keyboardTools = (dictation: ReturnType<typeof useDictation>) => keyboard ? <KeyboardBar dictation={routeDictation(dictation)} onHide={() => toggleKeyboard(false)} /> : null
-  return { panes, pane, keyboard, goTo, onScroll, insertDictation, footer, keyboardTools, showFirstDoubt }
+  return { panes, pane, tab, keyboard, goTo: goToTab, onScroll, onEditorFocus, insertDictation, footer, keyboardTools, showFirstDoubt }
 }

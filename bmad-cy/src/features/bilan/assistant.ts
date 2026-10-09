@@ -1,12 +1,13 @@
 import type { Sex } from '../../domain/model'
 import { TINETTI, validScore, type AiCheck } from '../../domain/tinetti'
 import { choiceId, fieldOf, MARCHE_EQUILIBRE, rubricOfKey, type FlexInput } from '../../domain/marcheEquilibre'
-import { sanitizeBilanHtml } from './richText'
+import { htmlToText, sanitizeBilanHtml } from './richText'
 
 const TINETTI_ROWS = new Set(TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => row.id))))
 
 export const ANALYSIS_MODEL_SETTING = 'analysisModel'
 export const REASONING_SETTING = 'analysisReasoning'
+export const REASONING_LEVELS = [{ level: 'none', label: 'Non (recommandé)' }, { level: 'low', label: 'Faible' }, { level: 'medium', label: 'Moyenne' }, { level: 'high', label: 'Forte' }] as const
 export const promptSetting = (kind: string) => `prompt.${kind}`
 export const ANONYMOUS = '[patient]'
 
@@ -123,7 +124,7 @@ export function marcheRequest(input: FlexInput, dictation: string, sex: Sex): st
 export interface FlexReply { choices: string[]; values: Record<string, string>; checks: AiCheck[] }
 // L’IA ne coche que des options libres et ne remplit que des champs vides : rien de ce qu’a saisi le kinésithérapeute n’est remplacé.
 // Voyants rattachés à leur rubrique ; textes remis en forme comme toute réponse de l’IA (civilités, jamais [patient]).
-export function parseMarcheReply(content: string, input: FlexInput, sex: Sex, found: string[] = []): FlexReply {
+export function parseMarcheReply(content: string, input: FlexInput, sex: Sex, found: string[] = [], dictation = ''): FlexReply {
   const reply = readJson(content)
   const taken = new Set(input.choices ?? [])
   const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && !taken.has(id)))] : []
@@ -136,7 +137,7 @@ export function parseMarcheReply(content: string, input: FlexInput, sex: Sex, fo
     if (!text) continue
     if (control.kind === 'number' && !Number.isFinite(Number(text.replace(',', '.')))) continue
     if (control.kind === 'single' && !control.options.includes(text)) continue
-    values[key] = text
+    values[key] = control.kind === 'text' ? applyDictatedFormatting(text, dictation) : text
   }
   const checks = Array.isArray(reply.a_verifier) ? reply.a_verifier.flatMap(item => {
     const check = item as { champ?: unknown; raison?: unknown }
@@ -144,6 +145,21 @@ export function parseMarcheReply(content: string, input: FlexInput, sex: Sex, fo
     return rubric ? [{ row: rubric.id, reason: typeof check.raison === 'string' ? check.raison.trim() : '' }] : []
   }) : []
   return { choices, values, checks }
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// Mise en forme de la dictée remise par l’application dans un texte écrit par l’IA (le modèle rapide l’oublie) :
+// chaque passage dicté en gras, italique ou souligné, retrouvé dans le texte, reprend sa balise s’il ne l’a pas déjà.
+export function applyDictatedFormatting(text: string, dictationHtml: string): string {
+  let result = text
+  for (const [, tag, inner] of sanitizeBilanHtml(dictationHtml).matchAll(/<(b|i|u)>([\s\S]*?)<\/\1>/g)) {
+    const plain = htmlToText(inner).trim()
+    if (plain.length < 2) continue
+    const words = escapeRegExp(plain).replace(/\s+/g, '\\s+').replace(/['’]/g, '[\'’]')
+    if (new RegExp(`<${tag}>(?:<[biu]>)*${words}`, 'i').test(result)) continue
+    result = result.replace(new RegExp(`(?<![\\p{L}\\p{N}])${words}(?![\\p{L}\\p{N}])`, 'iu'), match => `<${tag}>${match}</${tag}>`)
+  }
+  return result
 }
 
 // Texte corrigé renvoyé par l’IA : guillemets ou blocs de code retirés, puis filtré comme un bilan.

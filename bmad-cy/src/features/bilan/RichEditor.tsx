@@ -8,7 +8,6 @@ export interface RichEditorHandle {
   insertText: (text: string) => void
   insertDictation: (text: string) => void
   insertLineBreak: () => void
-  deleteBackward: () => void
   setKeyboard: (open: boolean) => void
   format: (command: Command) => void
   setHtml: (html: string) => void
@@ -19,8 +18,8 @@ const COMMANDS: { command: Command; label: string; text: string }[] = [
 const textOf = (range: Range) => { const box = document.createElement('div'); box.appendChild(range.cloneContents()); return htmlToText(box.innerHTML, true) }
 
 // Éditeur du bilan : texte enrichi limité (gras, italique, souligné, retours à la ligne).
-// En mode dictée (clavier fermé), toucher le texte place le curseur ; la dernière position est gardée pour les insertions.
-export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onFormatState, placeholder = 'Bilan' }: { ref: Ref<RichEditorHandle>; initialHtml: string; label: string; keyboard: boolean; placeholder?: string; onChange: (html: string, text: string) => void; onFormatState?: (state: FormatState) => void }) {
+// Toucher le texte ouvre le clavier ; la dernière position du curseur est gardée pour insérer la dictée, clavier fermé ou non.
+export function RichEditor({ ref, initialHtml, label, onChange, onFocus, onFormatState, placeholder = 'Bilan' }: { ref: Ref<RichEditorHandle>; initialHtml: string; label: string; placeholder?: string; onChange: (html: string, text: string) => void; onFocus?: () => void; onFormatState?: (state: FormatState) => void }) {
   const box = useRef<HTMLDivElement>(null)
   const saved = useRef<Range | null>(null)
   const report = useRef(onFormatState)
@@ -88,22 +87,6 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
     placeAfter(br)
     emit()
   }
-  // Touche ⌫ sans clavier : efface la sélection, sinon le caractère (ou le retour à la ligne) avant le curseur.
-  const deleteBackward = () => {
-    const element = box.current
-    const selection = window.getSelection()
-    if (!element || !selection) return
-    const range = current().cloneRange()
-    selection.removeAllRanges(); selection.addRange(range)
-    if (range.collapsed) selection.modify('extend', 'backward', 'character')
-    const target = selection.rangeCount ? selection.getRangeAt(0) : null
-    if (!target || target.collapsed || !inside(target.startContainer) || !inside(target.endContainer)) { selection.removeAllRanges(); return }
-    target.deleteContents()
-    target.collapse(true)
-    saved.current = target.cloneRange()
-    if (!focused()) selection.removeAllRanges()
-    emit()
-  }
   // Dictée : posée à la suite du texte, chaque nouvelle dictée commence sur une nouvelle ligne (on dicte sans regarder) ;
   // insérée au milieu du texte (correction), elle reste à la place du curseur.
   const insertDictation = (text: string) => {
@@ -135,17 +118,14 @@ export function RichEditor({ ref, initialHtml, label, keyboard, onChange, onForm
     insertText: text => insertText(text),
     insertDictation,
     insertLineBreak,
-    deleteBackward,
-    // Le mode clavier ne s’applique qu’au prochain focus : on retire puis redonne le focus dans le même geste.
+    // Fermer le clavier : le texte perd le focus (le curseur reste mémorisé pour la dictée).
     setKeyboard: open => {
       const element = box.current
       if (!element) return
-      element.inputMode = open ? 'text' : 'none'
-      element.blur()
-      if (open) { element.focus(); restore() }
+      if (open) { element.focus(); restore() } else element.blur()
     },
   }))
-  return <div ref={box} className="bilan-text" role="textbox" aria-multiline="true" aria-label={label} data-placeholder={placeholder} contentEditable suppressContentEditableWarning inputMode={keyboard ? 'text' : 'none'}
+  return <div ref={box} className="bilan-text" role="textbox" aria-multiline="true" aria-label={label} data-placeholder={placeholder} contentEditable suppressContentEditableWarning onFocus={onFocus}
       onInput={emit}
       onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); insertLineBreak() } }}
       onPaste={event => { event.preventDefault(); paste(event.clipboardData.getData('text/plain')) }} />

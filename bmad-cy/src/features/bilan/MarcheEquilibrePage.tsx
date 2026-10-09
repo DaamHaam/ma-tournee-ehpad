@@ -14,7 +14,6 @@ import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLines, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
-import type { Reasoning } from './openrouter'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
@@ -57,7 +56,6 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   // filled : choix et champs remplis par l’IA (✨) ; checks : voyants ⚠ par rubrique ; source : dictée intégrée.
   const [ai, setAi] = useState<{ filled: string[]; checks: AiCheck[]; source?: string }>({ filled: initial?.aiFilled ?? [], checks: initial?.aiChecks ?? [], source: initial?.aiSource })
   const [busy, setBusy] = useState(false)
-  const [seconds, setSeconds] = useState<number | null>(null)
   const [error, setError] = useState('')
   const assistant = useAssistant()
   const changed = useRef(false)
@@ -71,7 +69,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   const input = { choices, values }
   const generated = marcheEquilibreHtml(input)
   const shown = resultHtml || generated
-  // À l’écran seulement : ✨ en marge des lignes que l’IA a complétées, ⚠ de celles à vérifier (rien de cela n’est copié).
+  // À l’écran seulement : lignes complétées par l’IA en violet, à vérifier en orange (la copie reste en noir).
   const aiRubrics = new Set(ai.filled.map(key => rubricOfKey(key)?.id))
   const doubtRubrics = new Set(ai.checks.map(check => check.row))
   const marked = resultHtml || markLines(marcheEquilibreLines(input), aiRubrics, doubtRubrics)
@@ -126,10 +124,8 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
       const base = { choices: choices.filter(choice => !ai.filled.includes(choice)), values: without(values, ai.filled) }
       const { text, found } = anonymizeWithMap(sanitizeBilanHtml(latestNotes.current), [entry.patient.lastName, entry.patient.firstName])
       const sent = marcheRequest(base, text, sex)
-      setSeconds(null)
       const answer = await assistant.ask(KIND, sent, true)
-      setSeconds(answer.seconds)
-      const reply = parseMarcheReply(answer.content, base, sex, found)
+      const reply = parseMarcheReply(answer.content, base, sex, found, text)
       const merged = { choices: [...base.choices, ...reply.choices], values: { ...reply.values, ...base.values } }
       const next = { filled: [...reply.choices, ...Object.keys(reply.values)], checks: reply.checks, source }
       setChoices(merged.choices); setValues(merged.values); setAi(next)
@@ -149,16 +145,15 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     state: busy ? 'loading' as const : ai.source === undefined ? 'none' as const : ai.source !== notesText ? 'stale' as const : 'done' as const,
     checks: ai.checks.length, error, unavailable: assistant.unavailable, canRun: !!notesText.trim(),
     run: () => void integrate(), undo: undoIntegration, showChecks: screen.showFirstDoubt,
-    reasoning: assistant.reasoning, setReasoning: (level: Reasoning) => void run(() => assistant.setReasoning(level)), seconds,
   }
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Marche / équilibre</span>}
       copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
-    <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.pane} goTo={screen.goTo} />
+    <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <FlexForm input={input} ai={ai} busy={busy} previous={previous} onToggle={toggle} onValue={setValue} />
-      <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 1} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} />
-      <ResultPane editor={result} version={version} initialHtml={marked} label={`Compte rendu marche / équilibre pour ${name}`} keyboard={screen.keyboard && screen.pane === 2} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onValidate={() => navigate(back)} />
+      <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} onFocus={screen.onEditorFocus(1)} />
+      <ResultPane editor={result} version={version} initialHtml={marked} label={`Compte rendu marche / équilibre pour ${name}`} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onFocus={screen.onEditorFocus(2)} onValidate={() => navigate(back)} />
     </div>
     {screen.footer(dictation)}
   </TestPage>

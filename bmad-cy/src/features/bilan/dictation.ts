@@ -2,12 +2,13 @@
 export const KEY_SETTING = 'openrouterKey'
 export const MODEL_SETTING = 'transcriptionModel'
 // Modèles de transcription proposés dans Réglages, à comparer sur le terrain (ponctuation, silences).
-export const TRANSCRIPTION_MODELS = ['openai/whisper-large-v3', 'openai/gpt-4o-transcribe', 'openai/gpt-4o-mini-transcribe', 'mistralai/voxtral-mini-transcribe', 'openai/whisper-large-v3-turbo', 'openai/whisper-1'] as const
+export const TRANSCRIPTION_MODELS = ['mistralai/voxtral-mini-transcribe', 'openai/whisper-large-v3', 'openai/gpt-4o-transcribe', 'openai/gpt-4o-mini-transcribe', 'openai/whisper-large-v3-turbo', 'openai/whisper-1'] as const
 export const TRANSCRIPTION_LABELS: Record<string, string> = {
   'openai/whisper-large-v3': 'Whisper large v3 (OpenAI)', 'openai/gpt-4o-transcribe': 'GPT-4o Transcribe (OpenAI)', 'openai/gpt-4o-mini-transcribe': 'GPT-4o mini Transcribe (OpenAI)',
   'mistralai/voxtral-mini-transcribe': 'Voxtral mini Transcribe (Mistral)', 'openai/whisper-large-v3-turbo': 'Whisper large v3 turbo (OpenAI)', 'openai/whisper-1': 'Whisper 1 (OpenAI)',
 }
-export const DEFAULT_MODEL = TRANSCRIPTION_MODELS[0]
+// Voxtral par défaut : mots, ponctuation et rapidité nettement meilleurs que Whisper sur le terrain (2026-10-08).
+export const DEFAULT_MODEL = 'mistralai/voxtral-mini-transcribe'
 export const MAX_DICTATION_SECONDS = 5 * 60
 export const OPENROUTER_API = 'https://openrouter.ai/api/v1'
 

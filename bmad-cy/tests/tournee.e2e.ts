@@ -171,15 +171,16 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Démarrer la dictée' })).toBeDisabled()
   await expect(page.getByText(/ajoutez une clé OpenRouter/)).toBeVisible()
-  // Mode dictée par défaut : le texte ne fait pas apparaître le clavier ; le bouton « Clavier » bascule en saisie.
-  await expect(bilan).toHaveAttribute('inputmode', 'none')
-  await page.getByRole('button', { name: 'Ouvrir le clavier' }).click()
-  await expect(bilan).toHaveAttribute('inputmode', 'text')
+  // Toucher le texte ouvre le clavier : petit micro et flèche au-dessus ; la flèche le referme.
+  await expect(page.getByRole('button', { name: 'Ouvrir le clavier' })).toHaveCount(0)
+  await bilan.click()
   await expect(bilan).toBeFocused()
+  await expect(page.locator('.keyboard-bar').getByRole('button', { name: 'Démarrer la dictée' })).toBeVisible()
   await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-  await expect(bilan).toHaveAttribute('inputmode', 'none')
+  await expect(bilan).not.toBeFocused()
   await bilan.fill('Marche 10 m en 12 s.')
-  await page.getByRole('button', { name: 'Aller à la ligne' }).click()
+  // Clavier ouvert par la saisie : la touche Entrée passe à la ligne.
+  await bilan.press('Enter')
   await bilan.pressSequentially('Douleur 2/10.')
   await expect.poll(() => bilan.innerHTML()).toBe('Marche 10 m en 12 s.<br>Douleur 2/10.')
   await page.getByRole('button', { name: 'Copier' }).click()
@@ -205,7 +206,7 @@ test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppress
   await petit.fill('Marche.Douleur 2/10.')
   await petit.press('End')
   for (let step = 0; step < 13; step++) await petit.press('ArrowLeft')
-  await page.getByRole('button', { name: 'Aller à la ligne' }).click()
+  await petit.press('Enter')
   await expect.poll(() => petit.innerHTML()).toBe('Marche.<br>Douleur 2/10.')
   // Mise en forme après coup : sélectionner « Marche » puis Gras.
   await petit.evaluate((element: HTMLElement) => { const range = document.createRange(); range.setStart(element.firstChild!, 0); range.setEnd(element.firstChild!, 6); const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range) })
@@ -219,6 +220,7 @@ test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppress
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
 
   await page.getByRole('link', { name: 'Bilans' }).click()
+  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
   await page.getByLabel('Date').fill('2026-09-22')
   await expect(page.getByRole('heading', { name: '0 / 2 bilans copiés' })).toBeVisible()
   await expect(page.locator('.bilan-summary strong')).toHaveText(['Petit J.', 'Bernard L.'])
@@ -253,6 +255,7 @@ test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppress
   await page.getByRole('button', { name: 'Supprimer le bilan de Bernard Louis' }).click()
   await expect(page.locator('.history-bilan')).toHaveCount(0)
   await page.getByRole('link', { name: 'Bilans' }).click()
+  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
   await page.getByLabel('Date').fill('2026-09-22')
   await expect(page.getByRole('heading', { name: '1 / 1 bilans copiés' })).toBeVisible()
 })
@@ -286,10 +289,8 @@ test('Tinetti : cotation, volets, dictée, copie qui coche Éval, consultation e
   await page.getByRole('tab', { name: 'Dictée' }).click()
   await expect(page.getByRole('tab', { name: 'Dictée' })).toHaveAttribute('aria-selected', 'true')
   const notes = page.getByRole('textbox', { name: 'Observations Tinetti pour Petit Jeanne' })
-  await expect(notes).toHaveAttribute('inputmode', 'none')
-  await page.getByRole('button', { name: 'Ouvrir le clavier' }).click()
-  await expect(notes).toHaveAttribute('inputmode', 'text')
-  // Clavier ouvert : petit micro à côté de la flèche qui rentre le clavier.
+  await notes.click()
+  // Clavier ouvert dès qu’on touche le texte : petit micro à côté de la flèche qui rentre le clavier.
   await expect(page.locator('.keyboard-bar').getByRole('button', { name: 'Démarrer la dictée' })).toBeVisible()
   await page.getByRole('button', { name: 'Fermer le clavier' }).click()
   await notes.fill('Marche prudente.')
@@ -305,6 +306,7 @@ test('Tinetti : cotation, volets, dictée, copie qui coche Éval, consultation e
   await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
 
   await page.getByRole('link', { name: 'Bilans' }).click()
+  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
   await page.getByLabel('Date').fill('2026-09-22')
   await expect(page.getByText('Tinetti 4/28')).toBeVisible()
   await expect(page.getByRole('heading', { name: '1 / 1 bilans copiés' })).toBeVisible()
@@ -366,6 +368,7 @@ test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouc
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
   await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
   await page.getByRole('link', { name: 'Bilans' }).click()
+  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
   await page.getByLabel('Date').fill('2026-09-22')
   await expect(page.getByText('Marche/éq.')).toBeVisible()
 
@@ -412,7 +415,7 @@ test.describe('dictée', () => {
     await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test1234')
     await page.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(page.getByText('Clé enregistrée sur cet appareil (…1234).')).toBeVisible()
-    await expect(page.getByLabel('Modèle de transcription')).toHaveValue('openai/whisper-large-v3')
+    await expect(page.getByLabel('Modèle de transcription')).toHaveValue('mistralai/voxtral-mini-transcribe')
     await page.getByRole('button', { name: 'Tester la clé' }).click()
     await expect(page.locator('.dictation [role=status]')).toHaveText('Clé valide.')
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Sauvegarder' }).click()])
@@ -482,6 +485,9 @@ test.describe('dictée', () => {
     await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / }).click()
     await page.getByRole('tab', { name: 'Dictée' }).click()
     await page.getByRole('textbox', { name: 'Observations Tinetti pour Petit Jeanne' }).fill('Madame Petit marche prudemment, Jeanne se lève sans les bras.')
+    // Clavier ouvert par la saisie : onglets masqués ; la flèche le referme.
+    await expect(page.getByRole('tab', { name: 'Résultat' })).toBeHidden()
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
     // Volet Résultat : d’abord la cotation et la dictée brute, puis « Intégrer la dictée » (une passe, sans validation ligne à ligne).
     await page.getByRole('tab', { name: 'Résultat' }).click()
     const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
@@ -511,11 +517,11 @@ test.describe('dictée', () => {
     // Retouche du résultat au clavier puis Valider : enregistré, retour à la journée.
     const calls = bodies.length
     await page.getByRole('tab', { name: 'Résultat' }).click()
-    await expect(result).toHaveAttribute('inputmode', 'none')
     await page.getByRole('button', { name: 'Aller à la ligne' }).click()
     await result.press('End')
     await result.pressSequentially('Revoir dans 3 mois.')
     await expect(result).toContainText('Revoir dans 3 mois.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
     await resultPane.getByRole('button', { name: 'Valider' }).click()
     await expect(page).toHaveURL(/#\/\?date=2026-09-22/)
     // Relancer sur un résultat retouché demande l’autorisation de le remplacer.
@@ -527,6 +533,7 @@ test.describe('dictée', () => {
     expect(bodies.length).toBe(calls)
     await page.getByRole('link', { name: 'Retour à la journée' }).click()
     await page.getByRole('link', { name: 'Bilans' }).click()
+    await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
     await page.getByLabel('Date').fill('2026-09-22')
     await page.getByRole('button', { name: /Petit J\./ }).click()
     await expect(page.locator('.bilan-body b', { hasText: 'prudente' })).toBeVisible()
@@ -537,6 +544,7 @@ test.describe('dictée', () => {
     await openBilan(page, 'Petit Jeanne')
     const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Petit Jeanne' })
     await bilan.fill('bonjour Jeanne, la patiente marche lentment.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
     await page.getByRole('button', { name: 'Corriger avec l’IA' }).click()
     await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement.')
     const correction = bodies.at(-1)!
@@ -561,6 +569,7 @@ test.describe('dictée', () => {
     const model = page.getByLabel('Modèle d’analyse')
     await model.fill('deepseek/modele-test')
     await model.blur()
+    await page.getByLabel('Réflexion du modèle (intégration des tests)').selectOption('medium')
     await page.getByText('Prompt : Intégration de la dictée au bilan marche / équilibre').click()
     await expect(page.getByLabel('Prompt Intégration de la dictée au bilan marche / équilibre')).toHaveValue(/Règles propres au bilan marche \/ équilibre/)
 
@@ -569,32 +578,23 @@ test.describe('dictée', () => {
     await page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: 'évaluation de suivi' }).click()
     await page.getByRole('tab', { name: 'Dictée' }).click()
     const notes = page.getByRole('textbox', { name: 'Dictée marche / équilibre pour Petit Jeanne' })
-    // ⌫ sans clavier : un caractère avant le curseur, ou toute la sélection.
-    await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante.xx euh')
-    await notes.evaluate((element: HTMLElement) => { const text = element.firstChild!; const at = text.textContent!.indexOf(' euh'); const range = document.createRange(); range.setStart(text, at); range.setEnd(text, at + 4); getSelection()!.removeAllRanges(); getSelection()!.addRange(range) })
-    await page.getByRole('button', { name: 'Effacer', exact: true }).click()
-    await expect(notes).toHaveText('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante.xx')
-    await page.getByRole('button', { name: 'Effacer', exact: true }).click()
-    await page.getByRole('button', { name: 'Effacer', exact: true }).click()
-    await expect(notes).toHaveText('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
+    await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
     await page.getByRole('tab', { name: 'Résultat' }).click()
     const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
     const result = page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })
     await expect(result).not.toContainText('Marche :')
-    // Réflexion réglable depuis le Résultat : le niveau part avec la demande.
-    await resultPane.getByRole('radio', { name: 'Moyenne' }).click()
-    await expect(resultPane.getByRole('radio', { name: 'Moyenne' })).toHaveAttribute('aria-checked', 'true')
     await resultPane.getByRole('button', { name: 'Intégrer la dictée' }).click()
     await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
     await expect(resultPane.getByRole('button', { name: '1 point à vérifier' })).toBeVisible()
     await expect(result).toContainText('Marche : possible avec une surveillance, avec un rollator')
     await expect(result).toContainText('Timed Up and Go : 18sec')
     await expect(result).toContainText('Autres commentaires : Souriante.')
-    // ✨ en marge des lignes complétées par l’IA, ⚠ sur celle à vérifier ; rien de tout cela n’est copié.
+    // Lignes complétées par l’IA en couleur (orange pour celle à vérifier) ; la copie reste en noir.
     await expect(result.locator('.ai-line')).toHaveCount(3)
     await expect(result.locator('.ai-line.doubt')).toContainText('Marche :')
+    // Réflexion réglée dans Réglages (Moyenne ici) : le niveau part avec la demande.
     expect((bodies.at(-1) as unknown as { reasoning: unknown }).reasoning).toEqual({ effort: 'medium' })
-    await expect(resultPane.getByText(/^[0-9,]+ s$/)).toBeVisible()
     const sent = bodies.at(-1)!.messages[1].content
     expect(sent).not.toMatch(/Petit|Jeanne/)
     expect(JSON.parse(sent).dictee).toBe('[patient] marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
@@ -611,6 +611,7 @@ test.describe('dictée', () => {
     // Dictée modifiée après l’intégration : pastille orange sur ✨.
     await page.getByRole('tab', { name: 'Dictée' }).click()
     await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante. Fatigue.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
     await page.getByRole('tab', { name: 'Résultat' }).click()
     await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration (dictée modifiée depuis)' })).toHaveClass(/stale/)
     await expect(result).toContainText('Marche : possible avec une guidance, avec un rollator')
@@ -801,6 +802,7 @@ test('onglet Bilans : « Tout copier » met bout à bout les bilans d’un patie
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
 
   await page.getByRole('link', { name: 'Bilans' }).click()
+  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
   await page.getByLabel('Date').fill('2026-09-23')
   await expect(page.locator('.bilan-summary strong')).toHaveText(['Martin A.', 'Bernard L.', 'Martin A.'])
   await expect(page.locator('.copy-all-list li')).toHaveCount(1)
@@ -846,6 +848,7 @@ test('Tinetti : Max et Min remplissent les lignes vides, sans toucher aux lignes
   await expect(page.getByLabel('Total 26 sur 28')).toBeVisible()
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
   await page.getByRole('link', { name: 'Bilans' }).click()
+  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
   await page.getByLabel('Date').fill('2026-09-25')
   await expect(page.getByText('Tinetti 26/28')).toBeVisible()
 })

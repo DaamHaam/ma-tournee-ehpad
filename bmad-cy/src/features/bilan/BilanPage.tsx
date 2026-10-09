@@ -39,7 +39,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
   const { copied, copy } = useBilanCopy(date, id)
   const editor = useRef<RichEditorHandle>(null)
   const latest = useRef(initial.html)
-  // Mode dictée par défaut : toucher le texte place le curseur sans ouvrir le clavier ; le bouton clavier l’ouvre pour taper.
+  // Clavier ouvert dès qu’on touche le texte ; la flèche le referme et la dictée continue au micro.
   const [keyboard, setKeyboard] = useState(false)
   const viewport = useVisibleViewport()
   useBlockEdgeSwipe()
@@ -73,7 +73,7 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
   return <div className={`bilan-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<FormatButtons editor={editor} state={format} />}
       copied={copied} copyDisabled={!htmlToText(html).trim()} onCopy={() => void copy(html)} onCancel={() => void cancel()} />
-    <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} keyboard={keyboard} onChange={save} onFormatState={setFormat} />
+    <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => setKeyboard(true)} onFormatState={setFormat} />
     {keyboard
       ? <KeyboardBar dictation={dictation} onHide={() => toggleKeyboard(false)} />
       : <DictationFooter dictation={dictation}
@@ -83,6 +83,6 @@ function BilanEditor({ date, id, back, label, entry, sex }: { date: string; id: 
           {correction.previous !== undefined && <BarButton label="Annuler la correction" icon={ICONS.undo} onClick={undoCorrection} />}
           <BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />
         </>}
-        right={<><BarButton label="Ouvrir le clavier" icon={ICONS.keyboard} onClick={() => toggleKeyboard(true)} /><BarButton label="Effacer" icon={ICONS.erase} onClick={() => editor.current?.deleteBackward()} /></>} />}
+        />}
   </div>
 }

@@ -370,11 +370,9 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 /* Clavier ouvert dans un test : plus d’onglets de volets, petit micro et flèche dans la barre d’outils du volet. */
 .tinetti-page.keyboard-open .pane-tabs { display:none; }
 .result-tools .keyboard-bar { margin-left:auto; }
-/* Résultat : marge pour ✨ (ligne complétée par l’IA) et ⚠ (à vérifier), dessinés hors du texte. */
-.result-pane .bilan-text { padding-left:1.8rem; }
-.ai-line { position:relative; }
-.ai-line::before { content:"✨"; position:absolute; left:-1.5rem; top:.05em; font-size:.8rem; line-height:1.4; }
-.ai-line.doubt::before { content:"⚠"; color:#c47a00; }
+/* Résultat : lignes écrites ou complétées par l’IA en violet, à vérifier en orange (à l’écran seulement, la copie reste en noir). */
+.ai-line { color:#6b3fbf; }
+.ai-line.doubt { color:#b4530a; }
 /* Barre du Résultat resserrée : tout tient sur une ligne même avec ↶ et ⚠. */
 .result-tools { gap:.3rem; }
 .result-tools .format-bar { gap:.25rem; }
@@ -389,14 +387,9 @@ body:has(.bilan-page) .bottom-nav { display:none; }
 @keyframes blink { 50% { opacity:.25; } }
 /* Clavier ouvert : une seule rangée (G I S, micro, flèche) juste au-dessus du clavier, le texte prend toute la hauteur. */
 .tinetti-page.keyboard-open .notes-pane .result-tools { order:2; }
-/* Volets d’un bord à l’autre de l’écran : le Résultat prend toute la largeur, ✨ et ⚠ se placent contre le bord gauche. */
+/* Volets d’un bord à l’autre de l’écran : le Résultat prend toute la largeur. */
 .tinetti-page .panes { margin:0 -1.3rem; }
 .tinetti-page .panes > .pane { padding-left:1.3rem; padding-right:1.3rem; }
 .tinetti-page .panes > .result-pane { padding-left:0; padding-right:0; }
 .result-pane > :not(.bilan-text) { margin-left:1.3rem; margin-right:1.3rem; }
-.result-pane .bilan-text { border-left:0; border-right:0; border-radius:0; padding-left:1.75rem; padding-right:1.3rem; }
-/* Réflexion de l’IA, réglable depuis le Résultat pour essayer un bilan difficile. */
-.reasoning-row { display:flex; align-items:center; gap:.25rem; color:var(--muted); font-size:.74rem; font-weight:700; }
-.reasoning-row button { min-height:28px; padding:.05rem .45rem; border-radius:8px; font-size:.72rem; color:var(--muted); }
-.reasoning-row button[aria-checked="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
-.reasoning-time { margin-left:auto; font-variant-numeric:tabular-nums; }
+.result-pane .bilan-text { border-left:0; border-right:0; border-radius:0; padding-left:1.3rem; padding-right:1.3rem; }
