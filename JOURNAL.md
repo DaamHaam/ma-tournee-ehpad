@@ -1,5 +1,12 @@
 # Journal des clôtures
 
+## 2026-10-09 — Claude · cloud
+- Livré : v0.22.0 à v0.28.1 — bilan flexible marche / équilibre (sous-modules à la suite avec onglets, compte rendu mis en forme, copie à chasse fixe CRLF, ★ des mesures précédentes) ; trois volets Formulaire · Dictée · Résultat pour Tinetti et marche / équilibre ; intégration IA de la dictée (✨, ↶, ⚠, Valider), la dictée prime sur les cases et va telle quelle dans l'« Autre » de sa rubrique, mise en forme dictée conservée ; civilités Mr / Mme, jamais de nom ni [patient] ; lignes de l'IA en violet, à vérifier en orange (écran seulement) ; clavier ouvert au toucher avec rangée G I S · micro · flèche ; Voxtral par défaut ; réflexion du modèle réglable dans Réglages.
+- Tests : npm test 99/99, lint, build, Playwright 20/20 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne), v0.28.1 publiée.
+- Corrigé à la revue : textes du formulaire anonymisés avant envoi à l'IA ; onglet des volets sans clignotement, minuteur nettoyé ; bilan marche / équilibre en dictée seule masqué de l'onglet Bilans ; marge latérale commune et CSS mort supprimé ; CI : dépendances système installées à part.
+- En attente : antécédents en deux parties dans la fiche, carnet des médecins (idées dans deferred-work.md) ; partage des prompts via le dépôt ; autres tests standardisés.
+- Prochaine étape : essayer v0.28.1 sur iPhone (bilan marche / équilibre dicté de bout en bout, onglets, copie dans le dossier).
+
 ## 2026-10-08 — Claude · local
 - Livré : v0.16.0 à v0.21.1 — bouton « Copier » du pointage du jour (format TXT), triangle rapproché du bord et bord GRP épais, « Attend une séance » avec « ! » rouge (Dexie v5), prescription (intitulé, date, durée semaines/mois/ans, date seule = 1 an, fin calculée, pastille « Ordo » orange/rouge ; Dexie v6 et v7), « Tout copier » les bilans d'un patient, boutons Min/Max de la grille Tinetti, prompt Tinetti qui comprend les cotations directes et les consignes globales (« tout est bon »).
 - Tests : npm test 84/84, lint, build, Playwright 18/18 en local ; CI GitHub verte (v0.19.0 non taguée, run annulé par la file Pages). Prompt Tinetti non essayé en réel (pas de clé sur le Mac).
