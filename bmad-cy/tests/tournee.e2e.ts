@@ -387,6 +387,14 @@ test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, repri
   await page.goto('/#/?date=2026-09-22')
   await openBilan(page, 'Robert Paul', 'Test rapide')
   await expect(page.getByRole('tab', { name: 'TUG' })).toHaveAttribute('aria-selected', 'true')
+  // ✕ sans rien saisir sur une journée jamais ouverte : elle n’est pas créée.
+  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
+  const stored = await page.evaluate(() => new Promise<boolean>(resolve => {
+    const open = indexedDB.open('bmad-cy-tournee')
+    open.onsuccess = () => { const request = open.result.transaction('days').objectStore('days').get('2026-09-22'); request.onsuccess = () => { resolve(!!request.result); open.result.close() } }
+  }))
+  expect(stored).toBe(false)
+  await openBilan(page, 'Robert Paul', 'Test rapide')
   // Chronomètre : le temps arrêté remplit le champ.
   await page.getByRole('button', { name: 'Démarrer' }).click()
   await page.waitForTimeout(1200)

@@ -28,6 +28,14 @@ describe('sauvegarde complète', () => {
     delete withBilan.days[0].entries.p1.tests.marcheEquilibre
     withBilan.days[0].entries.p1.bilanCopied = 'oui'
     expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+    withBilan.days[0].entries.p1.bilanCopied = true
+    withBilan.days[0].entries.p1.bilanEditedAt = 12
+    expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+    withBilan.days[0].entries.p1.bilanEditedAt = '2026-09-21T09:05:00Z'
+    withBilan.days[0].entries.p1.bilanMeasures = { values: { tug: 18 } }
+    expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+    withBilan.days[0].entries.p1.bilanMeasures = { values: { tug: '18' } }
+    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1).toMatchObject({ bilanEditedAt: '2026-09-21T09:05:00Z', bilanMeasures: { values: { tug: '18' } } })
   })
 
   it('complète les champs absents d’un patient plus ancien', () => {

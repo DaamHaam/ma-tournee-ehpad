@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useSave } from '../../app/SaveContext'
@@ -10,7 +10,7 @@ import { latestMeasures, MEASURE_RUBRICS, measureTitle, mesuresHtml, type Measur
 import type { TestRecord } from '../../domain/tinetti'
 import { Rubric } from './FlexFields'
 import { ScreenHeader } from './screen'
-import { backTarget, useBlockEdgeSwipe } from './screenUtils'
+import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { useBilanCopy } from './useBilanCopy'
 
 const KIND = 'mesures'
@@ -43,8 +43,11 @@ function MesuresEditor({ date, id, back, label, entry, previous }: { date: strin
   const [selected, setSelected] = useState(() => MEASURE_RUBRICS.find(rubric => rubric.id === asked)?.id ?? MEASURE_RUBRICS.find(rubric => rubricFilled(rubric, input))?.id ?? DEFAULT_TEST)
   const rubric = MEASURE_RUBRICS.find(item => item.id === selected)!
   const { copied, copy } = useBilanCopy(date, id, KIND)
+  const viewport = useVisibleViewport()
   useBlockEdgeSwipe()
+  const changed = useRef(false)
   const save = (next: { choices: string[]; values: Record<string, string> }) => {
+    changed.current = true
     setChoices(next.choices); setValues(next.values)
     void run(() => repository.setTest(date, id, KIND, next))
   }
@@ -56,13 +59,14 @@ function MesuresEditor({ date, id, back, label, entry, previous }: { date: strin
     const next = withoutRubric(input, selected)
     save({ choices: next.choices ?? [], values: next.values ?? {} })
   }
-  // ✕ : quitte en remettant les tests du jour tels qu’à l’ouverture.
+  // ✕ : quitte en remettant les tests du jour tels qu’à l’ouverture (sans rien écrire s’ils n’ont pas changé :
+  // consulter une journée passée ne doit pas la créer).
   const cancel = async () => {
-    await run(() => repository.restoreTest(date, id, KIND, initial))
+    if (changed.current) await run(() => repository.restoreTest(date, id, KIND, initial))
     navigate(back)
   }
   const filled = rubricFilled(rubric, input)
-  return <div className="bilan-page mesures-page">
+  return <div className="bilan-page mesures-page" style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Tests rapides</span>}
       copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(mesuresHtml(input))} onCancel={() => void cancel()} />
     <div className="mesures-body">

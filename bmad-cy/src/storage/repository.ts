@@ -2,7 +2,7 @@ import { hasTestContent, type TestRecord, type TestType } from '../domain/tinett
 import { hasFlexContent, type FlexInput } from '../domain/marcheEquilibre'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
 import { applyOrder, careDefaults, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
-export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanMeasures'>
+export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 // GRP, sexe, attente et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
@@ -161,7 +161,7 @@ export class TourRepository {
   async restoreBilan(date: string, id: string, snapshot: BilanSnapshot): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
-      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied', 'bilanMeasures'] as const) {
+      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied', 'bilanEditedAt', 'bilanMeasures'] as const) {
         if (snapshot[key] === undefined) delete entry[key]
         else (entry as unknown as Record<string, unknown>)[key] = snapshot[key]
       }

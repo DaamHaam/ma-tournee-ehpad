@@ -33,7 +33,7 @@ export function BilanPage() {
   return <BilanEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} sex={sex} previous={previous} />
 }
 
-const snapshotOf = (entry: Entry): BilanSnapshot => ({ bilan: entry.bilan, bilanHtml: entry.bilanHtml, bilanAt: entry.bilanAt, bilanCopied: entry.bilanCopied, bilanMeasures: entry.bilanMeasures })
+const snapshotOf = (entry: Entry): BilanSnapshot => ({ bilan: entry.bilan, bilanHtml: entry.bilanHtml, bilanAt: entry.bilanAt, bilanCopied: entry.bilanCopied, bilanEditedAt: entry.bilanEditedAt, bilanMeasures: entry.bilanMeasures })
 const MEASURE_ORDER = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
 
 function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: string; id: string; back: string; label: string; entry: Entry; sex: Sex; previous: Record<string, Measure> }) {
