@@ -19,7 +19,7 @@ export interface FlexModule { id: string; title: string; rubrics: FlexRubric[] }
 export type FlexInput = Pick<TestRecord, 'choices' | 'values'>
 
 export const otherKey = (key: string) => `${key}.autre`
-// Informations dictées hors formulaire, ajoutées par l’IA sous « Autres commentaires ».
+// Informations dictées hors formulaire, ajoutées par l’IA aux commentaires (« Autres commentaires » du formulaire).
 export const AI_COMMENT_KEY = 'commentaires.ia'
 export const choiceId = (key: string, index: number) => `${key}.${index + 1}`
 const group = (id: string, title: string, options: string[]): FlexRubric => ({ id, title, controls: [{ kind: 'multi', key: id, options }, { kind: 'text', key: otherKey(id), label: 'Autre' }] })
@@ -43,7 +43,7 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
   { id: 'transferts', title: 'Transferts', rubrics: [
     group('verticalisation', 'Verticalisation', ['seul sans accoudoirs', 'seul avec accoudoirs', 'seul avec accoudoirs, mais une aide est recommandée', 'avec aide légère', 'avec aide modérée (un soignant nécessaire)', 'avec aide importante (deux soignants nécessaires)', 'plusieurs tentatives sont nécessaires', 'avec verticalisateur uniquement', 'avec lève-malade (impossibilité)', 'présence d’une rétropulsion modérée', 'présence d’une rétropulsion sévère']),
     { id: 'allongeAssis', title: 'Passage allongé-assis au bord du lit', controls: [{ kind: 'single', key: 'allongeAssis', options: ['réalisé seul', 'réalisé avec une aide légère', 'réalisé avec une aide modérée', 'réalisé avec une aide importante'] }] },
-    { id: 'assisDebout30s', title: 'Assis-debout en 30s', test: true, controls: [{ kind: 'number', key: 'assisDebout30s', unit: 'passages' }] },
+    { id: 'assisDebout30s', title: 'Assis-debout en 30s', test: true, controls: [{ kind: 'number', key: 'assisDebout30s', unit: 'passages' }, { kind: 'single', key: 'assisDebout30s.accoudoirs', options: ['avec accoudoirs', 'sans accoudoirs'], compact: true }] },
     group('passageDeboutAssis', 'Passage debout-assis', ['possible seul', 'impossible seul', 'utilise les accoudoirs', 'ne saisit pas les accoudoirs', 'précipitation', 'panique', 'tendance à la rétropulsion', 'perte du schéma moteur', 'risque de chute à ce moment']),
     group('transferts', 'Transferts et pivots', ['réalisés seul', 'réalisés seul mais avec risque de chute', 'réalisés seul avec rollator', 'réalisés avec rollator et un soignant', 'réalisés avec un soignant', 'réalisés avec deux soignants', 'réalisés avec verticalisateur', 'réalisés avec lève-malade', 'pivot possible', 'pivot difficile']),
     { id: 'tug', title: 'Timed Up and Go', test: true, controls: [{ kind: 'number', key: 'tug', label: 'Temps', unit: 'sec' }] },
@@ -131,8 +131,8 @@ function reader(input: FlexInput) {
   return { text, html, multi, number, list }
 }
 
-// Ligne du compte rendu : libellé (gras souligné, italique, normal ou sous-ligne en italique des Observations) et contenu HTML.
-type Style = 'bu' | 'i' | 'plain' | 'sub'
+// Ligne du compte rendu : libellé (gras souligné, italique, normal, sous-ligne en italique des Observations ou aucun) et contenu HTML.
+type Style = 'bu' | 'i' | 'plain' | 'sub' | 'bare'
 interface Line { label: string; style: Style; content: string }
 const line = (label: string, style: Style, content: string): Line | null => content ? { label, style, content } : null
 
@@ -153,7 +153,7 @@ function rubricLine(id: string, input: FlexInput): Line | null {
     }
     case 'verticalisation': { const content = read.list(id); return line('Verticalisation', 'sub', content && `réalisée ${content}`) }
     case 'allongeAssis': return line('Passage allongé-assis au bord du lit', 'sub', read.html('allongeAssis'))
-    case 'assisDebout30s': { const count = read.number(id); return line('Nombre de passages assis-debout en 30s', 'plain', count === null ? '' : String(count)) }
+    case 'assisDebout30s': { const count = read.number(id); return line('Nombre de passages assis-debout en 30s', 'plain', count === null ? '' : [String(count), read.html('assisDebout30s.accoudoirs')].filter(Boolean).join(', ')) }
     case 'passageDeboutAssis': return line('Passage debout-assis', 'i', read.list(id))
     case 'transferts': return line('Transferts et pivots', 'i', read.list(id))
     case 'tug': { const time = read.number(id); return line('Timed Up and Go', 'plain', time === null ? '' : `${time}sec`) }
@@ -196,7 +196,8 @@ function rubricLine(id: string, input: FlexInput): Line | null {
       return line('Traitement kiné', 'bu', [...means.map(escapeHtml), read.html(otherKey('moyens'))].filter(Boolean).join(', '))
     }
     case 'seances': return line('Nombre de séances kiné par semaine', 'i', read.html('seances'))
-    case 'commentaires': return line('Autres commentaires', 'i', [read.html('commentaires'), read.html(AI_COMMENT_KEY)].filter(Boolean).join('<br>'))
+    // Commentaires sans intitulé : saisis puis ajoutés par l’IA, chacun à la ligne (un sujet par ligne).
+    case 'commentaires': return line('', 'bare', [read.html('commentaires'), read.html(AI_COMMENT_KEY)].filter(Boolean).join('<br>'))
     default: return null
   }
 }
@@ -204,8 +205,8 @@ function rubricLine(id: string, input: FlexInput): Line | null {
 const OBSERVATIONS = ['troublesComplementaires', 'troublesComportement', 'installation', 'raideurs', 'douleur', 'eva', 'verticalisation', 'allongeAssis']
 const BEFORE = ['contexte', 'atcd']
 const AFTER = ['assisDebout30s', 'passageDeboutAssis', 'transferts', 'tug', 'stationDebout', 'marche', 'marcheArriere', 'perimetre', 'trajet', 'test10m', 'analyseMarche', 'test6min', 'doubleTache', 'equilibre', 'escaliers', 'objectifs', 'moyens', 'seances', 'commentaires']
-const LABEL: Record<Style, (label: string) => string> = { bu: label => `<b><u>${label}</u></b>`, i: label => `<i>${label}</i>`, plain: label => label, sub: label => `- <i>${label}</i>` }
-const render = (item: Line) => `${LABEL[item.style](escapeHtml(item.label))} : ${item.content}`
+const LABEL: Record<Exclude<Style, 'bare'>, (label: string) => string> = { bu: label => `<b><u>${label}</u></b>`, i: label => `<i>${label}</i>`, plain: label => label, sub: label => `- <i>${label}</i>` }
+const render = (item: Line) => item.style === 'bare' ? item.content : `${LABEL[item.style](escapeHtml(item.label))} : ${item.content}`
 // La ligne Marche porte aussi l’aide technique.
 const SOURCES: Record<string, string[]> = { marche: ['marche', 'aideTechnique'] }
 export interface ReportLine { rubrics: string[]; html: string }

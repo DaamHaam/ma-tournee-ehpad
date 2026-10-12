@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 
 // Zone réellement visible : sur iPhone, le clavier ouvert la réduit sans redimensionner la page.
+// Clavier fermé, l’écran garde sa taille CSS : suivre les rebonds de Safari au bout d’un défilement faisait trembler la page.
+export const KEYBOARD_MIN_HEIGHT = 120
 export function useVisibleViewport() {
   const [box, setBox] = useState<{ height: number; top: number } | null>(null)
   useEffect(() => {
     const viewport = window.visualViewport
     if (!viewport) return
-    const update = () => setBox({ height: viewport.height, top: viewport.offsetTop })
+    const update = () => {
+      if (window.innerHeight - viewport.height < KEYBOARD_MIN_HEIGHT) { setBox(current => current && null); return }
+      const next = { height: Math.round(viewport.height), top: Math.max(0, Math.round(viewport.offsetTop)) }
+      setBox(current => current && current.height === next.height && current.top === next.top ? current : next)
+    }
     update()
     viewport.addEventListener('resize', update); viewport.addEventListener('scroll', update)
     return () => { viewport.removeEventListener('resize', update); viewport.removeEventListener('scroll', update) }
@@ -60,7 +66,7 @@ export function useKeyboardLost(active: boolean, onLost: () => void) {
       timer = window.setTimeout(() => {
         const editing = (document.activeElement as HTMLElement | null)?.isContentEditable
         const viewport = window.visualViewport
-        if (!editing || (viewport && window.innerHeight - viewport.height < 120)) lost.current()
+        if (!editing || (viewport && window.innerHeight - viewport.height < KEYBOARD_MIN_HEIGHT)) lost.current()
       }, 700)
     }
     const viewport = window.visualViewport

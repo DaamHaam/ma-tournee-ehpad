@@ -51,11 +51,11 @@ describe('bilan marche / équilibre', () => {
   it('compose mesures, périmètre, trajet, escaliers et textes libres', () => {
     const input = {
       choices: [pick('perimetre.aides', 'rollator'), pick('perimetre.limites', 'limité par la fatigabilité'), pick('trajet.aides', 'canne simple'), pick('escaliers.pas', 'pas alternés'), pick('aideTechnique', 'avec une canne simple')],
-      values: { assisDebout30s: '0', tug: '17,6', stationDebout: 'abc', 'perimetre.prefixe': 'supérieur à', 'perimetre.distance': '100', 'perimetre.lieu': 'RDC', 'perimetre.commentaire': 'pauses', 'trajet.duree': '2 min 30 s', 'test10m.pas': '30', test6min: '250', 'escaliers.marches': '12', 'escaliers.autre': 'avec la rampe', seances: '3', commentaires: 'ligne 1\nligne 2', atcd: 'PTH droite' },
+      values: { assisDebout30s: '0', 'assisDebout30s.accoudoirs': 'sans accoudoirs', tug: '17,6', stationDebout: 'abc', 'perimetre.prefixe': 'supérieur à', 'perimetre.distance': '100', 'perimetre.lieu': 'RDC', 'perimetre.commentaire': 'pauses', 'trajet.duree': '2 min 30 s', 'test10m.pas': '30', test6min: '250', 'escaliers.marches': '12', 'escaliers.autre': 'avec la rampe', seances: '3', commentaires: 'ligne 1\nligne 2', atcd: 'PTH droite' },
     }
     expect(marcheEquilibreHtml(input).split('<br>').slice(1)).toEqual([
       '<b><u>Antécédents</u></b> : PTH droite',
-      'Nombre de passages assis-debout en 30s : 0',
+      'Nombre de passages assis-debout en 30s : 0, sans accoudoirs',
       'Timed Up and Go : 18sec',
       '<i>Aide technique</i> : avec une canne simple',
       'Périmètre de marche : supérieur à 100m, avec rollator, limité par la fatigabilité, lui permettant de marcher jusqu’au rez-de-chaussée, pauses',
@@ -64,7 +64,7 @@ describe('bilan marche / équilibre', () => {
       'Évaluation endurance, test des 6min : 250m',
       '<i>Escaliers</i> : 12 marches montées, pas alternés, avec la rampe',
       '<i>Nombre de séances kiné par semaine</i> : 3',
-      '<i>Autres commentaires</i> : ligne 1',
+      'ligne 1',
       'ligne 2',
     ])
   })

@@ -21,8 +21,8 @@ import { useTestPanes } from './useTestPanes'
 
 const KIND = 'marcheEquilibre'
 const shortDate = (date: string) => parseDate(date).toLocaleDateString('fr-FR')
-// Champ texte affiché sans la mise en forme (reprise de la dictée par l’IA), qui reste dans le compte rendu tant qu’on ne le retouche pas.
-const plain = (value: string | undefined) => (value ?? '').replace(/<\/?(?:b|i|u)>|<br\s*\/?>/g, '')
+// Champ texte affiché sans la mise en forme (retours à la ligne gardés) (reprise de la dictée par l’IA), qui reste dans le compte rendu tant qu’on ne le retouche pas.
+const plain = (value: string | undefined) => (value ?? '').replace(/<br\s*\/?>/g, '\n').replace(/<\/?(?:b|i|u)>/g, '')
 const without = (values: Record<string, string>, keys: string[]) => Object.fromEntries(Object.entries(values).filter(([key]) => !keys.includes(key)))
 
 // Bilan marche / équilibre en plein écran : volets Formulaire (sous-modules à la suite, onglets pour y sauter), Dictée et Résultat

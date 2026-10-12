@@ -589,7 +589,8 @@ test.describe('dictée', () => {
     await expect(resultPane.getByRole('button', { name: '1 point à vérifier' })).toBeVisible()
     await expect(result).toContainText('Marche : possible avec une surveillance, avec un rollator')
     await expect(result).toContainText('Timed Up and Go : 18sec')
-    await expect(result).toContainText('Autres commentaires : Souriante.')
+    await expect(result).toContainText('Souriante.')
+    await expect(result).not.toContainText('Autres commentaires')
     // Lignes complétées par l’IA en couleur (orange pour celle à vérifier) ; la copie reste en noir.
     await expect(result.locator('.ai-line')).toHaveCount(3)
     await expect(result.locator('.ai-line.doubt')).toContainText('Marche :')
