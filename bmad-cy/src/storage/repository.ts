@@ -129,7 +129,7 @@ export class TourRepository {
       else delete entry.tests
     })
   }
-  // Copier un test vaut évaluation faite le jour de la copie.
+  // Copier un test vaut évaluation faite le jour de la copie ; copier les tests rapides vaut transmission.
   async markTestCopied(date: string, id: string, type: TestType): Promise<void> {
     if (!validDate(date)) throw new Error('Choisissez une date valide.')
     await this.database.transaction('rw', this.database.days, this.database.patients, async () => {
@@ -140,7 +140,8 @@ export class TourRepository {
       await this.database.days.put(day)
       const patient = await this.database.patients.get(id)
       const today = this.today()
-      if (patient && !(patient.evalDates ?? []).includes(today)) await this.database.patients.put({ ...patient, evalDates: [...(patient.evalDates ?? []), today].sort() })
+      const field = type === 'mesures' ? 'transDates' : 'evalDates'
+      if (patient && !(patient[field] ?? []).includes(today)) await this.database.patients.put({ ...patient, [field]: [...(patient[field] ?? []), today].sort() })
     })
   }
   // Annulation : remet le bilan exactement comme à l’ouverture de la page.

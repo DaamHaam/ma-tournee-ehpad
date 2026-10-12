@@ -320,6 +320,27 @@ html:has(.bilan-page), body:has(.bilan-page) { overflow:hidden; overscroll-behav
 .flex-number { display:flex; align-items:center; gap:.4rem; color:var(--ink); font-weight:600; }
 .flex-number input { max-width:7rem; }
 .previous-measure { margin:0; color:#9a6b00; font-size:.75rem; }
+.flex-rubric h3 .chrono-toggle { min-width:34px; min-height:30px; margin-left:.4rem; padding:0 .35rem; font-size:.9rem; vertical-align:middle; }
+.chrono-toggle.open { border-color:var(--accent); background:var(--accent-soft); }
+.quick-note { display:flex; align-items:center; gap:.5rem; margin:.3rem 0; padding:.4rem .55rem; border-radius:9px; background:var(--accent-soft); font-size:.78rem; }
+.quick-note p { flex:1; margin:0; }
+.quick-note button { flex:none; min-height:34px; }
+/* Chronomètre des tests minutés : grand temps lisible de loin, gros bouton Démarrer / Arrêter. */
+.chrono { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; padding:.5rem .6rem; border:1px solid var(--line); border-radius:12px; background:var(--paper); }
+.chrono-time { flex:1 0 100%; color:var(--ink); font-size:2.4rem; font-weight:800; font-variant-numeric:tabular-nums; text-align:center; }
+.chrono.running .chrono-time { color:var(--accent); }
+.chrono.finished .chrono-time { color:#2e7a4b; }
+.chrono button { flex:1; min-height:48px; }
+.chrono .chrono-main { font-size:1.05rem; }
+/* Tests rapides : choix du test, puis le test seul avec ★ et chronomètre ; Valider en bas. */
+.mesures-body { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.measure-tabs { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.7rem; }
+.measure-tabs button { min-height:34px; padding:.15rem .5rem; font-size:.76rem; }
+.measure-tabs button.done { border-color:#2e7a4b; color:#2e7a4b; }
+.measure-tabs button[aria-selected="true"] { border-color:var(--accent); background:var(--accent); color:#fff; }
+.mesures-page .flex-rubric h3 { font-size:1.05rem; }
+.mesures-actions { flex:none; }
+.mesures-actions button { flex:1; min-height:46px; }
 /* Volet Résultat : bandeau d’intégration IA, mise en forme et Valider, compte rendu en 13 px. */
 .result-tools { display:flex; align-items:center; justify-content:space-between; gap:.4rem; }
 .result-pane .bilan-text { font-size:13px; line-height:1.4; }
@@ -370,3 +391,8 @@ html:has(.bilan-page), body:has(.bilan-page) { overflow:hidden; overscroll-behav
 .tinetti-page .panes > .result-pane { padding-left:0; padding-right:0; }
 .result-pane > :not(.bilan-text) { margin-left:var(--side); margin-right:var(--side); }
 .result-pane .bilan-text { border-left:0; border-right:0; border-radius:0; padding-left:var(--side); padding-right:var(--side); }
+/* Fiche patient : suivi des tests standardisés, replié. */
+.measures-history summary { cursor:pointer; font-weight:750; }
+.measures-history ul { display:grid; gap:.45rem; margin:.6rem 0 0; padding:0; list-style:none; }
+.measures-history li { display:grid; gap:.1rem; font-size:.85rem; }
+.measures-history li span { color:var(--muted); }

@@ -13,8 +13,10 @@ export type FlexControl =
   | { kind: 'number'; key: string; label?: string; unit: string }
   | { kind: 'text'; key: string; label: string; long?: boolean; ai?: boolean }
 // ai : champ rempli seulement par l’assistant IA (affiché dans le formulaire dès qu’il a une valeur).
-// test : test standardisé suivi dans le temps (★ dernière mesure).
-export interface FlexRubric { id: string; title: string; test?: boolean; controls: FlexControl[] }
+// test : test standardisé suivi dans le temps (★ dernière mesure, test rapide, reconnu dans le bilan libre).
+// chrono : chronomètre (le temps arrêté remplit le champ key) ou compte à rebours (seconds), pour les tests minutés.
+export type Chrono = { mode: 'stopwatch'; key: string } | { mode: 'countdown'; seconds: number }
+export interface FlexRubric { id: string; title: string; test?: boolean; chrono?: Chrono; controls: FlexControl[] }
 export interface FlexModule { id: string; title: string; rubrics: FlexRubric[] }
 export type FlexInput = Pick<TestRecord, 'choices' | 'values'>
 
@@ -38,16 +40,17 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
   { id: 'examen', title: 'Examen', rubrics: [
     group('raideurs', 'Raideurs', ['rétractions', 'aux membres inférieurs', 'aux membres supérieurs', 'perte de flexion dorsale de cheville environ 10°', 'flexum de genou environ 15-20°', 'flexum de hanche environ 15-20°', 'abduction de hanche limitée à 20°', 'élévation latérale d’épaule limitée à 80°', 'élévation antérieure d’épaule limitée à 80°', 'rotation latérale d’épaule limitée à 20°', 'extension du coude limitée à -20°']),
     group('douleur', 'Douleur', ['pas de douleur exprimée lors des transferts et de la marche', 'à la mobilisation', 'à la palpation', 'permanente', 'à l’appui à droite', 'à l’appui à gauche', 'douleurs rhumatismales', 'au rachis (tassement vertébral, canal lombaire étroit, arthrose, spondylolisthésis)', 'aux genoux', 'tassement']),
-    { id: 'eva', title: 'EVA', controls: [{ kind: 'single', key: 'eva', options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], compact: true }, { kind: 'text', key: otherKey('eva'), label: 'Autre' }] },
+    { id: 'eva', title: 'EVA', test: true, controls: [{ kind: 'single', key: 'eva', options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], compact: true }, { kind: 'text', key: otherKey('eva'), label: 'Autre' }] },
   ] },
   { id: 'transferts', title: 'Transferts', rubrics: [
     group('verticalisation', 'Verticalisation', ['seul sans accoudoirs', 'seul avec accoudoirs', 'seul avec accoudoirs, mais une aide est recommandée', 'avec aide légère', 'avec aide modérée (un soignant nécessaire)', 'avec aide importante (deux soignants nécessaires)', 'plusieurs tentatives sont nécessaires', 'avec verticalisateur uniquement', 'avec lève-malade (impossibilité)', 'présence d’une rétropulsion modérée', 'présence d’une rétropulsion sévère']),
     { id: 'allongeAssis', title: 'Passage allongé-assis au bord du lit', controls: [{ kind: 'single', key: 'allongeAssis', options: ['réalisé seul', 'réalisé avec une aide légère', 'réalisé avec une aide modérée', 'réalisé avec une aide importante'] }] },
-    { id: 'assisDebout30s', title: 'Assis-debout en 30s', test: true, controls: [{ kind: 'number', key: 'assisDebout30s', unit: 'passages' }, { kind: 'single', key: 'assisDebout30s.accoudoirs', options: ['avec accoudoirs', 'sans accoudoirs'], compact: true }] },
+    { id: 'assisDebout30s', title: 'Assis-debout en 30s', test: true, chrono: { mode: 'countdown', seconds: 30 }, controls: [{ kind: 'number', key: 'assisDebout30s', unit: 'passages' }, { kind: 'single', key: 'assisDebout30s.accoudoirs', options: ['avec accoudoirs', 'sans accoudoirs'], compact: true }] },
+    { id: 'cinqLevers', title: '5 levers de chaise', test: true, chrono: { mode: 'stopwatch', key: 'cinqLevers' }, controls: [{ kind: 'number', key: 'cinqLevers', label: 'Temps', unit: 'sec' }] },
     group('passageDeboutAssis', 'Passage debout-assis', ['possible seul', 'impossible seul', 'utilise les accoudoirs', 'ne saisit pas les accoudoirs', 'précipitation', 'panique', 'tendance à la rétropulsion', 'perte du schéma moteur', 'risque de chute à ce moment']),
     group('transferts', 'Transferts et pivots', ['réalisés seul', 'réalisés seul mais avec risque de chute', 'réalisés seul avec rollator', 'réalisés avec rollator et un soignant', 'réalisés avec un soignant', 'réalisés avec deux soignants', 'réalisés avec verticalisateur', 'réalisés avec lève-malade', 'pivot possible', 'pivot difficile']),
-    { id: 'tug', title: 'Timed Up and Go', test: true, controls: [{ kind: 'number', key: 'tug', label: 'Temps', unit: 'sec' }] },
-    { id: 'stationDebout', title: 'Durée de maintien de la station debout', test: true, controls: [{ kind: 'number', key: 'stationDebout', label: 'Durée', unit: 'sec' }] },
+    { id: 'tug', title: 'Timed Up and Go', test: true, chrono: { mode: 'stopwatch', key: 'tug' }, controls: [{ kind: 'number', key: 'tug', label: 'Temps', unit: 'sec' }] },
+    { id: 'stationDebout', title: 'Durée de maintien de la station debout', test: true, chrono: { mode: 'stopwatch', key: 'stationDebout' }, controls: [{ kind: 'number', key: 'stationDebout', label: 'Durée', unit: 'sec' }] },
   ] },
   { id: 'marche', title: 'Marche', rubrics: [
     group('marche', 'Marche', ['possible seul', 'possible seul mais avec risque de chute', 'possible avec une surveillance', 'possible avec une guidance', 'possible avec un soutien', 'possible avec deux soutiens', 'impossible']),
@@ -61,14 +64,14 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
       { kind: 'single', key: 'perimetre.lieu', label: 'Lui permettant de marcher', options: Object.keys(SCOPES), compact: true },
       { kind: 'text', key: 'perimetre.commentaire', label: 'Commentaire' },
     ] },
-    { id: 'trajet', title: 'Temps trajet chambre-RDC', test: true, controls: [
+    { id: 'trajet', title: 'Temps trajet chambre-RDC', test: true, chrono: { mode: 'stopwatch', key: 'trajet.duree' }, controls: [
       { kind: 'text', key: 'trajet.duree', label: 'Durée (ex. 2 min 30 s)' },
       { kind: 'multi', key: 'trajet.aides', label: 'Aide technique', options: AIDS },
       { kind: 'text', key: 'trajet.commentaire', label: 'Commentaire' },
     ] },
-    { id: 'test10m', title: 'Test des 10m', test: true, controls: [{ kind: 'number', key: 'test10m.temps', label: 'Temps', unit: 'sec' }, { kind: 'number', key: 'test10m.pas', label: 'Nombre de pas', unit: 'pas' }] },
+    { id: 'test10m', title: 'Test des 10m', test: true, chrono: { mode: 'stopwatch', key: 'test10m.temps' }, controls: [{ kind: 'number', key: 'test10m.temps', label: 'Temps', unit: 'sec' }, { kind: 'number', key: 'test10m.pas', label: 'Nombre de pas', unit: 'pas' }] },
     group('analyseMarche', 'Analyse de la marche', ['légère déviation lors de la marche en ligne droite', 'les pas sont réguliers', 'les pas sont irréguliers', 'marche lente', 'marche rapide', 'bonne longueur des pas', 'longueur des pas réduite', 'hauteur des pas suffisante', 'les pieds décollent légèrement du sol', 'les pieds ne décollent pas du sol', 'pieds légèrement écartés', 'les membres inférieurs partent en adduction', 'perte de dissociation des ceintures', 'boiterie', 'cherche un appui', 'blocages au cours de la marche', 'rétropulsion modérée', 'rétropulsion importante']),
-    { id: 'test6min', title: 'Test des 6min', test: true, controls: [{ kind: 'number', key: 'test6min', label: 'Distance', unit: 'm' }] },
+    { id: 'test6min', title: 'Test des 6min', test: true, chrono: { mode: 'countdown', seconds: 360 }, controls: [{ kind: 'number', key: 'test6min', label: 'Distance', unit: 'm' }] },
     group('doubleTache', 'Test de double tâche', ['s’arrête de marcher en parlant, double tâche cognitive et motrice difficile', 'ne s’arrête pas de marcher en parlant, double tâche cognitive et motrice possible']),
     { id: 'escaliers', title: 'Escaliers', controls: [
       { kind: 'number', key: 'escaliers.marches', unit: 'marches montées' },
@@ -154,6 +157,7 @@ function rubricLine(id: string, input: FlexInput): Line | null {
     case 'verticalisation': { const content = read.list(id); return line('Verticalisation', 'sub', content && `réalisée ${content}`) }
     case 'allongeAssis': return line('Passage allongé-assis au bord du lit', 'sub', read.html('allongeAssis'))
     case 'assisDebout30s': { const count = read.number(id); return line('Nombre de passages assis-debout en 30s', 'plain', count === null ? '' : [String(count), read.html('assisDebout30s.accoudoirs')].filter(Boolean).join(', ')) }
+    case 'cinqLevers': { const time = read.number(id); return line('Test des 5 levers de chaise', 'plain', time === null ? '' : `${time}sec`) }
     case 'passageDeboutAssis': return line('Passage debout-assis', 'i', read.list(id))
     case 'transferts': return line('Transferts et pivots', 'i', read.list(id))
     case 'tug': { const time = read.number(id); return line('Timed Up and Go', 'plain', time === null ? '' : `${time}sec`) }
@@ -204,7 +208,7 @@ function rubricLine(id: string, input: FlexInput): Line | null {
 
 const OBSERVATIONS = ['troublesComplementaires', 'troublesComportement', 'installation', 'raideurs', 'douleur', 'eva', 'verticalisation', 'allongeAssis']
 const BEFORE = ['contexte', 'atcd']
-const AFTER = ['assisDebout30s', 'passageDeboutAssis', 'transferts', 'tug', 'stationDebout', 'marche', 'marcheArriere', 'perimetre', 'trajet', 'test10m', 'analyseMarche', 'test6min', 'doubleTache', 'equilibre', 'escaliers', 'objectifs', 'moyens', 'seances', 'commentaires']
+const AFTER = ['assisDebout30s', 'cinqLevers', 'passageDeboutAssis', 'transferts', 'tug', 'stationDebout', 'marche', 'marcheArriere', 'perimetre', 'trajet', 'test10m', 'analyseMarche', 'test6min', 'doubleTache', 'equilibre', 'escaliers', 'objectifs', 'moyens', 'seances', 'commentaires']
 const LABEL: Record<Exclude<Style, 'bare'>, (label: string) => string> = { bu: label => `<b><u>${label}</u></b>`, i: label => `<i>${label}</i>`, plain: label => label, sub: label => `- <i>${label}</i>` }
 const render = (item: Line) => item.style === 'bare' ? item.content : `${LABEL[item.style](escapeHtml(item.label))} : ${item.content}`
 // La ligne Marche porte aussi l’aide technique.
@@ -228,18 +232,24 @@ export function rubricFilled(rubric: FlexRubric, input: FlexInput): boolean {
   return keys.some(key => (input.values?.[key] ?? '').trim() !== '') || (input.choices ?? []).some(id => keys.some(key => id.startsWith(`${key}.`) && /^\d+$/.test(id.slice(key.length + 1))))
 }
 
-// ★ : dernier bilan antérieur (choix précédents) et, pour chaque test standardisé, sa dernière mesure antérieure avec sa date.
-export interface PreviousMeasure { date: string; text: string }
-export interface PreviousFlex { last: { date: string; record: TestRecord } | null; measures: Record<string, PreviousMeasure> }
-export function previousMarcheEquilibre(days: { date: string; entries: Record<string, { tests?: Partial<Record<string, TestRecord>> }> }[], id: string, date: string): PreviousFlex {
-  const found = days.filter(day => day.date < date).map(day => ({ date: day.date, record: day.entries[id]?.tests?.marcheEquilibre })).filter((item): item is { date: string; record: TestRecord } => !!item.record && hasFlexContent(item.record)).sort((x, y) => y.date.localeCompare(x.date))
-  const measures: Record<string, PreviousMeasure> = {}
-  for (const rubric of RUBRICS.values()) {
-    if (!rubric.test) continue
-    for (const item of found) {
-      const measure = rubricLine(rubric.id, item.record)
-      if (measure) { measures[rubric.id] = { date: item.date, text: htmlToText(measure.content) }; break }
-    }
-  }
-  return { last: found[0] ?? null, measures }
+// Rubriques prises une à une (tests standardisés : test rapide, mesures reconnues, historique).
+export function rubricById(id: string): FlexRubric | undefined { return RUBRICS.get(id) }
+// Ligne d’une rubrique telle qu’au compte rendu (plain : libellé sans mise en forme, pour une ligne seule), '' si vide.
+export function rubricHtml(id: string, input: FlexInput, plain = false): string {
+  const item = rubricLine(id, input)
+  return item ? render(plain && item.style !== 'bare' ? { ...item, style: 'plain' } : item) : ''
+}
+// Contenu seul (sans libellé), en texte : ★ des mesures précédentes.
+export function rubricText(id: string, input: FlexInput): string { const item = rubricLine(id, input); return item ? htmlToText(item.content) : '' }
+const ownsKey = (rubric: FlexRubric, key: string) => keysOf(rubric).some(own => key === own || (key.startsWith(`${own}.`) && /^\d+$/.test(key.slice(own.length + 1))))
+// Champs et choix d’une rubrique, ou tout sauf elle.
+export function pickRubric(input: FlexInput, id: string): FlexInput {
+  const rubric = RUBRICS.get(id)
+  if (!rubric) return { choices: [], values: {} }
+  return { choices: (input.choices ?? []).filter(choice => ownsKey(rubric, choice)), values: Object.fromEntries(Object.entries(input.values ?? {}).filter(([key]) => ownsKey(rubric, key))) }
+}
+export function withoutRubric(input: FlexInput, id: string): FlexInput {
+  const rubric = RUBRICS.get(id)
+  if (!rubric) return { choices: input.choices ?? [], values: input.values ?? {} }
+  return { choices: (input.choices ?? []).filter(choice => !ownsKey(rubric, choice)), values: Object.fromEntries(Object.entries(input.values ?? {}).filter(([key]) => !ownsKey(rubric, key))) }
 }

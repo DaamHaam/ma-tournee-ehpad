@@ -1,7 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { BilanActions } from '../bilan/BilanActions'
 import { bilanHtml } from '../bilan/richText'
-import { itemHtml } from '../bilan/display'
+import { itemHtml, shortDate } from '../bilan/display'
+import { MEASURE_RUBRICS, measureHistory, measureTitle, TINETTI_MEASURE } from '../../domain/mesures'
 import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -120,6 +121,7 @@ export function PatientDetail() {
     <FollowUps patient={patient} />
     <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />
+    {history && <MeasuresHistory days={history} id={id} />}
     {!!history?.length && <button type="button" className="history-toggle" aria-expanded={historyOpen} aria-controls="patient-history" onClick={() => setHistoryOpen(open => !open)}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 7v5l3 2M3.5 12a8.5 8.5 0 1 0 2.5-6M3 4v4h4" /></svg>Séances ({history.length})</button>}
     {!!history?.length && historyOpen && <section id="patient-history" className="card history" aria-label="Séances et notes">
       <ol>{history.map(day => {
@@ -135,4 +137,16 @@ export function PatientDetail() {
     </section>}
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>
   </>
+}
+
+// Suivi des tests standardisés : les dernières mesures de chaque test, toutes sources confondues (tests rapides, bilans).
+const MEASURE_ORDER = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
+function MeasuresHistory({ days, id }: { days: Parameters<typeof measureHistory>[0]; id: string }) {
+  const history = measureHistory(days, id)
+  const tests = MEASURE_ORDER.filter(test => history[test]?.length)
+  if (!tests.length) return null
+  return <details className="card measures-history">
+    <summary>Suivi des tests</summary>
+    <ul>{tests.map(test => <li key={test}><strong>{measureTitle(test)}</strong><span>{history[test].slice(0, 6).map(measure => `${measure.text} (${shortDate(measure.date)})`).join(' · ')}</span></li>)}</ul>
+  </details>
 }

@@ -18,7 +18,7 @@ export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification.
-// tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié.
+// tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
 export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; tests?: Partial<Record<TestType, TestRecord>> }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
@@ -94,7 +94,7 @@ export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text
 // Un bilan marche / équilibre ne se copie que par son compte rendu : sans formulaire rempli ni résultat retouché (dictée seule),
 // il reste enregistré mais n’a rien à copier dans l’onglet Bilans.
 function listedTest(kind: TestType, record: TestRecord): boolean {
-  return kind === 'marcheEquilibre' ? hasFlexContent(record) || !!record.resultHtml?.trim() : hasTestContent(record)
+  return kind === 'marcheEquilibre' ? hasFlexContent(record) || !!record.resultHtml?.trim() : kind === 'mesures' ? hasFlexContent(record) : hasTestContent(record)
 }
 export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   const rank = new Map(day.order.map((id, index) => [id, index]))

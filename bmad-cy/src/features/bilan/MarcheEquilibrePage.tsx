@@ -4,15 +4,17 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { fullName, parseDate, validDate, type Entry, type Sex } from '../../domain/model'
+import { fullName, validDate, type Entry, type Sex } from '../../domain/model'
 import type { AiCheck, TestRecord } from '../../domain/tinetti'
-import { choiceId, hasFlexContent, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreLines, previousMarcheEquilibre, rubricFilled, rubricOfKey, type FlexControl, type FlexRubric, type PreviousFlex } from '../../domain/marcheEquilibre'
+import { hasFlexContent, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreLines, pickRubric, rubricFilled, rubricOfKey, rubricText } from '../../domain/marcheEquilibre'
+import { filledMeasures, measureTitle, previousMarcheEquilibre, type PreviousFlex } from '../../domain/mesures'
+import { Rubric } from './FlexFields'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, marcheRequest, parseMarcheReply } from './assistant'
 import type { RichEditorHandle } from './RichEditor'
 import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
-import { markLines, testNotesHtml } from './display'
+import { markLines, shortDate, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
@@ -20,9 +22,6 @@ import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
 import { useTestPanes } from './useTestPanes'
 
 const KIND = 'marcheEquilibre'
-const shortDate = (date: string) => parseDate(date).toLocaleDateString('fr-FR')
-// Champ texte affiché sans la mise en forme (retours à la ligne gardés) (reprise de la dictée par l’IA), qui reste dans le compte rendu tant qu’on ne le retouche pas.
-const plain = (value: string | undefined) => (value ?? '').replace(/<br\s*\/?>/g, '\n').replace(/<\/?(?:b|i|u)>/g, '')
 const without = (values: Record<string, string>, keys: string[]) => Object.fromEntries(Object.entries(values).filter(([key]) => !keys.includes(key)))
 
 // Bilan marche / équilibre en plein écran : volets Formulaire (sous-modules à la suite, onglets pour y sauter), Dictée et Résultat
@@ -135,6 +134,15 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     finally { setBusy(false) }
   }
   const notesText = htmlToText(notesHtml)
+  // Tests rapides faits le même jour : repris dans les rubriques encore vides du formulaire, sur demande.
+  const quick = entry.tests?.mesures
+  const quickMissing = quick ? filledMeasures(quick).filter(test => !rubricText(test, input)) : []
+  const takeQuick = () => {
+    if (!quick || busy) return
+    const parts = quickMissing.map(test => pickRubric(quick, test))
+    const merged = { choices: [...choices, ...parts.flatMap(part => part.choices ?? [])], values: Object.assign({}, values, ...parts.map(part => part.values)) as Record<string, string> }
+    setChoices(merged.choices); setValues(merged.values); save(merged)
+  }
   // ↶ : retire les ajouts de l’IA restés intacts (choix et champs) et ses voyants ; la saisie à la main reste.
   const undoIntegration = () => {
     if (resultHtml && !window.confirm('Annuler l’intégration efface le texte retouché du résultat. Continuer ?')) return
@@ -152,7 +160,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
       copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
     <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
-      <FlexForm input={input} ai={ai} busy={busy} previous={previous} onToggle={toggle} onValue={setValue} />
+      <FlexForm input={input} ai={ai} busy={busy} previous={previous} quick={quickMissing.length ? { tests: quickMissing.map(test => `${measureTitle(test)} : ${rubricText(test, quick!)}`), take: takeQuick } : undefined} onToggle={toggle} onValue={setValue} />
       <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} onFocus={screen.onEditorFocus(1)} />
       <ResultPane editor={result} version={version} initialHtml={marked} label={`Compte rendu marche / équilibre pour ${name}`} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onFocus={screen.onEditorFocus(2)} onValidate={() => navigate(back)} />
     </div>
@@ -161,9 +169,9 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
 }
 
 // Formulaire d’un seul tenant : les sous-modules se suivent au défilement ; les onglets (deux rangées) y sautent et suivent la lecture.
-function FlexForm({ input, ai, busy, previous, onToggle, onValue }: {
+function FlexForm({ input, ai, busy, previous, quick, onToggle, onValue }: {
   input: { choices: string[]; values: Record<string, string> }; ai: { filled: string[]; checks: AiCheck[] }; busy: boolean; previous: PreviousFlex
-  onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
+  quick?: { tests: string[]; take: () => void }; onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
 }) {
   const box = useRef<HTMLDivElement>(null)
   const tabs = useRef<HTMLDivElement>(null)
@@ -186,6 +194,7 @@ function FlexForm({ input, ai, busy, previous, onToggle, onValue }: {
   const last = previous.last?.record
   return <div className="pane flex-form" role="tabpanel" aria-label="Formulaire" ref={box} onScroll={follow}>
     {previous.last && <p className="previous-note">★ bilan précédent du {shortDate(previous.last.date)}</p>}
+    {quick && <div className="quick-note" role="note"><p>Tests rapides du jour : {quick.tests.join(' · ')}</p><button type="button" disabled={busy} onClick={quick.take}>Reprendre</button></div>}
     <div className="module-tabs" role="tablist" aria-label="Sous-modules" ref={tabs}>
       {MARCHE_EQUILIBRE.map(module => {
         const filled = module.rubrics.filter(rubric => rubricFilled(rubric, input)).length
@@ -197,47 +206,4 @@ function FlexForm({ input, ai, busy, previous, onToggle, onValue }: {
       {module.rubrics.map(rubric => <Rubric key={rubric.id} rubric={rubric} filled={rubricFilled(rubric, input)} input={input} ai={ai} busy={busy} last={last} measure={previous.measures[rubric.id]} onToggle={onToggle} onValue={onValue} />)}
     </section>)}
   </div>
-}
-
-// Rubrique (sous-sous-module) : titre, dernière mesure ★ pour un test standardisé, voyants ⚠, puis ses champs.
-function Rubric({ rubric, filled, input, ai, busy, last, measure, onToggle, onValue }: {
-  rubric: FlexRubric; filled: boolean; input: { choices: string[]; values: Record<string, string> }; ai: { filled: string[]; checks: AiCheck[] }; busy: boolean
-  last?: TestRecord; measure?: { date: string; text: string }; onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
-}) {
-  return <section className={`flex-rubric${filled ? ' filled' : ''}`} aria-label={rubric.title}>
-    <h3>{rubric.title}</h3>
-    {measure && <p className="previous-measure"><span className="previous-mark" aria-hidden="true">★</span> {measure.text} · {shortDate(measure.date)}</p>}
-    {ai.checks.filter(check => check.row === rubric.id).map((check, index) => <p key={index} className="row-doubt" role="note">⚠ {check.reason || 'à vérifier'}</p>)}
-    {rubric.controls.map(control => <Control key={control.key} control={control} title={rubric.title} input={input} ai={ai.filled} busy={busy} last={last} onToggle={onToggle} onValue={onValue} />)}
-  </section>
-}
-
-function Control({ control, title, input, ai, busy, last, onToggle, onValue }: {
-  control: FlexControl; title: string; input: { choices: string[]; values: Record<string, string> }; ai: string[]; busy: boolean; last?: TestRecord
-  onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
-}) {
-  const { choices, values } = input
-  const name = control.label ? `${title} – ${control.label}` : title
-  const star = <span className="previous-mark" title="Choix du bilan précédent">★</span>
-  const sparkle = <span className="ai-mark" title="Ajouté par l’IA d’après la dictée">✨</span>
-  const fieldLabel = (control.kind === 'number' || control.kind === 'text') && (control.label || ai.includes(control.key)) ? <span>{control.label}{ai.includes(control.key) && <> {sparkle}</>}</span> : null
-  switch (control.kind) {
-    case 'multi': return <div className="flex-options" role="group" aria-label={name}>
-      {control.label && <p className="row-sub">{control.label}</p>}
-      {control.options.map((option, index) => {
-        const choice = choiceId(control.key, index)
-        return <button key={choice} type="button" role="checkbox" className="test-option" aria-checked={choices.includes(choice)} disabled={busy} onClick={() => onToggle(choice)}><span className="option-label">{option}</span>{choices.includes(choice) && ai.includes(choice) && sparkle}{last?.choices?.includes(choice) && star}</button>
-      })}
-    </div>
-    case 'single': return <div className={`flex-options${control.compact ? ' compact' : ''}`} role="radiogroup" aria-label={name}>
-      {control.label && <p className="row-sub">{control.label}</p>}
-      {control.options.map(option => <button key={option} type="button" role="radio" className="test-option" aria-checked={values[control.key] === option} disabled={busy} onClick={() => onValue(control.key, values[control.key] === option ? '' : option)}><span className="option-label">{option}</span>{values[control.key] === option && ai.includes(control.key) && sparkle}{last?.values?.[control.key] === option && star}</button>)}
-    </div>
-    case 'number': return <label className="flex-field">{fieldLabel}<span className="flex-number"><input type="text" inputMode="decimal" aria-label={name} value={values[control.key] ?? ''} disabled={busy} onChange={event => onValue(control.key, event.target.value)} /><span>{control.unit}</span></span></label>
-    case 'text':
-      if (control.ai && !values[control.key]) return null
-      return <label className="flex-field">{fieldLabel}{control.long
-        ? <textarea rows={3} aria-label={name} value={plain(values[control.key])} disabled={busy} onChange={event => onValue(control.key, event.target.value)} />
-        : <input type="text" aria-label={name} value={plain(values[control.key])} disabled={busy} onChange={event => onValue(control.key, event.target.value)} />}</label>
-  }
 }

@@ -83,6 +83,7 @@ export function Journee() {
         <Link className="button primary" to={`/bilan/${date}/${chooser.id}`}>Bilan libre</Link>
         <Link className="button" to={`/tinetti/${date}/${chooser.id}`}>Test de Tinetti</Link>
         <Link className="button" to={`/marcheEquilibre/${date}/${chooser.id}`}>Bilan marche / équilibre</Link>
+        <Link className="button" to={`/mesures/${date}/${chooser.id}`}>Test rapide</Link>
         <button type="button" onClick={() => setChooser(null)}>Annuler</button>
       </div></div>}
       <section className="card day-summary"><fieldset><legend className="sr-only">Niveau H</legend><div className="mood-options">{([-3, -2, -1, 0, 1, 2, 3] as const).map(mood => <button key={mood} aria-pressed={day.mood === mood} onClick={() => void run(() => repository.setMood(date, day.mood === mood ? null : mood as Mood))}>H{moodSigns(mood)}</button>)}</div></fieldset><textarea key={date} aria-label="Commentaire général" rows={2} defaultValue={day.comment} placeholder="Commentaire" onChange={e => { const value = e.target.value; void run(() => repository.setComment(date, value)) }} /><DayCopy day={day} /></section>

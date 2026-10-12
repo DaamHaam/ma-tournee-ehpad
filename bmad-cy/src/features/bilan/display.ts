@@ -1,18 +1,22 @@
-import type { BilanKind, DayBilan, Identity } from '../../domain/model'
+import { parseDate, type BilanKind, type DayBilan, type Identity } from '../../domain/model'
 import { tinettiResultHtml, type TestRecord, type TestType } from '../../domain/tinetti'
 import { marcheEquilibreHtml } from '../../domain/marcheEquilibre'
+import { mesuresHtml } from '../../domain/mesures'
 import { bilanHtml, htmlToText, sanitizeBilanHtml, textToHtml } from './richText'
 
-export const KIND_LABEL: Record<BilanKind, string> = { bilan: 'Bilan', tinetti: 'Tinetti', marcheEquilibre: 'Marche / équilibre' }
+export const shortDate = (date: string) => parseDate(date).toLocaleDateString('fr-FR')
+export const KIND_LABEL: Record<BilanKind, string> = { bilan: 'Bilan', tinetti: 'Tinetti', marcheEquilibre: 'Marche / équilibre', mesures: 'Tests rapides' }
 // Étiquette courte de la liste des bilans, pour laisser la place au nom.
 export const KIND_SHORT: Record<BilanKind, string> = { ...KIND_LABEL, marcheEquilibre: 'Marche/éq.' }
 // Texte dicté d’un test, filtré comme un bilan.
 export function testNotesHtml(record: Pick<TestRecord, 'notes' | 'notesHtml'>): string { return sanitizeBilanHtml(record.notesHtml ?? textToHtml(record.notes)) }
 // Texte d’un test prêt à copier : texte retouché s’il existe ; pour le Tinetti, sinon score calculé + observations de l’IA
-// (tant que la dictée n’a pas changé depuis la synthèse), sinon score + dictée brute ; pour le bilan marche / équilibre, compte rendu généré.
+// (tant que la dictée n’a pas changé depuis la synthèse), sinon score + dictée brute ; pour le bilan marche / équilibre, compte rendu généré ;
+// pour les tests rapides, une ligne par test.
 export function testCopyHtml(record: Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml' | 'aiObservations' | 'aiSource' | 'choices' | 'values'>, kind: TestType = 'tinetti'): string {
   if (record.resultHtml) return sanitizeBilanHtml(record.resultHtml)
   if (kind === 'marcheEquilibre') return marcheEquilibreHtml(record)
+  if (kind === 'mesures') return mesuresHtml(record)
   const fresh = record.aiObservations !== undefined && record.aiSource === record.notes
   return tinettiResultHtml(record, fresh ? sanitizeBilanHtml(record.aiObservations!) : testNotesHtml(record))
 }

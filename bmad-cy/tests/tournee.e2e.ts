@@ -383,6 +383,62 @@ test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouc
   await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).not.toHaveClass(/filled/)
 })
 
+test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, reprise dans le bilan et suivi dans la fiche', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Robert Paul', 'Test rapide')
+  await expect(page.getByRole('tab', { name: 'TUG' })).toHaveAttribute('aria-selected', 'true')
+  // Chronomètre : le temps arrêté remplit le champ.
+  await page.getByRole('button', { name: 'Démarrer' }).click()
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: 'Arrêter' }).click()
+  await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toHaveValue(/^1,\d$/)
+  await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('22')
+  await page.getByRole('tab', { name: 'Assis-debout 30 s' }).click()
+  await expect(page.getByRole('button', { name: 'Démarrer 30 s' })).toBeVisible()
+  await page.getByRole('textbox', { name: 'Assis-debout en 30s' }).fill('7')
+  await page.getByRole('radiogroup', { name: 'Assis-debout en 30s' }).getByRole('radio', { name: 'sans accoudoirs' }).click()
+  await expect(page.getByRole('tab', { name: /TUG/ })).toContainText('✓')
+  await page.getByRole('button', { name: 'Valider' }).click()
+  await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).toHaveClass(/filled/)
+
+  // Jour suivant : ★ de la dernière mesure, copie d’une ligne par test qui coche la transmission.
+  await page.goto('/#/?date=2026-09-25')
+  await openBilan(page, 'Robert Paul', 'Test rapide')
+  await expect(page.getByRole('region', { name: 'Timed Up and Go' })).toContainText('22sec · 22/09/2026')
+  await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('18')
+  // Supprimer un test pour le refaire.
+  page.once('dialog', dialog => void dialog.accept())
+  await page.getByRole('button', { name: 'Supprimer ce test' }).click()
+  await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toHaveValue('')
+  await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('19')
+  await page.evaluate(() => {
+    const store = window as unknown as { copied?: { html: string; text: string } }
+    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
+  })
+  await page.getByRole('button', { name: 'Copier' }).click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { copied?: { html: string } }).copied?.html)).toBe('Timed Up and Go : 19sec')
+  await page.getByRole('button', { name: 'Valider' }).click()
+
+  // Bilan marche / équilibre du même jour : il propose de reprendre les tests rapides.
+  await openBilan(page, 'Robert Paul', 'Bilan marche / équilibre')
+  await expect(page.getByRole('note').filter({ hasText: 'Tests rapides du jour' })).toContainText('TUG : 19sec')
+  await page.getByRole('button', { name: 'Reprendre' }).click()
+  await page.getByRole('tab', { name: 'Transferts' }).click()
+  await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toHaveValue('19')
+  await expect(page.getByRole('region', { name: 'Assis-debout en 30s' })).toContainText('7, sans accoudoirs · 22/09/2026')
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+
+  // Onglet Bilans et fiche : tests rapides copiés (Trans cochée), suivi des tests.
+  await expect(page.getByRole('button', { name: /^Note pour Robert Paul, dernière éval ou trans le/ })).toBeVisible()
+  await page.goto('/#/bilans?date=2026-09-25')
+  await expect(page.getByText('1 / 2 bilans copiés')).toBeVisible()
+  await expect(page.getByText('Tests rapides')).toBeVisible()
+  await page.getByRole('link', { name: /Patients/ }).click()
+  await page.getByRole('link', { name: /Robert Paul/ }).click()
+  await page.getByText('Suivi des tests').click()
+  await expect(page.locator('.measures-history')).toContainText('TUG19sec (25/09/2026) · 22sec (22/09/2026)')
+})
+
 // En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.
 test.describe('dictée', () => {
   test.use({ serviceWorkers: 'block' })

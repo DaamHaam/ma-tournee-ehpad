@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { choiceId, fieldHtml, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreText, previousMarcheEquilibre, rubricFilled } from './marcheEquilibre'
+import { previousMarcheEquilibre } from './mesures'
+import { choiceId, fieldHtml, MARCHE_EQUILIBRE, marcheEquilibreHtml, marcheEquilibreText, rubricFilled } from './marcheEquilibre'
 import { hasTestContent } from './tinetti'
 
 // Identifiant d’un choix d’après son libellé, pour écrire les tests lisiblement.

@@ -1,8 +1,9 @@
 // Test de Tinetti (POMA, 28 points), libellés de la grille habituelle de l’utilisateur.
 // Échelle adaptée d’après Tinetti M., J Am Geriatr Soc 1986;34:119-126.
-// Types de tests rangés dans entries[id].tests : Tinetti (grille cotée) et bilan marche / équilibre (bilan flexible, domain/marcheEquilibre.ts).
-export type TestType = 'tinetti' | 'marcheEquilibre'
-export const TEST_TYPES: TestType[] = ['tinetti', 'marcheEquilibre']
+// Types de tests rangés dans entries[id].tests : Tinetti (grille cotée), bilan marche / équilibre (bilan flexible, domain/marcheEquilibre.ts)
+// et tests rapides du jour (mêmes champs que les tests standardisés du bilan marche / équilibre, domain/mesures.ts).
+export type TestType = 'tinetti' | 'marcheEquilibre' | 'mesures'
+export const TEST_TYPES: TestType[] = ['tinetti', 'marcheEquilibre', 'mesures']
 // resultHtml : texte final validé (synthèse IA relue), prêt à copier ; effacé dès que la cotation ou la dictée change.
 // choices / values : bilan flexible (choix multiples cochés ; textes, nombres et choix uniques), scores restant vide.
 // ai* : dernière synthèse IA (observations rédigées, lignes à vérifier, lignes cotées par l’IA, dictée résumée), pour la revoir sans nouvel appel.
