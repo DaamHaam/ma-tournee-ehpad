@@ -317,7 +317,7 @@ describe('stockage local', () => {
     const [alice] = (await database.patients.toArray()).filter(patient => patient.lastName === 'Martin')
     await repository.setTest('2026-09-08', alice.id, 'tinetti', { scores: { e1: 1 } }, '2026-09-08T10:00:00Z')
     await repository.setTest('2026-09-08', alice.id, 'tinetti', { notes: 'Marche lente', notesHtml: '<b>Marche</b> lente' }, '2026-09-08T10:05:00Z')
-    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.tinetti).toEqual({ scores: { e1: 1 }, notes: 'Marche lente', notesHtml: '<b>Marche</b> lente', at: '2026-09-08T10:00:00Z' })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.tinetti).toEqual({ scores: { e1: 1 }, notes: 'Marche lente', notesHtml: '<b>Marche</b> lente', at: '2026-09-08T10:00:00Z', editedAt: '2026-09-08T10:05:00Z' })
     await repository.setTest('2026-09-08', alice.id, 'tinetti', { resultHtml: '<b>Tinetti</b> 1/28' })
     expect((await database.days.get('2026-09-08'))?.entries[alice.id].tests?.tinetti?.resultHtml).toBe('<b>Tinetti</b> 1/28')
     await repository.markTestCopied('2026-09-08', alice.id, 'tinetti')

@@ -17,7 +17,8 @@ import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLines, shortDate, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
 import { ScreenHeader } from './screen'
-import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
+import { OpenBilansStrip } from './OpenBilans'
+import { backTarget, useOutsideText, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
 import { useTestPanes } from './useTestPanes'
 
@@ -94,10 +95,12 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     const next = value.trim() ? { ...values, [key]: value } : without(values, [key])
     setValues(next); save({ values: next, ...touch(key) })
   }
+  const remember = useOutsideText(entry.tests?.[KIND] ? testNotesHtml(entry.tests[KIND]) : '', html => editor.current?.setHtml(html))
   const saveNotes = useCallback((html: string, text: string) => {
+    remember(testNotesHtml({ notes: text, notesHtml: text.trim() ? html : undefined }))
     latestNotes.current = html; setNotesHtml(html); changed.current = true
     void run(() => repository.setTest(date, id, KIND, { notes: text, notesHtml: html }))
-  }, [date, id, run])
+  }, [date, id, run, remember])
   const dictation = useDictation(
     screen.insertDictation,
     useCallback(async (text: string) => { const value = appendText(latestNotes.current, text); latestNotes.current = value; await run(() => repository.setTest(date, id, KIND, { notes: htmlToText(value), notesHtml: value })) }, [date, id, run]),
@@ -158,6 +161,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Marche / équilibre</span>}
       copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
+    {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="marcheEquilibre" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <FlexForm input={input} ai={ai} busy={busy} previous={previous} quick={quickMissing.length ? { tests: quickMissing.map(test => `${measureTitle(test)} : ${rubricText(test, quick!)}`), take: takeQuick } : undefined} onToggle={toggle} onValue={setValue} />

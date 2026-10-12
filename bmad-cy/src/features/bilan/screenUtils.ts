@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Zone réellement visible : sur iPhone, le clavier ouvert la réduit sans redimensionner la page.
 // Clavier fermé, l’écran garde sa taille CSS : suivre les rebonds de Safari au bout d’un défilement faisait trembler la page.
@@ -74,4 +74,15 @@ export function useKeyboardLost(active: boolean, onLost: () => void) {
     viewport?.addEventListener('resize', check)
     return () => { window.clearTimeout(timer); document.removeEventListener('focusout', check); viewport?.removeEventListener('resize', check) }
   }, [active])
+}
+
+// Texte enregistré modifié hors de l’écran ouvert (dictée de ce bilan transcrite après qu’on l’a quitté par la bande des bilans
+// en cours, puis rouvert) : repris dans l’éditeur. Seuls les textes que l’écran n’a pas écrits lui-même sont repris : une saisie
+// en cours n’est jamais remplacée par un état enregistré en retard. remember : texte enregistré par l’écran, sous sa forme relue.
+export function useOutsideText(stored: string, apply: (html: string) => void) {
+  const own = useRef(new Set([stored]))
+  const applyLatest = useRef(apply)
+  useEffect(() => { applyLatest.current = apply })
+  useEffect(() => { if (own.current.has(stored)) return; own.current.add(stored); applyLatest.current(stored) }, [stored])
+  return useCallback((html: string) => { own.current.add(html) }, [])
 }

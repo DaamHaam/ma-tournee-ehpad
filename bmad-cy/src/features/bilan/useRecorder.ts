@@ -10,6 +10,7 @@ export function useRecorder(maxSeconds: number, onAudio: (audio: Blob) => void) 
   const timer = useRef<number | undefined>(undefined)
   const discard = useRef(false)
   const deliver = useRef(onAudio)
+  const stopped = useRef<(() => void) | null>(null)
   useEffect(() => { deliver.current = onAudio }, [onAudio])
   const stop = useCallback(() => { if (recorder.current?.state === 'recording') recorder.current.stop() }, [])
   const start = useCallback(async () => {
@@ -29,6 +30,7 @@ export function useRecorder(maxSeconds: number, onAudio: (audio: Blob) => void) 
       recorder.current = null
       setRecording(false)
       if (!discard.current && chunks.length) deliver.current(new Blob(chunks, { type: media.mimeType || mimeType || 'audio/mp4' }))
+      stopped.current?.(); stopped.current = null
     }
     discard.current = false
     recorder.current = media
@@ -43,7 +45,13 @@ export function useRecorder(maxSeconds: number, onAudio: (audio: Blob) => void) 
       if (seconds >= maxSeconds) stop()
     }, 250)
   }, [maxSeconds, stop])
+  // Arrêt avant de changer de bilan : l’audio est remis (puis transcrit pour le bilan d’origine) avant de quitter la page.
+  const finish = useCallback(() => new Promise<void>(resolve => {
+    if (recorder.current?.state !== 'recording') { resolve(); return }
+    stopped.current = resolve
+    recorder.current.stop()
+  }), [])
   // Quitter la page pendant l’enregistrement l’abandonne.
   useEffect(() => () => { discard.current = true; window.clearInterval(timer.current); if (recorder.current?.state === 'recording') recorder.current.stop() }, [])
-  return { recording, elapsed, start, stop }
+  return { recording, elapsed, start, stop, finish }
 }

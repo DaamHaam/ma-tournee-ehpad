@@ -17,10 +17,10 @@ export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
-// bilanCopied : copié depuis la dernière modification.
+// bilanCopied : copié depuis la dernière modification ; bilanEditedAt (et editedAt d’un test) : heure de la dernière modification.
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
-export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>> }
+export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>> }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
@@ -91,7 +91,7 @@ export function entryVisible(entry: Entry, patient: Pick<Patient, 'archived'> | 
 }
 // Bilans et tests d’une journée dans l’ordre où ils ont été commencés ; ceux sans heure (anciens) suivent l’ordre de la tournée.
 export type BilanKind = 'bilan' | TestType
-export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text: string; html?: string; record?: TestRecord; copied: boolean; at?: string }
+export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text: string; html?: string; record?: TestRecord; copied: boolean; at?: string; editedAt?: string }
 // Un bilan marche / équilibre ne se copie que par son compte rendu : sans formulaire rempli ni résultat retouché (dictée seule),
 // il reste enregistré mais n’a rien à copier dans l’onglet Bilans.
 function listedTest(kind: TestType, record: TestRecord): boolean {
@@ -101,10 +101,16 @@ export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   const rank = new Map(day.order.map((id, index) => [id, index]))
   const items: DayBilan[] = []
   for (const [id, entry] of Object.entries(day.entries)) {
-    if ((entry.bilan ?? '').trim()) items.push({ id, kind: 'bilan', patient: entry.patient, text: entry.bilan!, html: entry.bilanHtml, copied: !!entry.bilanCopied, at: entry.bilanAt })
-    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (listedTest(kind, record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, copied: !!record.copied, at: record.at || undefined })
+    if ((entry.bilan ?? '').trim()) items.push({ id, kind: 'bilan', patient: entry.patient, text: entry.bilan!, html: entry.bilanHtml, copied: !!entry.bilanCopied, at: entry.bilanAt, editedAt: entry.bilanEditedAt ?? entry.bilanAt })
+    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (listedTest(kind, record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, copied: !!record.copied, at: record.at || undefined, editedAt: record.editedAt ?? (record.at || undefined) })
   }
   return items.sort((x, y) => (x.at ?? '\uffff').localeCompare(y.at ?? '\uffff') || (rank.get(x.id) ?? Infinity) - (rank.get(y.id) ?? Infinity) || x.kind.localeCompare(y.kind))
+}
+// Bilans en cours de la journée, pour passer d’un patient à l’autre : ni copiés, ni tests rapides (terminés une fois validés),
+// modifiés il y a moins d’une demi-heure.
+export const OPEN_BILAN_MINUTES = 30
+export function openBilans(day: Pick<Day, 'entries' | 'order'>, now: Date): DayBilan[] {
+  return dayBilans(day).filter(bilan => bilan.kind !== 'mesures' && !bilan.copied && !!bilan.editedAt && now.getTime() - Date.parse(bilan.editedAt) < OPEN_BILAN_MINUTES * 60_000)
 }
 export function hasBilanOrTest(entry: Entry): boolean { return (entry.bilan ?? '').trim() !== '' || Object.values(entry.tests ?? {}).some(hasTestContent) }
 // Fin de prescription : date + durée (1 an sans durée). En mois ou en années, le jour est ramené au dernier jour du mois s’il n’existe pas

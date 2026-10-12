@@ -45,7 +45,7 @@ function checkTest(value: unknown): boolean {
   return isObject(value) && isObject(value.scores) && Object.values(value.scores).every(score => typeof score === 'number') && isString(value.notes)
     && (value.choices === undefined || isStringList(value.choices))
     && (value.values === undefined || (isObject(value.values) && Object.values(value.values).every(isString)))
-    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.resultHtml === undefined || isString(value.resultHtml))
+    && (value.notesHtml === undefined || isString(value.notesHtml)) && (value.editedAt === undefined || isString(value.editedAt)) && (value.resultHtml === undefined || isString(value.resultHtml))
     && (value.aiObservations === undefined || isString(value.aiObservations)) && (value.aiSource === undefined || isString(value.aiSource))
     && (value.aiFilled === undefined || isStringList(value.aiFilled)) && (value.aiChecks === undefined || (Array.isArray(value.aiChecks) && value.aiChecks.every(check => isObject(check) && isString(check.row) && isString(check.reason)))) && (value.at === undefined || isString(value.at)) && (value.copied === undefined || isBoolean(value.copied))
 }

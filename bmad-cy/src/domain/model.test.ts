@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOrder, dayBilans, effectivePrescriptionEnd, prescriptionEndDate, prescriptionStatus, prescriptionText, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
+import { applyOrder, dayBilans, openBilans, effectivePrescriptionEnd, prescriptionEndDate, prescriptionStatus, prescriptionText, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
 
 describe('règles du domaine', () => {
   it('liste les bilans dans l’ordre où ils ont été commencés, les anciens selon la tournée', () => {
@@ -17,6 +17,19 @@ describe('règles du domaine', () => {
     expect(dayBilans(day({ notes: 'dictée seule' }))).toEqual([])
     expect(dayBilans(day({ notes: 'dictée', choices: ['marche.0'] }))).toHaveLength(1)
     expect(dayBilans(day({ resultHtml: 'texte retouché' }))).toHaveLength(1)
+  })
+  it('garde dans la bande les bilans en cours : ni copiés, ni tests rapides, modifiés depuis moins d’une demi-heure', () => {
+    const identity = (id: string) => ({ id, lastName: id.toUpperCase(), firstName: '', room: '', priority: '', demo: false })
+    const entry = (id: string, extra: object) => ({ patient: identity(id), session: null, note: '', ...extra })
+    const test = (editedAt: string, extra: object = {}) => ({ scores: { e1: 1 }, notes: '', at: '2026-10-05T08:00:00Z', editedAt, ...extra })
+    const open = openBilans({ order: ['a', 'b', 'c', 'd', 'e'], entries: {
+      a: entry('a', { bilan: 'récent', bilanAt: '2026-10-05T08:00:00Z', bilanEditedAt: '2026-10-05T09:45:00Z' }),
+      b: entry('b', { bilan: 'copié', bilanAt: '2026-10-05T09:40:00Z', bilanEditedAt: '2026-10-05T09:50:00Z', bilanCopied: true }),
+      c: entry('c', { bilan: 'ancien', bilanAt: '2026-10-05T09:00:00Z', bilanEditedAt: '2026-10-05T09:25:00Z' }),
+      d: entry('d', { tests: { tinetti: test('2026-10-05T09:55:00Z'), mesures: { ...test('2026-10-05T09:58:00Z'), scores: {}, values: { tug: '18' } } } }),
+      e: entry('e', { bilan: 'sans heure' }),
+    } }, new Date('2026-10-05T10:00:00Z'))
+    expect(open.map(bilan => [bilan.id, bilan.kind])).toEqual([['a', 'bilan'], ['d', 'tinetti']])
   })
   it('bascule A/B de façon exclusive et réversible', () => {
     expect(toggleSession(null, 'A')).toBe('A')

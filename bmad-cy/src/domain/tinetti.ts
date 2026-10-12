@@ -8,7 +8,7 @@ export const TEST_TYPES: TestType[] = ['tinetti', 'marcheEquilibre', 'mesures']
 // choices / values : bilan flexible (choix multiples cochés ; textes, nombres et choix uniques), scores restant vide.
 // ai* : dernière synthèse IA (observations rédigées, lignes à vérifier, lignes cotées par l’IA, dictée résumée), pour la revoir sans nouvel appel.
 export interface AiCheck { row: string; reason: string }
-export interface TestRecord { scores: Record<string, number>; notes: string; notesHtml?: string; resultHtml?: string; at: string; copied?: boolean; aiObservations?: string; aiChecks?: AiCheck[]; aiFilled?: string[]; aiSource?: string; choices?: string[]; values?: Record<string, string> }
+export interface TestRecord { scores: Record<string, number>; notes: string; notesHtml?: string; resultHtml?: string; at: string; editedAt?: string; copied?: boolean; aiObservations?: string; aiChecks?: AiCheck[]; aiFilled?: string[]; aiSource?: string; choices?: string[]; values?: Record<string, string> }
 export interface TestRow { id: string; sub?: string; options: { score: number; label: string }[] }
 export interface TestItem { number: number; title: string; rows: TestRow[] }
 export interface TestSection { id: 'equilibre' | 'marche'; title: string; instructions: string; items: TestItem[] }

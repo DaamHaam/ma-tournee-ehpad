@@ -14,7 +14,8 @@ import { appendText, htmlToText, sanitizeBilanHtml } from './richText'
 import { markLine, testCopyHtml, testNotesHtml } from './display'
 import { useDictation } from './useDictation'
 import { ScreenHeader } from './screen'
-import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
+import { OpenBilansStrip } from './OpenBilans'
+import { backTarget, useOutsideText, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
 import { useTestPanes } from './useTestPanes'
 
@@ -81,10 +82,12 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     setScores(next); regenerate()
     void run(() => repository.setTest(date, id, 'tinetti', { scores: next }))
   }
+  const remember = useOutsideText(entry.tests?.tinetti ? testNotesHtml(entry.tests.tinetti) : '', html => editor.current?.setHtml(html))
   const saveNotes = useCallback((html: string, text: string) => {
+    remember(testNotesHtml({ notes: text, notesHtml: text.trim() ? html : undefined }))
     latestNotes.current = html; setNotesHtml(html); changed.current = true; setResultHtml(''); setVersion(current => current + 1)
     void run(() => repository.setTest(date, id, 'tinetti', { notes: text, notesHtml: html }))
-  }, [date, id, run])
+  }, [date, id, run, remember])
   const dictation = useDictation(
     screen.insertDictation,
     useCallback(async (text: string) => { const value = appendText(latestNotes.current, text); latestNotes.current = value; await run(() => repository.setTest(date, id, 'tinetti', { notes: htmlToText(value), notesHtml: value })) }, [date, id, run]),
@@ -145,6 +148,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     <ScreenHeader back={back} backLabel={label} patient={entry.patient}
       tools={<span className="total-badge" aria-label={`Total ${score.total} sur ${score.max}`}>Tinetti {score.total}/{score.max}</span>}
       copied={copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
+    {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="tinetti" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <div className="pane" role="tabpanel" aria-label="Grille">{previous && <p className="previous-note">★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}<div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={busy || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>

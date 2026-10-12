@@ -38,7 +38,7 @@ export function useDictation(insert: (text: string) => void, afterLeave: (text: 
       if (mounted.current) { setPending(audio); setError(cause instanceof Error ? cause.message : 'Transcription impossible.') }
     } finally { if (mounted.current) setTranscribing(false) }
   }, [settings])
-  const { recording, elapsed, start, stop } = useRecorder(MAX_DICTATION_SECONDS, audio => void send(audio))
+  const { recording, elapsed, start, stop, finish } = useRecorder(MAX_DICTATION_SECONDS, audio => void send(audio))
   const toggle = async () => {
     if (recording) { stop(); return }
     setError(''); setPending(null)
@@ -46,6 +46,8 @@ export function useDictation(insert: (text: string) => void, afterLeave: (text: 
   }
   return {
     recording, transcribing, error, pending, toggle,
+    // Changer de bilan pendant la dictée : elle s’arrête et part, transcrite, dans le bilan qu’on quitte.
+    finish,
     retry: () => { if (pending) void send(pending) },
     dismiss: () => { setPending(null); setError('') },
     hasKey: !!settings?.key,

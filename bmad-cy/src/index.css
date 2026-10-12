@@ -412,3 +412,10 @@ html:has(.bilan-page), body:has(.bilan-page) { overflow:hidden; overscroll-behav
 .recognized .action-row button { flex:1; }
 .recognized .test-option[aria-checked="true"] .previous-measure { color:#ffd76a; }
 .recognized-tinetti a { color:var(--accent); font-weight:700; text-decoration:underline; }
+/* Bande des bilans en cours : une rangée discrète sous l’en-tête, qui défile de côté au-delà de trois ou quatre patients. */
+.open-bilans { flex:none; display:flex; gap:.3rem; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none; }
+.open-bilans::-webkit-scrollbar { display:none; }
+.open-bilans button { flex:none; display:flex; align-items:center; gap:.3rem; min-height:30px; padding:.1rem .5rem; border-radius:15px; font-size:.74rem; }
+.open-bilans button[aria-current="page"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.open-bilans .open-name { max-width:9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+.open-bilans .open-kind { color:var(--muted); font-size:.68rem; font-weight:800; }

@@ -95,8 +95,8 @@ export class TourRepository {
       if (html !== undefined && bilan.trim()) entry.bilanHtml = html
       else delete entry.bilanHtml
       delete entry.bilanCopied
-      if (!bilan.trim()) delete entry.bilanAt
-      else entry.bilanAt ??= now
+      if (!bilan.trim()) { delete entry.bilanAt; delete entry.bilanEditedAt }
+      else { entry.bilanAt ??= now; entry.bilanEditedAt = now }
     })
   }
   // Supprimer le bilan supprime aussi les mesures qui en avaient été tirées.
@@ -116,7 +116,7 @@ export class TourRepository {
   async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml' | 'aiObservations' | 'aiChecks' | 'aiFilled' | 'aiSource' | 'choices' | 'values'>>, now = new Date().toISOString()): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
-      const record: TestRecord = { scores: {}, notes: '', at: now, ...entry.tests?.[type], ...patch }
+      const record: TestRecord = { scores: {}, notes: '', at: now, ...entry.tests?.[type], ...patch, editedAt: now }
       delete record.copied
       // Le texte retouché ne vaut que pour ce qu’il résume : cotation et dictée du Tinetti, formulaire du bilan marche / équilibre
       // (la dictée n’y entre qu’au travers du formulaire, quand l’IA l’intègre).

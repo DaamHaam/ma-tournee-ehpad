@@ -15,7 +15,8 @@ import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } fr
 import { appendText, bilanHtml, htmlToText } from './richText'
 import { useDictation } from './useDictation'
 import { BarButton, DictationFooter, KeyboardBar, ScreenHeader } from './screen'
-import { backTarget, ICONS, useBlockEdgeSwipe, useKeyboardLost, useVisibleViewport } from './screenUtils'
+import { OpenBilansStrip } from './OpenBilans'
+import { backTarget, ICONS, useBlockEdgeSwipe, useKeyboardLost, useOutsideText, useVisibleViewport } from './screenUtils'
 
 // Bilan libre du jour en plein écran ; ne part pas dans l’export TXT.
 export function BilanPage() {
@@ -48,7 +49,8 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
   const [keyboard, setKeyboard] = useState(false)
   const viewport = useVisibleViewport()
   useBlockEdgeSwipe()
-  const save = useCallback((value: string, text: string) => { latest.current = value; setHtml(value); void run(() => repository.setBilan(date, id, text, value)) }, [date, id, run])
+  const remember = useOutsideText(bilanHtml(entry), value => editor.current?.setHtml(value))
+  const save = useCallback((value: string, text: string) => { latest.current = value; setHtml(value); remember(bilanHtml({ bilan: text, bilanHtml: text.trim() ? value : undefined })); void run(() => repository.setBilan(date, id, text, value)) }, [date, id, run, remember])
   const dictation = useDictation(
     useCallback((text: string) => editor.current?.insertDictation(text), []),
     // Page quittée pendant la transcription : la dictée s’ajoute en fin de bilan.
@@ -97,6 +99,7 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
   return <div className={`bilan-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<FormatButtons editor={editor} state={format} />}
       copied={copied} copyDisabled={!htmlToText(html).trim()} onCopy={() => void copy(html)} onCancel={() => void cancel()} />
+    {!keyboard && <OpenBilansStrip date={date} id={id} kind="bilan" beforeLeave={dictation.finish} />}
     {!keyboard && <LastMeasures measures={lastMeasures} />}
     <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => setKeyboard(true)} onFormatState={setFormat} />
     {keyboard

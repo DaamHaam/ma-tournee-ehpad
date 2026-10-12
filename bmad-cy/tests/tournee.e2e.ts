@@ -439,9 +439,76 @@ test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, repri
   await expect(page.locator('.measures-history')).toContainText('TUG19sec (25/09/2026) · 22sec (22/09/2026)')
 })
 
+test('bande des bilans en cours : apparaît au deuxième patient, passe d’un bilan à l’autre, perd un bilan copié', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Martin Alice')
+  await expect(page.getByRole('navigation', { name: 'Bilans en cours' })).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' }).fill('Marche avec rollator.')
+  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await openBilan(page, 'Bernard Louis', 'Test de Tinetti')
+  const strip = page.getByRole('navigation', { name: 'Bilans en cours' })
+  await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toBeVisible()
+  await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
+  await expect(strip.getByRole('button', { name: 'Bernard L., Tinetti' })).toHaveAttribute('aria-current', 'page')
+  await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
+  await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })).toHaveText('Marche avec rollator.')
+  await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toHaveAttribute('aria-current', 'page')
+  await strip.getByRole('button', { name: 'Bernard L., Tinetti' }).click()
+  await expect(page.getByRole('heading', { name: 'Équilibre 1/16' })).toBeVisible()
+  await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
+  // Copié, le bilan sort de la bande ; le retour mène toujours à la journée.
+  await page.evaluate(() => { Clipboard.prototype.write = async () => {} })
+  await page.getByRole('button', { name: 'Copier' }).click()
+  await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toHaveCount(0)
+  await expect(strip.getByRole('button', { name: 'Bernard L., Tinetti' })).toBeVisible()
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  await expect(page.getByRole('button', { name: 'Bilan pour Martin Alice' })).toBeVisible()
+})
+
 // En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.
 test.describe('dictée', () => {
   test.use({ serviceWorkers: 'block' })
+  test('bande des bilans : changer de patient pendant la dictée l’envoie au bilan qu’on quitte', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } })
+      class FakeRecorder {
+        static isTypeSupported(type: string) { return type === 'audio/mp4' }
+        state = 'inactive'; mimeType = 'audio/mp4'
+        ondataavailable: ((event: { data: Blob }) => void) | null = null
+        onstop: (() => void) | null = null
+        start() { this.state = 'recording' }
+        stop() { this.state = 'inactive'; setTimeout(() => { this.ondataavailable?.({ data: new Blob(['son'], { type: 'audio/mp4' }) }); this.onstop?.() }, 50) }
+      }
+      Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeRecorder })
+    })
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
+    await page.route('https://openrouter.ai/api/v1/audio/transcriptions', async route => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+      await new Promise(resolve => setTimeout(resolve, 300))
+      return route.fulfill({ headers: cors, json: { text: 'Dicté pour Bernard.' } })
+    })
+    await page.goto('/#/settings')
+    await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test9012')
+    await page.getByRole('button', { name: 'Enregistrer' }).click()
+    await page.goto('/#/?date=2026-09-22')
+    await openBilan(page, 'Martin Alice')
+    await page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' }).fill('Bilan Martin.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+    await page.getByRole('link', { name: 'Retour à la journée' }).click()
+    await openBilan(page, 'Bernard Louis')
+    await page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' }).fill('Bilan Bernard.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+    await page.getByRole('button', { name: 'Démarrer la dictée' }).click()
+    await expect(page.getByRole('button', { name: 'Arrêter la dictée' })).toBeVisible()
+    const strip = page.getByRole('navigation', { name: 'Bilans en cours' })
+    await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
+    await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })).toHaveText('Bilan Martin.')
+    // Retour avant la fin de la transcription : le texte dicté arrive dans l’éditeur rouvert.
+    await strip.getByRole('button', { name: 'Bernard L., Bilan' }).click()
+    await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })).toContainText('Bilan Bernard.Dicté pour Bernard.')
+  })
+
   test('dictée OpenRouter simulée : clé testée, texte inséré au curseur, clé absente de la sauvegarde', async ({ page }) => {
     // Micro et enregistreur factices : le navigateur de test n’a pas de micro ; OpenRouter est simulé.
     // Sans partage natif (WebKit macOS l’expose) : « Sauvegarder » télécharge le fichier.
