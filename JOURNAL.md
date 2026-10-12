@@ -1,5 +1,12 @@
 # Journal des clôtures
 
+## 2026-10-12 — Claude · cloud
+- Livré : v0.29.0 à v0.32.1 — commentaires marche / équilibre sans intitulé, accoudoirs au 30 s, correction des secousses du défilement ; tests rapides depuis la journée (9 tests dont 5 levers de chaise et EVA, chronomètre et compte à rebours, ★, copie qui coche Trans), historique commun des mesures et « Suivi des tests » de la fiche ; tests standardisés reconnus dans le bilan libre par « Corriger » (panneau à valider, ★, Tinetti → grille) ; bande des bilans en cours (dictée envoyée au bilan quitté). Plan du bilan unifié à deux volets (tech-spec-bilan-unifie.md), règle Convex pour les fiches de bilan.
+- Tests : npm test 107/107, lint, build, Playwright 23/23 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne) à chaque version.
+- Corrigé à la revue : ✕ du test rapide n'écrit plus une journée consultée ; ✕ du bilan libre remet l'heure de modification ; heure de modification vérifiée dans la sauvegarde ; écran du test rapide qui suit le clavier ; dictée revenue après réouverture du bilan reprise dans l'éditeur.
+- En attente : essais sur iPhone (secousses, bip du compte à rebours, bande avec dictée, « Corriger » avec le vrai modèle) ; schéma Convex de l'organisateur à transmettre.
+- Prochaine étape : en local, transmettre les notes de l'organisateur et de Convex, puis implémenter le bilan unifié (tech-spec-bilan-unifie.md).
+
 ## 2026-10-09 — Claude · cloud
 - Livré : v0.22.0 à v0.28.1 — bilan flexible marche / équilibre (sous-modules à la suite avec onglets, compte rendu mis en forme, copie à chasse fixe CRLF, ★ des mesures précédentes) ; trois volets Formulaire · Dictée · Résultat pour Tinetti et marche / équilibre ; intégration IA de la dictée (✨, ↶, ⚠, Valider), la dictée prime sur les cases et va telle quelle dans l'« Autre » de sa rubrique, mise en forme dictée conservée ; civilités Mr / Mme, jamais de nom ni [patient] ; lignes de l'IA en violet, à vérifier en orange (écran seulement) ; clavier ouvert au toucher avec rangée G I S · micro · flèche ; Voxtral par défaut ; réflexion du modèle réglable dans Réglages.
 - Tests : npm test 99/99, lint, build, Playwright 20/20 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne), v0.28.1 publiée.
