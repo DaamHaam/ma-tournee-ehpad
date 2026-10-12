@@ -55,6 +55,8 @@ function checkDay(value: unknown): Day {
   for (const [id, entry] of Object.entries(value.entries)) {
     if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanHtml !== undefined && !isString(entry.bilanHtml)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
     if (entry.tests !== undefined && !(isObject(entry.tests) && Object.values(entry.tests).every(checkTest))) throw new Error(INVALID)
+    // Mesures reconnues dans le bilan libre (après la v0.30) : choix et champs comme un bilan flexible.
+    if (entry.bilanMeasures !== undefined && !(isObject(entry.bilanMeasures) && (entry.bilanMeasures.choices === undefined || isStringList(entry.bilanMeasures.choices)) && (entry.bilanMeasures.values === undefined || (isObject(entry.bilanMeasures.values) && Object.values(entry.bilanMeasures.values).every(isString))))) throw new Error(INVALID)
     entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]
   }
   const day = { mood: null, comment: '', ...value, entries } as Day

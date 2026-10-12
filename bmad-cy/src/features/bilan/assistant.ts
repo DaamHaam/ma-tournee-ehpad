@@ -1,6 +1,7 @@
 import type { Sex } from '../../domain/model'
 import { TINETTI, validScore, type AiCheck } from '../../domain/tinetti'
-import { choiceId, fieldOf, MARCHE_EQUILIBRE, rubricOfKey, type FlexInput } from '../../domain/marcheEquilibre'
+import { choiceId, fieldOf, MARCHE_EQUILIBRE, rubricOfKey, type FlexControl, type FlexInput } from '../../domain/marcheEquilibre'
+import { MEASURE_RUBRICS } from '../../domain/mesures'
 import { htmlToText, sanitizeBilanHtml } from './richText'
 
 const TINETTI_ROWS = new Set(TINETTI.flatMap(section => section.items.flatMap(item => item.rows.map(row => row.id))))
@@ -122,23 +123,28 @@ export function marcheRequest(input: FlexInput, dictation: string, sex: Sex, nam
 }
 
 export interface FlexReply { choices: string[]; values: Record<string, string>; checks: AiCheck[] }
-// L’IA ne coche que des options libres et ne remplit que des champs vides : rien de ce qu’a saisi le kinésithérapeute n’est remplacé.
-// Voyants rattachés à leur rubrique ; textes remis en forme comme toute réponse de l’IA (civilités, jamais [patient]).
-export function parseMarcheReply(content: string, input: FlexInput, sex: Sex, found: string[] = [], dictation = ''): FlexReply {
-  const reply = readJson(content)
-  const taken = new Set(input.choices ?? [])
-  const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && !taken.has(id)))] : []
-  const proposed = reply.valeurs && typeof reply.valeurs === 'object' && !Array.isArray(reply.valeurs) ? reply.valeurs as Record<string, unknown> : {}
+// Valeurs proposées par l’IA pour des champs vides : nombre lisible, option existante, texte remis en forme (civilités, jamais [patient]).
+function acceptedValues(proposed: unknown, accept: (control: FlexControl, key: string) => boolean, found: string[], sex: Sex, dictation: string): Record<string, string> {
   const values: Record<string, string> = {}
-  for (const [key, raw] of Object.entries(proposed)) {
+  if (!proposed || typeof proposed !== 'object' || Array.isArray(proposed)) return values
+  for (const [key, raw] of Object.entries(proposed as Record<string, unknown>)) {
     const control = fieldOf(key)?.control
-    if (!control || control.key !== key || control.kind === 'multi' || (input.values?.[key] ?? '').trim()) continue
+    if (!control || control.key !== key || control.kind === 'multi' || !accept(control, key)) continue
     const text = finishAiText(typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw : '', found, sex).trim()
     if (!text) continue
     if (control.kind === 'number' && !Number.isFinite(Number(text.replace(',', '.')))) continue
     if (control.kind === 'single' && !control.options.includes(text)) continue
     values[key] = control.kind === 'text' ? applyDictatedFormatting(text, dictation) : text
   }
+  return values
+}
+// L’IA ne coche que des options libres et ne remplit que des champs vides : rien de ce qu’a saisi le kinésithérapeute n’est remplacé.
+// Voyants rattachés à leur rubrique ; textes remis en forme comme toute réponse de l’IA (civilités, jamais [patient]).
+export function parseMarcheReply(content: string, input: FlexInput, sex: Sex, found: string[] = [], dictation = ''): FlexReply {
+  const reply = readJson(content)
+  const taken = new Set(input.choices ?? [])
+  const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && !taken.has(id)))] : []
+  const values = acceptedValues(reply.valeurs, (_, key) => !(input.values?.[key] ?? '').trim(), found, sex, dictation)
   const checks = Array.isArray(reply.a_verifier) ? reply.a_verifier.flatMap(item => {
     const check = item as { champ?: unknown; raison?: unknown }
     const rubric = typeof check.champ === 'string' ? rubricOfKey(check.champ) : undefined
@@ -166,4 +172,32 @@ export function applyDictatedFormatting(text: string, dictationHtml: string): st
 export function parseCorrection(content: string): string {
   const text = content.trim().replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim().replace(/^"([\s\S]*)"$/, '$1')
   return sanitizeBilanHtml(text.replace(/\n/g, '<br>'))
+}
+
+// Catalogue des tests standardisés à reconnaître, tiré du code : un test ajouté au catalogue est reconnu sans toucher au prompt.
+const MEASURE_KEYS = new Set(MEASURE_RUBRICS.flatMap(rubric => rubric.controls.map(control => control.key)))
+function fieldSpec(control: FlexControl) {
+  const base = { id: control.key, ...(control.label ? { titre: control.label } : {}) }
+  switch (control.kind) {
+    case 'multi': return { ...base, type: 'choix multiples', options: Object.fromEntries(control.options.map((label, index) => [choiceId(control.key, index), label])) }
+    case 'single': return { ...base, type: 'choix unique', options: control.options }
+    case 'number': return { ...base, type: 'nombre', unite: control.unit }
+    case 'text': return { ...base, type: 'texte' }
+  }
+}
+// Correction du bilan libre, en une seule requête : texte anonymisé, sexe en mot et catalogue des tests (aucune donnée de la base).
+export function correctionRequest(text: string, sex: Sex): string {
+  return JSON.stringify({ patient: sexLabel(sex), texte: text, tests: MEASURE_RUBRICS.map(rubric => ({ test: rubric.title, champs: rubric.controls.filter(control => !(control.kind === 'text' && control.ai)).map(fieldSpec) })) })
+}
+// Réponse : texte corrigé, mesures reconnues (champs des tests du catalogue seulement, valeurs contrôlées) et Tinetti évoqué.
+// Une réponse en texte simple (prompt retouché dans Réglages) reste acceptée comme texte corrigé, sans mesure.
+export interface CorrectionReply { html: string; measures: FlexInput; tinetti: boolean }
+export function parseCorrectionReply(content: string, found: string[], sex: Sex): CorrectionReply {
+  let reply: Record<string, unknown> | null = null
+  try { reply = readJson(content) } catch { reply = null }
+  if (!reply || typeof reply.texte !== 'string') return { html: sanitizeBilanHtml(finishAiText(parseCorrection(content), found, sex)), measures: { choices: [], values: {} }, tinetti: false }
+  const html = sanitizeBilanHtml(finishAiText(parseCorrection(reply.texte), found, sex))
+  const values = acceptedValues(reply.mesures, (_, key) => MEASURE_KEYS.has(key), found, sex, '')
+  const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && MEASURE_KEYS.has(fieldOf(id)!.control.key)))] : []
+  return { html, measures: { choices, values }, tinetti: reply.tinetti === true }
 }

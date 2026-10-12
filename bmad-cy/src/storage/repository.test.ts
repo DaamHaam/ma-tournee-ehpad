@@ -358,6 +358,19 @@ describe('stockage local', () => {
     expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilan).toBeUndefined()
   })
 
+  it('range les mesures validées du bilan libre, restaurées par l’annulation et supprimées avec le bilan', async () => {
+    await repository.initialize()
+    const alice = (await database.patients.toArray()).find(patient => patient.firstName === 'Alice')!
+    await repository.setBilan('2026-09-08', alice.id, 'TUG 18 s')
+    await repository.setBilanMeasures('2026-09-08', alice.id, { values: { tug: '18' } })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilanMeasures).toEqual({ choices: [], values: { tug: '18' } })
+    await repository.restoreBilan('2026-09-08', alice.id, { bilan: 'TUG 18 s' })
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilanMeasures).toBeUndefined()
+    await repository.setBilanMeasures('2026-09-08', alice.id, { values: { tug: '18' } })
+    await repository.deleteBilan('2026-09-08', alice.id)
+    expect((await database.days.get('2026-09-08'))?.entries[alice.id].bilanMeasures).toBeUndefined()
+  })
+
   it('n’exporte pas la clé OpenRouter et la conserve lors d’une restauration', async () => {
     await repository.initialize()
     await repository.setSetting('openrouterKey', 'sk-or-secret')

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anonymize, anonymizeWithMap, applyDictatedFormatting, finishAiText, marcheRequest, parseMarcheReply, restoreNames, parseCorrection, parseTinettiReply, sexLabel, tinettiRequest } from './assistant'
+import { anonymize, anonymizeWithMap, applyDictatedFormatting, correctionRequest, finishAiText, marcheRequest, parseCorrectionReply, parseMarcheReply, restoreNames, parseCorrection, parseTinettiReply, sexLabel, tinettiRequest } from './assistant'
 
 describe('assistant de rédaction', () => {
   it('retire nom et prénom sans tenir compte de la casse ni des accents', () => {
@@ -82,5 +82,22 @@ describe('prompts modifiés dans l’app', () => {
     expect(applyDictatedFormatting('troubles cognitifs, maladie d\'Alzheimer, chutes répétées, fatigues', dictation)).toBe('troubles cognitifs, <b>maladie d\'Alzheimer</b>, <u>chutes</u> répétées, fatigues')
     expect(applyDictatedFormatting('<b>maladie d’Alzheimer</b>', dictation)).toBe('<b>maladie d’Alzheimer</b>')
     expect(applyDictatedFormatting('rien à voir', '')).toBe('rien à voir')
+  })
+  it('bilan libre : envoie le catalogue des tests sans identité et ne garde que des mesures valides', () => {
+    const sent = JSON.parse(correctionRequest('[patient] TUG 18 s.', 'H'))
+    expect(sent.patient).toBe('patient')
+    expect(sent.texte).toBe('[patient] TUG 18 s.')
+    expect(sent.tests.map((test: { test: string }) => test.test)).toContain('Timed Up and Go')
+    expect(sent.tests.find((test: { test: string }) => test.test === 'Assis-debout en 30s').champs[1]).toEqual({ id: 'assisDebout30s.accoudoirs', type: 'choix unique', options: ['avec accoudoirs', 'sans accoudoirs'] })
+    const reply = parseCorrectionReply(JSON.stringify({
+      texte: '[patient] : Timed Up and Go : 18 s.\nMarche lente.',
+      mesures: { tug: '18', 'test10m.temps': 'vingt', 'assisDebout30s.accoudoirs': 'sans accoudoirs', assisDebout30s: 8, marche: 'x', seances: '2', eva: '12' },
+      cocher: ['perimetre.aides.1', 'marche.1', 'perimetre.aides.99'], tinetti: true,
+    }), ['Robert'], 'H')
+    expect(reply.html).toBe('Mr : Timed Up and Go : 18 s.<br>Marche lente.')
+    expect(reply.measures).toEqual({ choices: ['perimetre.aides.1'], values: { tug: '18', 'assisDebout30s.accoudoirs': 'sans accoudoirs', assisDebout30s: '8' } })
+    expect(reply.tinetti).toBe(true)
+    // Réponse en texte simple (prompt retouché) : le texte corrigé seul.
+    expect(parseCorrectionReply('Bonjour [patient].', ['Robert'], 'H')).toEqual({ html: 'Bonjour Mr.', measures: { choices: [], values: {} }, tinetti: false })
   })
 })

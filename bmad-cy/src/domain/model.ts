@@ -1,5 +1,5 @@
 import { hasTestContent, type TestRecord, type TestType } from './tinetti'
-import { hasFlexContent } from './marcheEquilibre'
+import { hasFlexContent, type FlexInput } from './marcheEquilibre'
 export type SessionType = 'A' | 'B' | null
 export type Mood = -3 | -2 | -1 | 0 | 1 | 2 | 3 | null
 export interface Identity { id: string; lastName: string; firstName: string; room: string; priority: string; demo: boolean }
@@ -18,8 +18,9 @@ export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification.
+// bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
-export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; tests?: Partial<Record<TestType, TestRecord>> }
+export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>> }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
@@ -45,7 +46,7 @@ export function identityKey(patient: Pick<Identity, 'lastName' | 'firstName'>): 
   const plain = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').replace(/\s+/g, ' ').trim()
   return `${plain(patient.lastName)}|${plain(patient.firstName)}`
 }
-export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' || Object.values(entry.tests ?? {}).some(hasTestContent) }
+export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' || hasFlexContent(entry.bilanMeasures ?? {}) || Object.values(entry.tests ?? {}).some(hasTestContent) }
 // Range les éléments d’une journée selon un ordre modèle ; ceux que le modèle ignore gardent leur place relative, à la fin.
 export function applyOrder(template: string[], current: string[]): string[] {
   const present = new Set(current)

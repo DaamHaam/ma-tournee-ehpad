@@ -509,9 +509,10 @@ test.describe('dictée', () => {
       if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
       const body = route.request().postDataJSON()
       bodies.push(body)
-      const content = body.response_format
-        ? JSON.stringify({ cotations: { e2: 2, e3: 1, m16: 1 }, observations: 'Marche <b>prudente</b> avec [patient].\nTransferts lents.', a_verifier: [{ ligne: 'e2', raison: 'dictée : se lève sans les bras' }, { ligne: 'm16', raison: 'talons proches ?' }, { ligne: 'm15', raison: 'non coté' }] })
-        : 'Bonjour [patient], la patiente marche lentement.'
+      const content = !body.response_format ? 'Modèle joignable.'
+        : body.messages[1].content.includes('"texte"')
+          ? JSON.stringify({ texte: 'Bonjour [patient], la patiente marche lentement. Timed Up and Go : 18 s.', mesures: { tug: '18', 'test10m.temps': '25' }, cocher: [], tinetti: true })
+          : JSON.stringify({ cotations: { e2: 2, e3: 1, m16: 1 }, observations: 'Marche <b>prudente</b> avec [patient].\nTransferts lents.', a_verifier: [{ ligne: 'e2', raison: 'dictée : se lève sans les bras' }, { ligne: 'm16', raison: 'talons proches ?' }, { ligne: 'm15', raison: 'non coté' }] })
       return route.fulfill({ headers: cors, json: { choices: [{ message: { content } }] } })
     })
     await page.goto('/#/settings')
@@ -595,19 +596,49 @@ test.describe('dictée', () => {
     await expect(page.locator('.bilan-body b', { hasText: 'prudente' })).toBeVisible()
     await expect(page.locator('.bilan-body')).toContainText('Revoir dans 3 mois.')
 
-    // Correction du bilan libre : une seule passe, nom remis à sa place, correction annulable.
+    // Correction du bilan libre : une seule passe, nom remis à sa place, tests reconnus à valider, correction annulable.
+    // Mesure antérieure (test rapide) pour la ★ du panneau.
+    await page.goto('/#/?date=2026-09-15')
+    await openBilan(page, 'Petit Jeanne', 'Test rapide')
+    await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('22')
+    await page.getByRole('button', { name: 'Valider' }).click()
     await page.goto('/#/?date=2026-09-22')
     await openBilan(page, 'Petit Jeanne')
+    await page.getByText('★ Dernières mesures').click()
+    await expect(page.locator('.last-measures')).toContainText('TUG : 22sec · 15/09/2026')
     const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Petit Jeanne' })
-    await bilan.fill('bonjour Jeanne, la patiente marche lentment.')
+    await bilan.fill('bonjour Jeanne, la patiente marche lentment. TUG 18 secondes.')
     await page.getByRole('button', { name: 'Fermer le clavier' }).click()
     await page.getByRole('button', { name: 'Corriger avec l’IA' }).click()
-    await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement.')
+    await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement. Timed Up and Go : 18 s.')
     const correction = bodies.at(-1)!
-    expect(correction.response_format).toBeUndefined()
-    expect(correction.messages[1].content).toBe('Sexe : patiente\n\nTexte :\nbonjour [patient], la patiente marche lentment.')
+    expect(correction.response_format).toEqual({ type: 'json_object' })
+    const sent = JSON.parse(correction.messages[1].content)
+    expect(sent.patient).toBe('patiente')
+    expect(sent.texte).toBe('bonjour [patient], la patiente marche lentment. TUG 18 secondes.')
+    expect(correction.messages[1].content).not.toContain('Jeanne')
+    const found = page.getByRole('region', { name: 'Tests reconnus' })
+    await expect(found.getByRole('checkbox', { name: /TUG : 18sec · ★ 22sec \(15\/09\/2026\)/ })).toHaveAttribute('aria-checked', 'true')
+    await expect(found).toContainText('Tinetti mentionné')
+    // Le 10 m reconnu est faux : corrigé, puis le TUG seul est gardé.
+    await found.getByRole('button', { name: 'Corriger 10 m' }).click()
+    await found.getByRole('textbox', { name: 'Test des 10m – Temps' }).fill('24')
+    await expect(found.getByRole('checkbox', { name: /10 m : 24sec/ })).toBeVisible()
+    await found.getByRole('checkbox', { name: /10 m : 24sec/ }).click()
+    await found.getByRole('button', { name: 'Enregistrer les mesures' }).click()
+    await expect(found).toHaveCount(0)
+    // Relancer la correction ne propose plus le TUG déjà enregistré.
+    await page.getByRole('button', { name: 'Corriger avec l’IA' }).click()
+    await expect(found.getByRole('checkbox', { name: /^10 m/ })).toBeVisible()
+    await expect(found.getByRole('checkbox', { name: /^TUG/ })).toHaveCount(0)
+    await found.getByRole('button', { name: 'Ignorer' }).click()
     await page.getByRole('button', { name: 'Annuler la correction' }).click()
-    await expect(bilan).toHaveText('bonjour Jeanne, la patiente marche lentment.')
+    await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement. Timed Up and Go : 18 s.')
+    await page.getByRole('link', { name: 'Retour à la journée' }).click()
+    await page.getByRole('link', { name: /Patients/ }).click()
+    await page.getByRole('link', { name: /Petit Jeanne/ }).click()
+    await page.getByText('Suivi des tests').click()
+    await expect(page.locator('.measures-history')).toContainText('TUG18sec (22/09/2026) · 22sec (15/09/2026)')
   })
 
   test('assistant IA simulé : dictée intégrée au bilan marche / équilibre', async ({ page }) => {

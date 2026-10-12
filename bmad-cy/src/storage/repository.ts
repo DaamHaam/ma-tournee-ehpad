@@ -1,7 +1,8 @@
 import { hasTestContent, type TestRecord, type TestType } from '../domain/tinetti'
+import { hasFlexContent, type FlexInput } from '../domain/marcheEquilibre'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
 import { applyOrder, careDefaults, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
-export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied'>
+export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanMeasures'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
 // GRP, sexe, attente et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
@@ -98,7 +99,19 @@ export class TourRepository {
       else entry.bilanAt ??= now
     })
   }
-  async deleteBilan(date: string, id: string): Promise<void> { await this.setBilan(date, id, '') }
+  // Supprimer le bilan supprime aussi les mesures qui en avaient été tirées.
+  async deleteBilan(date: string, id: string): Promise<void> {
+    await this.setBilan(date, id, '')
+    await this.setBilanMeasures(date, id, {})
+  }
+  // Tests reconnus dans le bilan libre et validés : remplacent ceux déjà enregistrés pour ce jour.
+  async setBilanMeasures(date: string, id: string, measures: FlexInput): Promise<void> {
+    await this.changeDay(date, day => {
+      const entry = this.entry(day, id)
+      if (hasFlexContent(measures)) entry.bilanMeasures = { choices: measures.choices ?? [], values: measures.values ?? {} }
+      else delete entry.bilanMeasures
+    })
+  }
   // Test standardisé du jour : modifier le décoche « copié » ; vidé (ni cotation ni texte), il disparaît.
   async setTest(date: string, id: string, type: TestType, patch: Partial<Pick<TestRecord, 'scores' | 'notes' | 'notesHtml' | 'resultHtml' | 'aiObservations' | 'aiChecks' | 'aiFilled' | 'aiSource' | 'choices' | 'values'>>, now = new Date().toISOString()): Promise<void> {
     await this.changeDay(date, day => {
@@ -148,7 +161,7 @@ export class TourRepository {
   async restoreBilan(date: string, id: string, snapshot: BilanSnapshot): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
-      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied'] as const) {
+      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied', 'bilanMeasures'] as const) {
         if (snapshot[key] === undefined) delete entry[key]
         else (entry as unknown as Record<string, unknown>)[key] = snapshot[key]
       }

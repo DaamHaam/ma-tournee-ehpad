@@ -396,3 +396,19 @@ html:has(.bilan-page), body:has(.bilan-page) { overflow:hidden; overscroll-behav
 .measures-history ul { display:grid; gap:.45rem; margin:.6rem 0 0; padding:0; list-style:none; }
 .measures-history li { display:grid; gap:.1rem; font-size:.85rem; }
 .measures-history li span { color:var(--muted); }
+/* Bilan libre : dernières mesures repliées sous l’en-tête, tests reconnus par l’IA à valider au-dessus du micro. */
+.last-measures { flex:none; font-size:.8rem; }
+.last-measures summary { cursor:pointer; color:#9a6b00; font-weight:700; }
+.last-measures ul { display:grid; gap:.15rem; max-height:30vh; overflow-y:auto; margin:.3rem 0 0; padding:0; list-style:none; }
+.last-measures li span { color:var(--muted); }
+.recognized { flex:none; display:grid; gap:.4rem; max-height:45vh; overflow-y:auto; overscroll-behavior:contain; padding:.55rem .6rem; border:1px solid var(--accent); border-radius:12px; background:var(--paper); }
+.recognized-title { margin:0; color:var(--accent); font-size:.85rem; font-weight:800; }
+.recognized ul { display:grid; gap:.35rem; margin:0; padding:0; list-style:none; }
+.recognized-row { display:flex; gap:.3rem; align-items:stretch; }
+.recognized-row .test-option { flex:1; font-size:.85rem; }
+.recognized-row .icon-button { flex:none; min-width:40px; }
+.recognized .previous-measure { display:inline; }
+.recognized-tinetti { margin:0; font-size:.85rem; }
+.recognized .action-row button { flex:1; }
+.recognized .test-option[aria-checked="true"] .previous-measure { color:#ffd76a; }
+.recognized-tinetti a { color:var(--accent); font-weight:700; text-decoration:underline; }

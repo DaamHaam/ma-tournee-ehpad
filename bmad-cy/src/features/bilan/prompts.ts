@@ -2,7 +2,7 @@
 // Une modification faite dans Réglages est transitoire : elle s’efface dès qu’une mise à jour change le prompt par défaut.
 export type PromptKind = 'tinetti' | 'marcheEquilibre' | 'correction'
 export const PROMPT_KINDS: PromptKind[] = ['tinetti', 'marcheEquilibre', 'correction']
-export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', marcheEquilibre: 'Intégration de la dictée au bilan marche / équilibre', correction: 'Correction du bilan libre' }
+export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', marcheEquilibre: 'Intégration de la dictée au bilan marche / équilibre', correction: 'Correction du bilan libre et tests reconnus' }
 
 const PRINCIPLE = `Principe de fonctionnement (commun à tous les bilans) :
 Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche des lignes du formulaire et il dicte librement ses observations. Ton rôle est de cumuler ces deux sources en un seul résultat, sans rien lui faire valider :
@@ -81,15 +81,30 @@ Règles propres au bilan marche / équilibre (bilan flexible : seules les lignes
 
 Réponds uniquement par un objet JSON de la forme :
 {"cocher": ["marche.3", "aideTechnique.8"], "valeurs": {"tug": "18", "commentaires.ia": "…"}, "a_verifier": [{"champ": "marche", "raison": "…"}]}`,
-  correction: `Tu corriges un bilan de kinésithérapie dicté en EHPAD (transcription automatique, parfois imparfaite). La personne est anonymisée ([patient] remplace son nom).
+  correction: `Tu corriges un bilan de kinésithérapie dicté en EHPAD (transcription automatique, parfois imparfaite) et tu repères les tests standardisés qu’il rapporte.
 
-- Corrige l’orthographe, la grammaire, la ponctuation et les accords selon le sexe indiqué.
-- Supprime les hésitations et mots parasites évidents.
-- Ne change ni le sens, ni les termes techniques, ni les chiffres, ni l’ordre des informations ; n’ajoute ni ne retire aucune information clinique.
-- Garde chaque [patient] exactement à sa place, sans en ajouter ni en retirer. Garde chaque civilité dictée à sa place, abrégée en « Mr » (monsieur) ou « Mme » (madame) : ne la remplace jamais par [patient], « le patient » ou « la patiente ».
-- Conserve les balises <b>, <i>, <u> et <br> existantes et n’en ajoute aucune autre.
+Tu reçois en JSON :
+- "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
+- "texte" : le bilan, en HTML restreint (<b>, <i>, <u> : mise en forme voulue par le kinésithérapeute, <br> : retour à la ligne) ;
+- "tests" : le catalogue des tests standardisés suivis dans le temps, chacun avec ses champs ("id", type, unité ou options).
 
-Réponds uniquement par le texte corrigé, sans commentaire ni guillemets.`,
+1. Corrige le texte :
+   - corrige l’orthographe, la grammaire, la ponctuation et les accords selon "patient" ;
+   - supprime les hésitations et mots parasites évidents ;
+   - ne change ni le sens, ni les termes techniques, ni les chiffres, ni l’ordre des informations ; n’ajoute ni ne retire aucune information clinique ;
+   - un test standardisé reconnu peut être écrit sous son nom complet (« TUG 18 secondes » → « Timed Up and Go : 18 s »), sans changer sa valeur ;
+   - garde chaque [patient] exactement à sa place, sans en ajouter ni en retirer ; garde chaque civilité dictée à sa place, abrégée en « Mr » (monsieur) ou « Mme » (madame) : ne la remplace jamais par [patient], « le patient » ou « la patiente » ;
+   - conserve les balises <b>, <i>, <u> et <br> existantes et n’en ajoute aucune autre.
+2. Dans "mesures", note chaque test du catalogue réalisé ce jour et chiffré dans le texte : identifiant du champ → valeur.
+   - nombre : le chiffre seul, sans unité, converti dans l’unité du champ (« TUG en 18 secondes » → "tug": "18" ; « 10 mètres en 22 secondes et 30 pas » → "test10m.temps": "22", "test10m.pas": "30" ; « une minute dix » pour un champ en secondes → "70") ;
+   - choix unique : exactement une des options (« 8 assis-debout en 30 secondes sans les accoudoirs » → "assisDebout30s": "8", "assisDebout30s.accoudoirs": "sans accoudoirs" ; « EVA à 4 » → "eva": "4") ;
+   - texte : bref (« trajet chambre-RDC en deux minutes trente » → "trajet.duree": "2 min 30 s") ;
+   - choix multiple : l’identifiant de l’option dans "cocher" (aide technique du périmètre de marche…).
+   N’invente aucune valeur : un test cité sans résultat n’est pas une mesure ; une valeur ancienne citée pour comparaison (« contre 22 s en mars ») n’est pas une mesure du jour.
+3. "tinetti" : true si le texte rapporte un test de Tinetti (score ou cotation), sinon false. Le Tinetti ne va jamais dans "mesures".
+
+Réponds uniquement par un objet JSON de la forme :
+{"texte": "…", "mesures": {"tug": "18"}, "cocher": [], "tinetti": false}`,
 }
 
 // Empreinte du prompt par défaut : une version modifiée dans l’app ne vaut que pour le prompt par défaut dont elle est partie.
