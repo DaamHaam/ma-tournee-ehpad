@@ -11,7 +11,8 @@ Carte des comptes utilisés par le projet. **Aucune valeur secrète ici** : seul
 - GitHub Pages, publié par `.github/workflows/ci-pages.yml` à chaque push sur `main` (après tests, lint et build). URL : https://daamhaam.github.io/ma-tournee-ehpad/
 
 ## Base de données
-- Aucune base distante : IndexedDB (Dexie) sur l'appareil. Sauvegarde JSON `ma-tournee-sauvegarde` exportée par l'utilisateur.
+- Données patients : aucune base distante, IndexedDB (Dexie) sur l'appareil. Sauvegarde JSON `ma-tournee-sauvegarde` exportée par l'utilisateur.
+- Fiches de bilan (à venir) : base Convex partagée avec l'organisateur de bilans et BMAD LSV2, sans aucune donnée patient. Projet, URL de déploiement et clés : à renseigner quand l'utilisateur les transmet (jamais de valeur secrète ici).
 
 ## API et services externes
 - OpenRouter (transcription des bilans dictés, modèle Whisper choisi dans les réglages ; assistant de rédaction, modèle d’analyse DeepSeek saisi dans les réglages, même clé) : clé personnelle saisie dans `Réglages` de l’app, stockée seulement sur l’iPhone (IndexedDB), exclue de la sauvegarde. Compte et plafond de crédit gérés sur openrouter.ai. Aucun secret OpenRouter côté GitHub.
