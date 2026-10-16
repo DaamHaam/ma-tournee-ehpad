@@ -21,7 +21,9 @@ import { backTarget, ICONS, useBlockEdgeSwipe, useKeyboardLost, useOutsideText, 
 // Bilan libre du jour en plein écran ; ne part pas dans l’export TXT.
 export function BilanPage() {
   const { date = '', id = '' } = useParams()
-  const target = backTarget(useLocation().state, date)
+  // Revenu d’un test ouvert depuis les dernières mesures : l’origine du bilan (journée ou onglet Bilans) suit dans l’adresse.
+  const location = useLocation()
+  const target = backTarget(location.state ?? { from: new URLSearchParams(location.search).get('from') }, date)
   const valid = validDate(date)
   const day = useLiveQuery(() => valid ? repository.dayView(date) : undefined, [date, valid])
   const sex = useLiveQuery(async () => (await db.patients.get(id))?.sex ?? '', [id])
@@ -98,12 +100,14 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
   }
   // ✨ Corriger : en bas de page, et à gauche du petit micro quand le clavier est ouvert (correction sans le fermer).
   const aiButton = (size?: 'small') => <button type="button" className={`round-button ai-round${size ? ` ${size}` : ''}`} aria-label="Corriger avec l’IA" title={assistant.unavailable || 'Corriger avec l’IA'} disabled={!!assistant.unavailable || correction.busy || !htmlToText(html).trim()} onPointerDown={event => event.preventDefault()} onClick={() => void correct()}>{correction.busy ? '…' : '✨'}</button>
+  // Clavier ouvert : le panneau des tests reconnus attend sa fermeture ; un compteur le signale et le referme d’un toucher.
+  const recognizedCount = recognized ? recognized.tests.length + (recognized.tinetti ? 1 : 0) : 0
   // Copier pendant une dictée donnerait un texte incomplet, et la transcription arrivée ensuite retirerait la marque « copié ».
   const dictationBusy = dictation.recording || dictation.transcribing
   // Dernières mesures : toucher un test ouvre le test rapide du jour sur ce test (ou la grille du Tinetti) ; le retour ramène ici.
   const openMeasure = async (test: string) => {
     await dictation.finish()
-    const here = `/bilan/${date}/${id}`
+    const here = `/bilan/${date}/${id}?from=${encodeURIComponent(back)}`
     navigate(test === TINETTI_MEASURE ? `/tinetti/${date}/${id}` : `/mesures/${date}/${id}?test=${test}`, { state: { from: here } })
   }
   return <div className={`bilan-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
@@ -113,7 +117,7 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
     {!keyboard && <LastMeasures measures={lastMeasures} onOpen={test => void openMeasure(test)} />}
     <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => setKeyboard(true)} onFormatState={setFormat} />
     {keyboard
-      ? <KeyboardBar dictation={dictation} left={aiButton('small')} onHide={() => toggleKeyboard(false)} />
+      ? <KeyboardBar dictation={dictation} left={<>{recognizedCount > 0 && <button type="button" className="recognized-count" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}>{recognizedCount} {recognizedCount > 1 ? 'tests reconnus' : 'test reconnu'}</button>}{aiButton('small')}</>} onHide={() => toggleKeyboard(false)} />
       : <>{recognized && <RecognizedTests found={recognized} previous={previous} tinettiPath={`/tinetti/${date}/${id}`} onSave={saveMeasures} onDismiss={() => setRecognized(null)} />}<DictationFooter dictation={dictation}
         extra={correction.error && <p className="field-error" role="alert">{correction.error}</p>}
         left={<>

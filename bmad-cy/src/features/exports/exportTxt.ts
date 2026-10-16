@@ -23,7 +23,9 @@ function exported(entry: Entry): boolean { return entry.session !== null || entr
 export function exportTxt(days: Day[]): string {
   return [...days].sort((a, b) => a.date.localeCompare(b.date)).filter(day => Object.values(day.entries).some(exported) || day.mood !== null || day.comment.trim()).map(day => {
     const entries = day.order.flatMap(id => day.entries[id] ? [day.entries[id]] : [])
-    const format = (entry: Entry) => `${exportName(entry, entries)}${entry.note.trim() ? ` (${compact(entry.note)})` : ''}`
+    // Patient vu puis mis en pause le même jour : la pause suit la note entre parenthèses.
+    const pauseNote = (entry: Entry) => entry.pause === undefined ? '' : ` (pause${compact(entry.pause) ? ` : ${compact(entry.pause)}` : ''})`
+    const format = (entry: Entry) => `${exportName(entry, entries)}${entry.note.trim() ? ` (${compact(entry.note)})` : ''}${entry.session !== null ? pauseNote(entry) : ''}`
     const seen = entries.filter(entry => entry.session !== null).map(format).join(' ')
     const unseen = entries.filter(entry => entry.session === null && entry.pause === undefined && entry.note.trim()).map(format).join(' ')
     // Pause : le motif entre parenthèses, la note éventuelle à la suite.

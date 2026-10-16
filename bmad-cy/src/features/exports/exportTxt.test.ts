@@ -77,6 +77,8 @@ describe('export TXT', () => {
       c: { ...entry(identity('c', 'Robert', 'Paul'), null), pause: '' },
     } }
     expect(exportTxt([day])).toBe('30/09/2026\nMartin\nPause : Petit (hospitalisation) Robert')
+    const seenThenPaused: Day = { ...day, order: ['a', 'b'], entries: { a: { ...entry(identity('a', 'Martin', 'Alice'), 'A', 'marche'), pause: 'chute' }, b: day.entries.b } }
+    expect(exportTxt([seenThenPaused])).toBe('30/09/2026\nMartin (marche) (pause : chute)\nPause : Petit (hospitalisation)')
     const onlyPause: Day = { ...day, order: ['c'], entries: { c: day.entries.c } }
     expect(exportTxt([onlyPause])).toBe('30/09/2026\nPause : Robert')
   })
