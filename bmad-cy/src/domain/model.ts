@@ -113,11 +113,10 @@ export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   }
   return items.sort((x, y) => (x.at ?? '\uffff').localeCompare(y.at ?? '\uffff') || (rank.get(x.id) ?? Infinity) - (rank.get(y.id) ?? Infinity) || x.kind.localeCompare(y.kind))
 }
-// Bilans en cours de la journée, pour passer d’un patient à l’autre : ni copiés, ni tests rapides (terminés une fois validés),
-// modifiés il y a moins d’une demi-heure.
-export const OPEN_BILAN_MINUTES = 30
-export function openBilans(day: Pick<Day, 'entries' | 'order'>, now: Date): DayBilan[] {
-  return dayBilans(day).filter(bilan => bilan.kind !== 'mesures' && !bilan.copied && !!bilan.editedAt && now.getTime() - Date.parse(bilan.editedAt) < OPEN_BILAN_MINUTES * 60_000)
+// Bilans en cours de la journée, pour passer d’un patient à l’autre : tous ceux du jour pas encore copiés,
+// sauf les tests rapides (terminés une fois validés). Sans limite de temps : un bilan reste en cours jusqu’à sa copie.
+export function openBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
+  return dayBilans(day).filter(bilan => bilan.kind !== 'mesures' && !bilan.copied)
 }
 export function hasBilanOrTest(entry: Entry): boolean { return (entry.bilan ?? '').trim() !== '' || Object.values(entry.tests ?? {}).some(hasTestContent) }
 // Fin de prescription : date + durée (1 an sans durée). En mois ou en années, le jour est ramené au dernier jour du mois s’il n’existe pas

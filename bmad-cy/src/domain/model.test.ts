@@ -18,7 +18,7 @@ describe('règles du domaine', () => {
     expect(dayBilans(day({ notes: 'dictée', choices: ['marche.0'] }))).toHaveLength(1)
     expect(dayBilans(day({ resultHtml: 'texte retouché' }))).toHaveLength(1)
   })
-  it('garde dans la bande les bilans en cours : ni copiés, ni tests rapides, modifiés depuis moins d’une demi-heure', () => {
+  it('garde dans la bande tous les bilans du jour non copiés, sans limite de temps, hors tests rapides', () => {
     const identity = (id: string) => ({ id, lastName: id.toUpperCase(), firstName: '', room: '', priority: '', demo: false })
     const entry = (id: string, extra: object) => ({ patient: identity(id), session: null, note: '', ...extra })
     const test = (editedAt: string, extra: object = {}) => ({ scores: { e1: 1 }, notes: '', at: '2026-10-05T08:00:00Z', editedAt, ...extra })
@@ -28,8 +28,8 @@ describe('règles du domaine', () => {
       c: entry('c', { bilan: 'ancien', bilanAt: '2026-10-05T09:00:00Z', bilanEditedAt: '2026-10-05T09:25:00Z' }),
       d: entry('d', { tests: { tinetti: test('2026-10-05T09:55:00Z'), mesures: { ...test('2026-10-05T09:58:00Z'), scores: {}, values: { tug: '18' } } } }),
       e: entry('e', { bilan: 'sans heure' }),
-    } }, new Date('2026-10-05T10:00:00Z'))
-    expect(open.map(bilan => [bilan.id, bilan.kind])).toEqual([['a', 'bilan'], ['d', 'tinetti']])
+    } })
+    expect(open.map(bilan => [bilan.id, bilan.kind])).toEqual([['a', 'bilan'], ['d', 'tinetti'], ['c', 'bilan'], ['e', 'bilan']])
   })
   it('bascule A/B de façon exclusive et réversible', () => {
     expect(toggleSession(null, 'A')).toBe('A')

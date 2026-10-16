@@ -474,6 +474,25 @@ test('bande des bilans en cours : apparaît au deuxième patient, passe d’un b
   await expect(page.getByRole('button', { name: 'Bilan pour Martin Alice' })).toBeVisible()
 })
 
+test('bande des bilans en cours : un bilan non copié écrit plus tôt reste visible depuis l’autre patient', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-16T09:00:00'))
+  await page.goto('/#/?date=2026-10-16')
+  await openBilan(page, 'Martin Alice')
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' }).fill('Écrit tôt.')
+  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  // Une heure et demie plus tard, deuxième patient.
+  await page.clock.setFixedTime(new Date('2026-10-16T10:30:00'))
+  await openBilan(page, 'Bernard Louis')
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' }).fill('Écrit tard.')
+  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+  const strip = page.getByRole('navigation', { name: 'Bilans en cours' })
+  await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toBeVisible()
+  await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
+  await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })).toHaveText('Écrit tôt.')
+  await expect(strip.getByRole('button', { name: 'Bernard L., Bilan' })).toBeVisible()
+})
+
 // En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.
 test.describe('dictée', () => {
   test.use({ serviceWorkers: 'block' })
