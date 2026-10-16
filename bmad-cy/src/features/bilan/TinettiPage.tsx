@@ -147,7 +147,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient}
       tools={<span className="total-badge" aria-label={`Total ${score.total} sur ${score.max}`}>Tinetti {score.total}/{score.max}</span>}
-      copied={copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
+      copied={copied} done={!!entry.tests?.tinetti?.copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
     {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="tinetti" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>

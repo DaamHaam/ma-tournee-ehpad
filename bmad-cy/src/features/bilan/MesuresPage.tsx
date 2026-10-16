@@ -68,7 +68,7 @@ function MesuresEditor({ date, id, back, label, entry, previous }: { date: strin
   const filled = rubricFilled(rubric, input)
   return <div className="bilan-page mesures-page" style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Tests rapides</span>}
-      copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(mesuresHtml(input))} onCancel={() => void cancel()} />
+      copied={copied} done={!!entry.tests?.mesures?.copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(mesuresHtml(input))} onCancel={() => void cancel()} />
     <div className="mesures-body">
       <div className="measure-tabs" role="tablist" aria-label="Tests">
         {MEASURE_RUBRICS.map(item => <button key={item.id} type="button" role="tab" aria-selected={item.id === selected} className={rubricFilled(item, input) ? 'done' : undefined} onClick={() => setSelected(item.id)}>{measureTitle(item.id)}{rubricFilled(item, input) && <span aria-label=" (fait)"> ✓</span>}</button>)}

@@ -96,18 +96,28 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
     if (latest.current !== initial.html || measuresChanged.current) await run(() => repository.restoreBilan(date, id, initial.snapshot))
     navigate(back)
   }
+  // ✨ Corriger : en bas de page, et à gauche du petit micro quand le clavier est ouvert (correction sans le fermer).
+  const aiButton = (size?: 'small') => <button type="button" className={`round-button ai-round${size ? ` ${size}` : ''}`} aria-label="Corriger avec l’IA" title={assistant.unavailable || 'Corriger avec l’IA'} disabled={!!assistant.unavailable || correction.busy || !htmlToText(html).trim()} onPointerDown={event => event.preventDefault()} onClick={() => void correct()}>{correction.busy ? '…' : '✨'}</button>
+  // Copier pendant une dictée donnerait un texte incomplet, et la transcription arrivée ensuite retirerait la marque « copié ».
+  const dictationBusy = dictation.recording || dictation.transcribing
+  // Dernières mesures : toucher un test ouvre le test rapide du jour sur ce test (ou la grille du Tinetti) ; le retour ramène ici.
+  const openMeasure = async (test: string) => {
+    await dictation.finish()
+    const here = `/bilan/${date}/${id}`
+    navigate(test === TINETTI_MEASURE ? `/tinetti/${date}/${id}` : `/mesures/${date}/${id}?test=${test}`, { state: { from: here } })
+  }
   return <div className={`bilan-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<FormatButtons editor={editor} state={format} />}
-      copied={copied} copyDisabled={!htmlToText(html).trim()} onCopy={() => void copy(html)} onCancel={() => void cancel()} />
+      copied={copied} done={!!entry.bilanCopied} copyDisabled={!htmlToText(html).trim() || dictationBusy} onCopy={() => void copy(html)} onCancel={() => void cancel()} />
     {!keyboard && <OpenBilansStrip date={date} id={id} kind="bilan" beforeLeave={dictation.finish} />}
-    {!keyboard && <LastMeasures measures={lastMeasures} />}
+    {!keyboard && <LastMeasures measures={lastMeasures} onOpen={test => void openMeasure(test)} />}
     <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => setKeyboard(true)} onFormatState={setFormat} />
     {keyboard
-      ? <KeyboardBar dictation={dictation} onHide={() => toggleKeyboard(false)} />
+      ? <KeyboardBar dictation={dictation} left={aiButton('small')} onHide={() => toggleKeyboard(false)} />
       : <>{recognized && <RecognizedTests found={recognized} previous={previous} tinettiPath={`/tinetti/${date}/${id}`} onSave={saveMeasures} onDismiss={() => setRecognized(null)} />}<DictationFooter dictation={dictation}
         extra={correction.error && <p className="field-error" role="alert">{correction.error}</p>}
         left={<>
-          <button type="button" className="round-button ai-round" aria-label="Corriger avec l’IA" title={assistant.unavailable || 'Corriger avec l’IA'} disabled={!!assistant.unavailable || correction.busy || !htmlToText(html).trim()} onPointerDown={event => event.preventDefault()} onClick={() => void correct()}>{correction.busy ? '…' : '✨'}</button>
+          {aiButton()}
           {correction.previous !== undefined && <BarButton label="Annuler la correction" icon={ICONS.undo} onClick={undoCorrection} />}
           <BarButton label="Aller à la ligne" icon={ICONS.newline} size={24} onClick={() => editor.current?.insertLineBreak()} />
         </>}

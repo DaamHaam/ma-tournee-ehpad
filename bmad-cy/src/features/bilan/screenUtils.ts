@@ -30,11 +30,11 @@ export const ICONS = {
   undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
 }
 
-// Retour vers la page d’origine (journée par défaut, onglet Bilans si on en vient).
+// Retour vers la page d’origine (journée par défaut, onglet Bilans ou bilan libre si on en vient).
 export function backTarget(state: unknown, date: string) {
   const from = (state as { from?: unknown } | null)?.from
   const back = typeof from === 'string' && from.startsWith('/') ? from : `/?date=${date}`
-  return { back, label: back.startsWith('/bilans') ? 'Retour aux bilans' : 'Retour à la journée' }
+  return { back, label: back.startsWith('/bilans') ? 'Retour aux bilans' : back.startsWith('/bilan/') ? 'Retour au bilan' : 'Retour à la journée' }
 }
 
 // Dans un bilan, le glissement depuis le bord de l’écran (retour arrière de Safari) ne doit pas quitter la page par mégarde.

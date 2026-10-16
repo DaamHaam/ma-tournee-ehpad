@@ -448,6 +448,7 @@ test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, repri
 })
 
 test('bande des bilans en cours : apparaît au deuxième patient, passe d’un bilan à l’autre, perd un bilan copié', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-22T10:00:00'))
   await page.goto('/#/?date=2026-09-22')
   await openBilan(page, 'Martin Alice')
   await expect(page.getByRole('navigation', { name: 'Bilans en cours' })).toHaveCount(0)
@@ -491,12 +492,25 @@ test('bande des bilans en cours : un bilan non copié écrit plus tôt reste vis
   await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
   await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })).toHaveText('Écrit tôt.')
   await expect(strip.getByRole('button', { name: 'Bernard L., Bilan' })).toBeVisible()
+  // Copié depuis l’en-tête : le bouton garde une coche tant que le bilan n’est pas modifié.
+  await page.evaluate(() => { Clipboard.prototype.write = async () => {} })
+  await page.getByRole('button', { name: 'Copier', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Copier (déjà copié)' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Copier (déjà copié)' })).toBeVisible()
+  // Le lendemain, les bilans non copiés de la veille ne reviennent pas dans la bande.
+  await page.clock.setFixedTime(new Date('2026-10-17T09:00:00'))
+  await page.goto('/#/bilan/2026-10-16/' + new URL(page.url()).hash.split('/').at(-1))
+  await page.reload()
+  await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })).toHaveText('Écrit tôt.')
+  await expect(page.getByRole('navigation', { name: 'Bilans en cours' })).toHaveCount(0)
 })
 
 // En WebKit, Playwright n’intercepte pas les requêtes d’une page contrôlée par le service worker : il est bloqué ici.
 test.describe('dictée', () => {
   test.use({ serviceWorkers: 'block' })
   test('bande des bilans : changer de patient pendant la dictée l’envoie au bilan qu’on quitte', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-09-22T10:00:00'))
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } })
       class FakeRecorder {
@@ -728,6 +742,24 @@ test.describe('dictée', () => {
     await found.getByRole('button', { name: 'Ignorer' }).click()
     await page.getByRole('button', { name: 'Annuler la correction' }).click()
     await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement. Timed Up and Go : 18 s.')
+    // Clavier ouvert : ✨ à gauche du petit micro corrige sans fermer le clavier.
+    await bilan.click()
+    const keyboardBar = page.locator('.keyboard-bar')
+    await expect(keyboardBar.getByRole('button', { name: 'Corriger avec l’IA' })).toBeVisible()
+    const before = bodies.length
+    await keyboardBar.getByRole('button', { name: 'Corriger avec l’IA' }).click()
+    await expect.poll(() => bodies.length).toBe(before + 1)
+    await expect(keyboardBar).toBeVisible()
+    const panel = page.getByRole('region', { name: 'Tests reconnus' })
+    if (await panel.count()) await panel.getByRole('button', { name: 'Ignorer' }).click()
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+    // Toucher un test des dernières mesures ouvre le test rapide sur ce test ; le retour ramène au bilan.
+    await page.getByText('★ Dernières mesures').click()
+    await page.getByRole('button', { name: 'Faire le test TUG' }).click()
+    await expect(page).toHaveURL(/#\/mesures\/2026-09-22\/.+\?test=tug/)
+    await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toBeVisible()
+    await page.getByRole('link', { name: 'Retour au bilan' }).click()
+    await expect(bilan).toBeVisible()
     await page.getByRole('link', { name: 'Retour à la journée' }).click()
     await page.getByRole('link', { name: /Patients/ }).click()
     await page.getByRole('link', { name: /Petit Jeanne/ }).click()
@@ -893,7 +925,7 @@ test('copier le pointage du jour au format de l’export TXT', async ({ page }) 
   await expect(copy).toBeEnabled()
   await copy.click()
   await expect(page.locator('.day-summary').getByRole('button', { name: 'Copié ✓' })).toBeVisible()
-  expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe('28/09/2026\n++ calme\nMartin petit')
+  expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe('28/09/2026 ++\ncalme\nMartin petit')
 })
 
 test('patient en attente d’une séance : interrupteur dans la fiche, « ! » rouge dans la fiche, la liste et la journée', async ({ page }) => {

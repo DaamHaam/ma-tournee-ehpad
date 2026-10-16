@@ -432,3 +432,9 @@ html:has(.bilan-page), body:has(.bilan-page) { overflow:hidden; overscroll-behav
 .previous-mark.pending, .pending .previous-mark { color:#e8590c; }
 .previous-note.pending, .previous-measure.pending, .measures-history li span.pending { color:#c2410c; }
 .test-option[aria-checked="true"] .previous-mark.pending, .recognized .test-option[aria-checked="true"] .previous-measure.pending, .recognized .test-option[aria-checked="true"] .previous-measure.pending .previous-mark { color:#ffb37a; }
+/* Dernières mesures : chaque test se touche pour être refait. */
+.last-measures li button { display:block; width:100%; min-height:30px; margin:0; padding:.15rem .2rem; border:0; background:none; color:inherit; font:inherit; text-align:left; }
+/* Bouton Copier d’un bilan déjà copié : petite coche verte tant qu’il n’a pas été modifié. */
+.icon-button.done { position:relative; border-color:#9cc9ad; }
+.icon-button .done-mark { position:absolute; top:-5px; right:-5px; min-width:15px; height:15px; border-radius:50%; background:#2e7a4b; color:#fff; font-size:.6rem; font-weight:800; line-height:15px; text-align:center; }
+.round-button.ai-round.small { width:38px; height:38px; min-height:38px; padding:0; font-size:1rem; }

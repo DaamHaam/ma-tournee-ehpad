@@ -42,11 +42,11 @@ export function RecognizedTests({ found, previous, tinettiPath, onSave, onDismis
   </section>
 }
 
-// ★ Dernières mesures du patient, repliées sous l’en-tête du bilan libre.
-export function LastMeasures({ measures }: { measures: [string, Measure][] }) {
+// ★ Dernières mesures du patient, repliées sous l’en-tête du bilan libre ; toucher un test l’ouvre pour le refaire.
+export function LastMeasures({ measures, onOpen }: { measures: [string, Measure][]; onOpen: (test: string) => void }) {
   if (!measures.length) return null
   return <details className="last-measures">
     <summary>★ Dernières mesures</summary>
-    <ul>{measures.map(([test, measure]) => <li key={test} className={measure.copied ? undefined : 'pending'}><span className="previous-mark" aria-hidden="true">★</span> <strong>{measureTitle(test)}</strong> : {measure.text} <span>· {shortDate(measure.date)}</span></li>)}</ul>
+    <ul>{measures.map(([test, measure]) => <li key={test} className={measure.copied ? undefined : 'pending'}><button type="button" aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => onOpen(test)}><span className="previous-mark" aria-hidden="true">★</span> <strong>{measureTitle(test)}</strong> : {measure.text} <span>· {shortDate(measure.date)}</span></button></li>)}</ul>
   </details>
 }

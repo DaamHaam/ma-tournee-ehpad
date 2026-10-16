@@ -4,18 +4,21 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../storage/database'
 import { openBilans, shortName, type BilanKind } from '../../domain/model'
 import { editPath, KIND_LABEL } from './display'
+import { useToday } from '../../app/useToday'
 
 const TAG: Record<BilanKind, string> = { bilan: 'B', tinetti: 'T', marcheEquilibre: 'M/É', mesures: 'Tests' }
 
 // Bande discrète des bilans en cours du jour (plusieurs patients en séance en même temps) : elle apparaît d’elle-même
 // dès qu’un autre bilan est en cours ; un toucher y passe directement. Un bilan en sort une fois copié.
-// Une dictée en cours est arrêtée et part dans le bilan qu’on quitte.
+// Une dictée en cours est arrêtée et part dans le bilan qu’on quitte. Seulement pour aujourd’hui : un bilan d’un jour
+// passé, rouvert depuis l’historique, n’affiche pas la bande (les bilans de la veille non copiés n’y reviennent pas).
 export function OpenBilansStrip({ date, id, kind, beforeLeave }: { date: string; id: string; kind: BilanKind; beforeLeave: () => Promise<void> }) {
   const navigate = useNavigate()
   const location = useLocation()
   const day = useLiveQuery(() => db.days.get(date), [date])
   const [leaving, setLeaving] = useState(false)
-  if (!day) return null
+  const today = useToday()
+  if (!day || date !== today) return null
   const items = openBilans(day)
   const current = (item: { id: string; kind: BilanKind }) => item.id === id && item.kind === kind
   if (!items.some(item => !current(item))) return null

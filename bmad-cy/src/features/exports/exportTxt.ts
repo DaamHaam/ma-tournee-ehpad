@@ -28,7 +28,8 @@ export function exportTxt(days: Day[]): string {
     const unseen = entries.filter(entry => entry.session === null && entry.pause === undefined && entry.note.trim()).map(format).join(' ')
     // Pause : le motif entre parenthèses, la note éventuelle à la suite.
     const paused = entries.filter(entry => entry.session === null && entry.pause !== undefined).map(entry => [exportName(entry, entries), compact(entry.pause!) && `(${compact(entry.pause!)})`, entry.note.trim() && `(${compact(entry.note)})`].filter(Boolean).join(' ')).join(' ')
-    const mood = [moodSigns(day.mood), compact(day.comment)].filter(Boolean).join(' ')
-    return [parseDate(day.date).toLocaleDateString('fr-FR'), mood, seen, unseen ? `Pas vus : ${unseen}` : '', paused ? `Pause : ${paused}` : ''].filter(Boolean).join('\n')
+    // Les signes du niveau H suivent la date sur la même ligne ; le commentaire général garde sa ligne.
+    const heading = [parseDate(day.date).toLocaleDateString('fr-FR'), moodSigns(day.mood)].filter(Boolean).join(' ')
+    return [heading, compact(day.comment), seen, unseen ? `Pas vus : ${unseen}` : '', paused ? `Pause : ${paused}` : ''].filter(Boolean).join('\n')
   }).join('\n\n')
 }

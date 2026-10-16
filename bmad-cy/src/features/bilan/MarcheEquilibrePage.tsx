@@ -160,7 +160,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
   }
   return <TestPage keyboard={screen.keyboard} viewport={viewport}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<span className="total-badge">Marche / équilibre</span>}
-      copied={copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
+      copied={copied} done={!!entry.tests?.marcheEquilibre?.copied} copyDisabled={!hasFlexContent(input)} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
     {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="marcheEquilibre" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>

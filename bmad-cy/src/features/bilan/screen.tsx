@@ -6,15 +6,17 @@ import type { useDictation } from './useDictation'
 export function Icon({ d, size = 22, width = 1.9 }: { d: string; size?: number; width?: number }) { return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg> }
 
 // En-tête compact des pages plein écran : retour, nom sur deux lignes, outils, copier, annuler.
-export function ScreenHeader({ back, backLabel, patient, tools, copied, copyDisabled, onCopy, onCancel }: {
+// done : le bilan est copié (transmis) et n’a pas été modifié depuis ; le bouton le montre tant que c’est vrai.
+// Copier ne retire pas le focus du texte (le clavier de l’iPhone validerait sinon une saisie en cours après la copie).
+export function ScreenHeader({ back, backLabel, patient, tools, copied, done = false, copyDisabled, onCopy, onCancel }: {
   back: string; backLabel: string; patient: { lastName: string; firstName: string }; tools?: ReactNode
-  copied: boolean | null; copyDisabled: boolean; onCopy: () => void; onCancel: () => void
+  copied: boolean | null; done?: boolean; copyDisabled: boolean; onCopy: () => void; onCancel: () => void
 }) {
   return <header className="screen-header">
     <Link className="icon-link" to={back} aria-label={backLabel}><Icon d={ICONS.back} /></Link>
     <div className="screen-name"><strong>{patient.lastName}</strong>{patient.firstName && <span>{patient.firstName}</span>}</div>
     {tools}
-    <button type="button" className={`icon-button${copied ? ' copied' : ''}`} aria-label={copied === null ? 'Copier' : copied ? 'Copié' : 'Copie impossible'} title="Copier" disabled={copyDisabled} onClick={onCopy}>{copied ? <span aria-hidden="true">✓</span> : <Icon d={ICONS.copy} size={20} />}</button>
+    <button type="button" className={`icon-button${copied ? ' copied' : ''}${done && copied === null ? ' done' : ''}`} aria-label={copied === null ? (done ? 'Copier (déjà copié)' : 'Copier') : copied ? 'Copié' : 'Copie impossible'} title="Copier" disabled={copyDisabled} onPointerDown={event => event.preventDefault()} onClick={onCopy}>{copied ? <span aria-hidden="true">✓</span> : <Icon d={ICONS.copy} size={20} />}{done && copied === null && <span className="done-mark" aria-hidden="true">✓</span>}</button>
     <button type="button" className="icon-button cancel" aria-label="Annuler et quitter" title="Annuler et quitter" onClick={onCancel}><Icon d={ICONS.close} size={20} width={2.4} /></button>
   </header>
 }
@@ -42,11 +44,13 @@ export function DictationFooter({ dictation, left, right, extra, floating }: { d
 }
 
 // Clavier ouvert : petit micro (dicter tout en gardant le clavier) et flèche pour rentrer le clavier, au-dessus du clavier.
-export function KeyboardBar({ dictation, onHide }: { dictation: ReturnType<typeof useDictation>; onHide: () => void }) {
+// left : boutons posés juste à gauche du petit micro (✨ du bilan libre).
+export function KeyboardBar({ dictation, left, onHide }: { dictation: ReturnType<typeof useDictation>; left?: ReactNode; onHide: () => void }) {
   const { error, status, recording, ending, disabled, toggle } = dictation
   return <div className="keyboard-bar">
     {error && <span className="field-error" role="alert">{error}</span>}
     <span className="dictation-status" role="status">{status}</span>
+    {left}
     <button type="button" className={`mic small${recording ? ' recording' : ''}${ending ? ' ending' : ''}`} aria-label={recording ? 'Arrêter la dictée' : 'Démarrer la dictée'} disabled={disabled} onPointerDown={event => event.preventDefault()} onClick={() => void toggle()}><MicIcon recording={recording} size={18} /></button>
     <button type="button" className="keyboard-hide" aria-label="Fermer le clavier" onPointerDown={event => event.preventDefault()} onClick={onHide}><Icon d={ICONS.hide} /></button>
   </div>
