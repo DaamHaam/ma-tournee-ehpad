@@ -1,5 +1,12 @@
 # Journal des clôtures
 
+## 2026-10-16 — Claude · cloud
+- Livré : v0.33.0 à v0.34.1 — pause de séance (motif, patient grisé sans A/B/note/bilan, trace dans les journées passées et l'export TXT, Dexie v8) ; ★ orange quand le bilan d'origine n'est pas transmis (bilans, dernières mesures, suivi des tests) ; prompt marche / équilibre (mesures et essais dans l'évaluation, meilleur essai comme score, aucune phrase perdue) ; bande des bilans en cours sans limite de temps, seulement pour aujourd'hui ; ✨ dans la rangée du clavier avec compteur des tests reconnus ; dernières mesures cliquables (test rapide ou Tinetti, retour au bilan avec son origine) ; bouton Copier qui garde le focus, coche verte durable, inactif pendant une dictée ; signes H sur la ligne de la date dans l'export. Notes Notion : ajouts du 15/10 au bilan unifié, consignes CY / LS de l'organisateur de bilans.
+- Tests : npm test 113/113, lint, build, Playwright 25/25 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne) à chaque version.
+- Corrigé à la revue : patient vu puis mis en pause (export et note lisible), retour en chaîne bilan → test → bilan, compteur des tests reconnus au clavier, documentation (bilans d'un patient en pause, règles du prompt).
+- En attente : essais sur iPhone (pause, ★ orange, coche du bouton Copier, rangement de la dictée marche / équilibre) ; arbre général de l'organisateur de bilans à pousser sur GitHub et dans Convex.
+- Prochaine étape : quand l'arbre est dans Convex, le lire et implémenter le bilan unifié (tech-spec-bilan-unifie.md, ajouts du 2026-10-15).
+
 ## 2026-10-12 — Claude · cloud
 - Livré : v0.29.0 à v0.32.1 — commentaires marche / équilibre sans intitulé, accoudoirs au 30 s, correction des secousses du défilement ; tests rapides depuis la journée (9 tests dont 5 levers de chaise et EVA, chronomètre et compte à rebours, ★, copie qui coche Trans), historique commun des mesures et « Suivi des tests » de la fiche ; tests standardisés reconnus dans le bilan libre par « Corriger » (panneau à valider, ★, Tinetti → grille) ; bande des bilans en cours (dictée envoyée au bilan quitté). Plan du bilan unifié à deux volets (tech-spec-bilan-unifie.md), règle Convex pour les fiches de bilan.
 - Tests : npm test 107/107, lint, build, Playwright 23/23 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne) à chaque version.
