@@ -44,6 +44,22 @@ describe('sauvegarde complète', () => {
     expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ id: 'p2', firstName: '', ...careDefaults() })
   })
 
+  it('restaure une ancienne sauvegarde sans pause (patient non en pause) et refuse une pause mal formée', () => {
+    const legacy = JSON.parse(buildBackup(data, ''))
+    delete legacy.patients[0].paused
+    delete legacy.patients[0].pauseReason
+    expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ paused: false, pauseReason: '' })
+    legacy.patients[0].paused = 'oui'
+    expect(() => parseBackup(JSON.stringify(legacy))).toThrow('pas une sauvegarde')
+    const withDay = JSON.parse(buildBackup(data, ''))
+    const firstDay = withDay.days[0]
+    const firstId = Object.keys(firstDay.entries)[0]
+    firstDay.entries[firstId].pause = 'hospitalisation'
+    expect(parseBackup(JSON.stringify(withDay)).days[0].entries[firstId].pause).toBe('hospitalisation')
+    firstDay.entries[firstId].pause = true
+    expect(() => parseBackup(JSON.stringify(withDay))).toThrow('pas une sauvegarde')
+  })
+
   it('restaure une ancienne sauvegarde sans « attend une séance » avec la valeur fausse', () => {
     const legacy = JSON.parse(buildBackup(data, ''))
     delete legacy.patients[0].waiting

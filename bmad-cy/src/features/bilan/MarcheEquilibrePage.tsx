@@ -197,7 +197,7 @@ function FlexForm({ input, ai, busy, previous, quick, onToggle, onValue }: {
   }
   const last = previous.last?.record
   return <div className="pane flex-form" role="tabpanel" aria-label="Formulaire" ref={box} onScroll={follow}>
-    {previous.last && <p className="previous-note">★ bilan précédent du {shortDate(previous.last.date)}</p>}
+    {previous.last && <p className={`previous-note${previous.last.record.copied ? '' : ' pending'}`}>★ bilan précédent du {shortDate(previous.last.date)}</p>}
     {quick && <div className="quick-note" role="note"><p>Tests rapides du jour : {quick.tests.join(' · ')}</p><button type="button" disabled={busy} onClick={quick.take}>Reprendre</button></div>}
     <div className="module-tabs" role="tablist" aria-label="Sous-modules" ref={tabs}>
       {MARCHE_EQUILIBRE.map(module => {

@@ -27,7 +27,7 @@ export function RecognizedTests({ found, previous, tinettiPath, onSave, onDismis
       return <li key={test}>
         <div className="recognized-row">
           <button type="button" role="checkbox" className="test-option" aria-checked={kept.includes(test)} onClick={() => toggle(test)}>
-            <span className="option-label"><strong>{measureTitle(test)}</strong> : {rubricText(test, measures) || '—'}{before && <span className="previous-measure"> · ★ {before.text} ({shortDate(before.date)})</span>}</span>
+            <span className="option-label"><strong>{measureTitle(test)}</strong> : {rubricText(test, measures) || '—'}{before && <span className={`previous-measure${before.copied ? '' : ' pending'}`}> · <span className="previous-mark">★</span> {before.text} ({shortDate(before.date)})</span>}</span>
           </button>
           <button type="button" className="icon-button" aria-label={`Corriger ${measureTitle(test)}`} aria-expanded={editing === test} onClick={() => setEditing(current => current === test ? null : test)}>✎</button>
         </div>
@@ -47,6 +47,6 @@ export function LastMeasures({ measures }: { measures: [string, Measure][] }) {
   if (!measures.length) return null
   return <details className="last-measures">
     <summary>★ Dernières mesures</summary>
-    <ul>{measures.map(([test, measure]) => <li key={test}><strong>{measureTitle(test)}</strong> : {measure.text} <span>· {shortDate(measure.date)}</span></li>)}</ul>
+    <ul>{measures.map(([test, measure]) => <li key={test} className={measure.copied ? undefined : 'pending'}><span className="previous-mark" aria-hidden="true">★</span> <strong>{measureTitle(test)}</strong> : {measure.text} <span>· {shortDate(measure.date)}</span></li>)}</ul>
   </details>
 }

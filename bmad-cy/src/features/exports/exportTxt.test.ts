@@ -69,4 +69,15 @@ describe('export TXT', () => {
     const blank: Day = { date: '2026-09-29', mood: null, comment: ' ', order: ['a'], entries: { a: { ...entry(patient, null), bilan: 'Bilan seul' } } }
     expect(exportTxt([blank])).toBe('')
   })
+
+  it('liste les patients en pause avec leur motif, à part des non-vus', () => {
+    const day: Day = { date: '2026-09-30', mood: null, comment: '', order: ['a', 'b', 'c'], entries: {
+      a: entry(identity('a', 'Martin', 'Alice'), 'A'),
+      b: { ...entry(identity('b', 'Petit', 'Jeanne'), null), pause: 'hospitalisation' },
+      c: { ...entry(identity('c', 'Robert', 'Paul'), null), pause: '' },
+    } }
+    expect(exportTxt([day])).toBe('30/09/2026\nMartin\nPause : Petit (hospitalisation) Robert')
+    const onlyPause: Day = { ...day, order: ['c'], entries: { c: day.entries.c } }
+    expect(exportTxt([onlyPause])).toBe('30/09/2026\nPause : Robert')
+  })
 })

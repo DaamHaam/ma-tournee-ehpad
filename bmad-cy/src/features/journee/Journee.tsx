@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { dateLabel, daysSince, hasBilanOrTest, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, lastSessionsA, weekDate, weeksSince, type Day, type Mood, type Patient } from '../../domain/model'
+import { dateLabel, daysSince, entryPause, hasBilanOrTest, entryVisible, followUpLevel, fullName, lastFollowUp, moodSigns, OFF_DAY_SEPARATOR, parseDate, SEPARATORS, shortName, validDate, lastSessionsA, weekDate, weeksSince, type Day, type Mood, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { useToday } from '../../app/useToday'
 import { exportTxt } from '../exports/exportTxt'
@@ -18,12 +18,12 @@ function SortableRow({ id, label, group, children }: { id: string; label: string
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
   return <div ref={node => { setNodeRef(node); setActivatorNodeRef(node) }} className={`sortable-row${group ? ' group' : ''}${isDragging ? ' dragging' : ''}`} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} role={undefined} aria-label={`Déplacer ${label}`}>{children}</div>
 }
-function NoteToggle({ patient, name, open, today, onToggle }: { patient?: Patient; name: string; open: boolean; today: string; onToggle: () => void }) {
+function NoteToggle({ patient, name, open, today, disabled, onToggle }: { patient?: Patient; name: string; open: boolean; today: string; disabled?: boolean; onToggle: () => void }) {
   const last = patient ? lastFollowUp(patient) : null
   const followUp = last ? `dernière éval ou trans le ${parseDate(last).toLocaleDateString('fr-FR')}` : 'éval ou trans : date inconnue'
   const weeks = weeksSince(last, today)
   // Le nombre de semaines depuis la dernière éval ou trans précède le triangle, dans sa couleur ; seul le triangle pivote à l’ouverture de la note.
-  return <button type="button" className={`transmission ${followUpLevel(last, today)}${open ? ' open' : ''}`} aria-expanded={open} aria-label={`Note pour ${name}, ${followUp}`} title={followUp} onClick={onToggle}>{weeks !== null && <span className="weeks" aria-hidden="true">{weeks}</span>}<span className="triangle" aria-hidden="true" /></button>
+  return <button type="button" className={`transmission ${followUpLevel(last, today)}${open ? ' open' : ''}`} aria-expanded={open} aria-label={`Note pour ${name}, ${followUp}`} title={followUp} disabled={disabled} onClick={onToggle}>{weeks !== null && <span className="weeks" aria-hidden="true">{weeks}</span>}<span className="triangle" aria-hidden="true" /></button>
 }
 // Copie la journée affichée au format exact de l’export TXT ; désactivé quand il n’y a rien à exporter.
 function DayCopy({ day }: { day: Day }) {
@@ -49,7 +49,7 @@ export function Journee() {
   const day = useLiveQuery(() => repository.dayView(date), [date])
   // Seules les journées antérieures comptent : la saisie du jour affiché ne relance pas ce calcul.
   const lastA = useLiveQuery(async () => lastSessionsA(await db.days.where('date').below(date).toArray(), date), [date])
-  const patientSignature = patients?.map(p => `${p.id}:${p.archived}`).sort().join(',')
+  const patientSignature = patients?.map(p => `${p.id}:${p.archived}:${p.paused}`).sort().join(',')
   useEffect(() => { void run(() => repository.ensureDay(date)) }, [date, today, patientSignature, run])
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { delay: 350, tolerance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
   const changeDate = (value: string) => { if (validDate(value)) setParams({ date: value }) }
@@ -71,10 +71,13 @@ export function Journee() {
         const patient = entry && (active.get(id) ?? entry.patient)
         const label = isSeparator ? `Repère ${SEPARATORS.indexOf(id) + 1}` : fullName(patient!)
         const noteKey = `${date}:${id}`
-        const noteOpen = entry ? noteOverrides[noteKey] ?? entry.note.trim() !== '' : false
+        // En pause : patient grisé avec son motif, sans A, B, note ni bilan.
+        const pause = entry ? entryPause(entry, active.get(id), date, today) : null
+        const paused = pause !== null
+        const noteOpen = entry && !paused ? noteOverrides[noteKey] ?? entry.note.trim() !== '' : false
         const sinceA = !isSeparator && lastA ? daysSince(lastA.get(id), date) : null
-        return <SortableRow key={id} id={id} label={label} group={!!active.get(id)?.group}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className="patient-row">
-          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><span className="name-line"><strong><WaitingMark waiting={active.get(id)?.waiting} />{shortName(patient!)}</strong><WaitingLabel waiting={active.get(id)?.waiting} /><PrescriptionMark patient={active.get(id)} today={today} /></span>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<button type="button" className={`bilan-toggle${hasBilanOrTest(entry) ? ' filled' : ''}`} aria-haspopup="dialog" aria-label={`Bilan pour ${fullName(patient!)}`} onClick={() => setChooser({ id, name: fullName(patient!) })}>+</button></div></div>
+        return <SortableRow key={id} id={id} label={label} group={!!active.get(id)?.group}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className={`patient-row${paused ? ' paused' : ''}`}>
+          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} disabled={paused} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><span className="name-line"><strong><WaitingMark waiting={active.get(id)?.waiting} />{shortName(patient!)}</strong><WaitingLabel waiting={active.get(id)?.waiting} /><PrescriptionMark patient={active.get(id)} today={today} /></span>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{paused && <span className="patient-meta pause-reason">{pause ? `Pause · ${pause}` : 'Pause'}</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} disabled={paused} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}<button type="button" className={`bilan-toggle${hasBilanOrTest(entry) ? ' filled' : ''}`} aria-haspopup="dialog" aria-label={`Bilan pour ${fullName(patient!)}`} disabled={paused} onClick={() => setChooser({ id, name: fullName(patient!) })}>+</button></div></div>
  {noteOpen && <input key={`${date}-${id}-note`} className="day-note" onMouseDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} autoFocus={noteOverrides[noteKey] === true} aria-label={`Note du jour pour ${fullName(patient!)}`} placeholder="Note" defaultValue={entry.note} onChange={e => { const value = e.target.value; void run(() => repository.setNote(date, id, value)) }} />}
         </article>}</SortableRow>
       })}</div></SortableContext></DndContext>

@@ -411,4 +411,45 @@ describe('stockage local', () => {
     expect((await database.days.get('2026-09-15'))?.order).toEqual(past)
     expect((await database.days.get('2026-09-22'))?.order).toEqual(reordered)
   })
+
+  it('trace la pause dans la journée du jour, la retire en la levant, et laisse le passé intact', async () => {
+    const id = await repository.addPatient({ lastName: 'Fictif', firstName: 'Pause', room: '', priority: '' })
+    await repository.updatePatient(id, { paused: true, pauseReason: '  hospitalisation ' })
+    expect((await database.days.get(TODAY))?.entries[id].pause).toBe('hospitalisation')
+    await repository.ensureDay('2026-09-03')
+    expect((await database.days.get('2026-09-03'))?.entries[id].pause).toBe('hospitalisation')
+    // Le lendemain, la pause levée ne touche plus la journée devenue passée.
+    const later = new TourRepository(database, () => '2026-09-02')
+    await later.updatePatient(id, { paused: false, pauseReason: '' })
+    expect((await database.days.get(TODAY))?.entries[id].pause).toBe('hospitalisation')
+    expect((await database.days.get('2026-09-02'))?.entries[id].pause).toBeUndefined()
+    expect((await database.days.get('2026-09-03'))?.entries[id].pause).toBeUndefined()
+    // Une journée passée saisie après coup ne reçoit pas la pause en cours.
+    await later.updatePatient(id, { paused: true })
+    await later.setNote('2026-08-31', id, 'note')
+    expect((await database.days.get('2026-08-31'))?.entries[id].pause).toBeUndefined()
+    expect((await database.days.get('2026-09-02'))?.entries[id].pause).toBe('')
+  })
+
+  it('migre une base v7 : pause désactivée, sans motif', async () => {
+    const name = `test-migration-v8-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(7).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    const { paused: _a, pauseReason: _b, ...v7Care } = careDefaults()
+    void [_a, _b]
+    await legacy.table('patients').add({ ...v7Care, id: 'p1', lastName: 'Fictif', firstName: 'Zeta', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', waiting: true })
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect(await migrated.patients.get('p1')).toMatchObject({ waiting: true, paused: false, pauseReason: '' })
+    migrated.close(); await migrated.delete()
+  })
+
+  it('n’importe pas la pause : un patient connu garde la sienne', async () => {
+    const id = await repository.addPatient({ lastName: 'Fictif', firstName: 'Eta', room: '', priority: '' })
+    await repository.updatePatient(id, { paused: true, pauseReason: 'hospitalisation' })
+    await repository.replacePatients([{ ...careDefaults(), lastName: 'Fictif', firstName: 'Eta' }, { ...careDefaults(), paused: true, lastName: 'Fictif', firstName: 'Theta' } as never])
+    const patients = await database.patients.toArray()
+    expect(patients.find(patient => patient.id === id)).toMatchObject({ paused: true, pauseReason: 'hospitalisation' })
+    expect(patients.find(patient => patient.firstName === 'Theta')?.paused).toBe(false)
+  })
 })

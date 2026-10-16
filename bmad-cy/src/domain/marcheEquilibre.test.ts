@@ -85,7 +85,7 @@ describe('bilan marche / équilibre', () => {
     const days = [day('2026-06-01', { tug: '20', 'test10m.temps': '15' }), day('2026-09-01', { tug: '18' }, [pick('marche', 'possible seul')]), day('2026-10-08', { tug: '12' })]
     const previous = previousMarcheEquilibre(days, 'p', '2026-10-08')
     expect(previous.last?.date).toBe('2026-09-01')
-    expect(previous.measures).toEqual({ tug: { date: '2026-09-01', text: '18sec' }, test10m: { date: '2026-06-01', text: '15sec' } })
+    expect(previous.measures).toEqual({ tug: { date: '2026-09-01', text: '18sec', copied: false }, test10m: { date: '2026-06-01', text: '15sec', copied: false } })
   })
   it('garde la mise en forme dictée dans les champs, échappe le reste', () => {
     expect(fieldHtml('<b>maladie</b> d’Alzheimer & <script>')).toBe('<b>maladie</b> d’Alzheimer &amp; &lt;script&gt;')

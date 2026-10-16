@@ -4,11 +4,19 @@ import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDataba
 import { applyOrder, careDefaults, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
-// GRP, sexe, attente et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
+// GRP, sexe, attente, pause et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
-const NOT_IMPORTED = ['group', 'sex', 'waiting', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
+const NOT_IMPORTED = ['group', 'sex', 'waiting', 'paused', 'pauseReason', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
-type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit'
+type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit'
+// Pause de la fiche recopiée dans une journée d’aujourd’hui ou à venir ; renvoie vrai si l’entrée a changé.
+function syncPause(entry: Entry, patient: Pick<Patient, 'paused' | 'pauseReason'>): boolean {
+  const pause = patient.paused ? patient.pauseReason : undefined
+  if (entry.pause === pause) return false
+  if (pause === undefined) delete entry.pause
+  else entry.pause = pause
+  return true
+}
 export class TourRepository {
   private database: TourDatabase
   private today: () => string
@@ -25,7 +33,8 @@ export class TourRepository {
   private async activePatients(): Promise<Patient[]> {
     return (await this.database.patients.toArray()).filter(p => !p.archived).sort((a, b) => a.lastName.localeCompare(b.lastName, 'fr'))
   }
-  // Journée non enregistrée : patients actifs rangés selon le modèle du même jour de semaine, sous les repères.
+  // Journée non enregistrée : patients actifs rangés selon le modèle du même jour de semaine, sous les repères ;
+  // la pause en cours n’y figure qu’aujourd’hui et après (une journée passée saisie après coup ne la reçoit pas).
   private async draftDay(date: string): Promise<Day> {
     const patients = await this.activePatients()
     const activeIds = new Set(patients.map(p => p.id))
@@ -33,7 +42,7 @@ export class TourRepository {
     const order = template?.order.filter(id => SEPARATORS.includes(id) || activeIds.has(id)) ?? [...SEPARATORS]
     for (const separator of SEPARATORS) if (!order.includes(separator)) order.push(separator)
     for (const patient of patients) if (!order.includes(patient.id)) order.push(patient.id)
-    return { date, entries: Object.fromEntries(patients.map(patient => [patient.id, { patient: identityOf(patient), session: null, note: '' }])), order, mood: null, comment: '' }
+    return { date, entries: Object.fromEntries(patients.map(patient => [patient.id, { patient: identityOf(patient), session: null, note: '', ...(patient.paused && date >= this.today() ? { pause: patient.pauseReason } : {}) }])), order, mood: null, comment: '' }
   }
   // Journée à afficher : celle enregistrée, sinon un brouillon qui ne sera écrit qu’à la première saisie.
   async dayView(date: string): Promise<Day> {
@@ -55,6 +64,7 @@ export class TourRepository {
         const entry = day.entries[patient.id]
         if (!entry) { day.entries[patient.id] = { patient: identityOf(patient), session: null, note: '' }; changed = true }
         else if (JSON.stringify(entry.patient) !== JSON.stringify(identityOf(patient))) { entry.patient = identityOf(patient); changed = true }
+        if (syncPause(day.entries[patient.id], patient)) changed = true
         if (!day.order.includes(patient.id)) { day.order.push(patient.id); changed = true }
       }
       const activeIds = new Set(patients.map(p => p.id))
@@ -63,11 +73,11 @@ export class TourRepository {
       if (changed) await this.database.days.put(day)
     })
   }
-  // Une fiche modifiée met à jour l’identité retenue par aujourd’hui et les jours futurs ; le passé garde la sienne.
+  // Une fiche modifiée met à jour l’identité et la pause retenues par aujourd’hui et les jours futurs ; le passé garde les siennes.
   private async refreshSnapshots(patients: Patient[]): Promise<void> {
-    const byId = new Map(patients.map(patient => [patient.id, identityOf(patient)]))
+    const byId = new Map(patients.map(patient => [patient.id, patient]))
     await this.database.days.where('date').aboveOrEqual(this.today()).modify(day => {
-      for (const [id, entry] of Object.entries(day.entries)) { const identity = byId.get(id); if (identity) entry.patient = identity }
+      for (const [id, entry] of Object.entries(day.entries)) { const patient = byId.get(id); if (patient) { entry.patient = identityOf(patient); syncPause(entry, patient) } }
     })
   }
   private async changeDay(date: string, update: (day: Day) => void): Promise<void> {
@@ -218,6 +228,8 @@ export class TourRepository {
       if (patient && effectivePrescriptionEnd(patient) !== patient.prescriptionEnd) await this.database.patients.update(id, { prescriptionEnd: effectivePrescriptionEnd(patient) })
       if (patient) await this.refreshSnapshots([patient])
     })
+    // Mettre en pause laisse une trace dans la journée du jour, même si elle n’avait pas encore été ouverte.
+    if (patch.paused !== undefined || patch.pauseReason !== undefined) await this.ensureDay(this.today())
   }
   async toggleFollowUp(id: string, kind: 'evalDates' | 'transDates', date: string): Promise<void> {
     await this.database.transaction('rw', this.database.patients, async () => {

@@ -419,3 +419,16 @@ html:has(.bilan-page), body:has(.bilan-page) { overflow:hidden; overscroll-behav
 .open-bilans button[aria-current="page"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
 .open-bilans .open-name { max-width:9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
 .open-bilans .open-kind { color:var(--muted); font-size:.68rem; font-weight:800; }
+/* Pause de séance : patient grisé, motif sous le nom, boutons inactifs. */
+.patient-row.paused { background:#f1f3f5; }
+.patient-row.paused .patient-name strong, .patient-list .paused strong { color:#7d8790; }
+.patient-row.paused .session-buttons button:disabled, .patient-row.paused .transmission:disabled { opacity:.4; cursor:default; }
+.pause-reason { font-style:italic; }
+.pause-field { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; margin-bottom:.6rem; }
+.pause-field .switch-field { margin-bottom:0; }
+.pause-field input:not([role="switch"]) { flex:1; min-width:10rem; }
+.pause-field .switch-field input:checked { background:#65717b; }
+/* ★ orange : mesure ou bilan précédent non copié (non transmis). */
+.previous-mark.pending, .pending .previous-mark { color:#e8590c; }
+.previous-note.pending, .previous-measure.pending, .measures-history li span.pending { color:#c2410c; }
+.test-option[aria-checked="true"] .previous-mark.pending, .recognized .test-option[aria-checked="true"] .previous-measure.pending, .recognized .test-option[aria-checked="true"] .previous-measure.pending .previous-mark { color:#ffb37a; }

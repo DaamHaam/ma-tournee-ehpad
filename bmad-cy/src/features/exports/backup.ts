@@ -18,8 +18,8 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString)
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
-const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating'] as const
-const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group', 'waiting'] as const
+const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating', 'pauseReason'] as const
+const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group', 'waiting', 'paused'] as const
 
 function checkPatient(value: unknown): Patient {
   if (!isObject(value) || !isString(value.id) || !isString(value.lastName)) throw new Error(INVALID)
@@ -53,7 +53,7 @@ function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)
   const entries: Day['entries'] = {}
   for (const [id, entry] of Object.entries(value.entries)) {
-    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanHtml !== undefined && !isString(entry.bilanHtml)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || (entry.bilanEditedAt !== undefined && !isString(entry.bilanEditedAt)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
+    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanHtml !== undefined && !isString(entry.bilanHtml)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || (entry.bilanEditedAt !== undefined && !isString(entry.bilanEditedAt)) || (entry.pause !== undefined && !isString(entry.pause)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
     if (entry.tests !== undefined && !(isObject(entry.tests) && Object.values(entry.tests).every(checkTest))) throw new Error(INVALID)
     // Mesures reconnues dans le bilan libre (après la v0.30) : choix et champs comme un bilan flexible.
     if (entry.bilanMeasures !== undefined && !(isObject(entry.bilanMeasures) && (entry.bilanMeasures.choices === undefined || isStringList(entry.bilanMeasures.choices)) && (entry.bilanMeasures.values === undefined || (isObject(entry.bilanMeasures.values) && Object.values(entry.bilanMeasures.values).every(isString))))) throw new Error(INVALID)

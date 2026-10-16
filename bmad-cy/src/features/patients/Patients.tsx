@@ -66,8 +66,8 @@ export function Patients() {
     </form>}
     <label className="filter-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} /> Archivés</label>
     {!patients ? null : visible.length === 0 ? <div className="empty-state"><h2>Aucun patient</h2></div> : <ul className="patient-list">
-      {visible.map(patient => <li key={patient.id} className={patient.group ? 'group' : undefined}><Link to={`/patients/${patient.id}`}>
-        <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} /><PrescriptionMark patient={patient} today={today} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
+      {visible.map(patient => <li key={patient.id} className={[patient.group && 'group', patient.paused && 'paused'].filter(Boolean).join(' ') || undefined}><Link to={`/patients/${patient.id}`}>
+        <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} /><PrescriptionMark patient={patient} today={today} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.paused && <span className="tag muted">{patient.pauseReason ? `Pause · ${patient.pauseReason}` : 'Pause'}</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
         {(patient.room || patient.priority) && <span className="patient-meta">{[patient.room && `Chambre ${patient.room}`, patient.priority].filter(Boolean).join(' · ')}</span>}
       </Link></li>)}
     </ul>}
@@ -139,7 +139,8 @@ export function PatientDetail() {
   </>
 }
 
-// Suivi des tests standardisés : les dernières mesures de chaque test, toutes sources confondues (tests rapides, bilans).
+// Suivi des tests standardisés : les dernières mesures de chaque test, toutes sources confondues (tests rapides, bilans) ;
+// en orange, celles dont le test ou le bilan n’a pas été copié (non transmis).
 const MEASURE_ORDER = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
 function MeasuresHistory({ days, id }: { days: Parameters<typeof measureHistory>[0]; id: string }) {
   const history = measureHistory(days, id)
@@ -147,6 +148,6 @@ function MeasuresHistory({ days, id }: { days: Parameters<typeof measureHistory>
   if (!tests.length) return null
   return <details className="card measures-history">
     <summary>Suivi des tests</summary>
-    <ul>{tests.map(test => <li key={test}><strong>{measureTitle(test)}</strong><span>{history[test].slice(0, 6).map(measure => `${measure.text} (${shortDate(measure.date)})`).join(' · ')}</span></li>)}</ul>
+    <ul>{tests.map(test => <li key={test}><strong>{measureTitle(test)}</strong><span>{history[test].slice(0, 6).map((measure, index) => <span key={measure.date} className={measure.copied ? undefined : 'pending'}>{index > 0 && ' · '}{measure.text} ({shortDate(measure.date)})</span>)}</span></li>)}</ul>
   </details>
 }

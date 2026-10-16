@@ -35,7 +35,16 @@ describe('mesures des tests standardisés', () => {
       { date: '2026-10-08', entries: { p: { tests: { mesures: record({ tug: '17' }) } } } },
     ]
     expect(measureHistory(days, 'p').tug.map(measure => measure.text)).toEqual(['17sec', '19sec', '21sec', '25sec'])
-    expect(latestMeasures(days, 'p', '2026-10-08')).toEqual({ tug: { date: '2026-10-01', text: '19sec' }, test10m: { date: '2026-06-01', text: '15sec' }, tinetti: { date: '2026-07-01', text: '28/28' } })
+    expect(latestMeasures(days, 'p', '2026-10-08')).toEqual({ tug: { date: '2026-10-01', text: '19sec', copied: false }, test10m: { date: '2026-06-01', text: '15sec', copied: false }, tinetti: { date: '2026-07-01', text: '28/28', copied: false } })
+  })
+  it('signale si la mesure vient d’un test ou d’un bilan copié (transmis)', () => {
+    const days = [
+      { date: '2026-06-01', entries: { p: { tests: { marcheEquilibre: { ...record({ tug: '25' }), copied: true } } } } },
+      { date: '2026-07-01', entries: { p: { bilanMeasures: { values: { tug: '22' } }, bilanCopied: true } } },
+      { date: '2026-08-01', entries: { p: { bilanMeasures: { values: { tug: '21' } } } } },
+      { date: '2026-09-01', entries: { p: { tests: { mesures: { ...record({ tug: '19' }), copied: true } } } } },
+    ]
+    expect(measureHistory(days, 'p').tug.map(measure => measure.copied)).toEqual([true, false, true, true])
   })
   it('met en forme le chronomètre', () => {
     expect(chronoDisplay(17_650)).toBe('17,6 s')

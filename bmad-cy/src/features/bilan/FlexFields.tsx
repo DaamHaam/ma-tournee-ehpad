@@ -15,12 +15,12 @@ const NO_AI = { filled: [], checks: [] }
 // chronoOpen : chronomètre affiché d’emblée (test rapide) ; sinon ⏱ l’ouvre et le referme.
 export function Rubric({ rubric, filled, input, ai = NO_AI, busy = false, last, measure, chronoOpen = false, onToggle, onValue }: {
   rubric: FlexRubric; filled: boolean; input: FlexValues; ai?: { filled: string[]; checks: AiCheck[] }; busy?: boolean
-  last?: TestRecord; measure?: { date: string; text: string }; chronoOpen?: boolean; onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
+  last?: TestRecord; measure?: { date: string; text: string; copied: boolean }; chronoOpen?: boolean; onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
 }) {
   const [chrono, setChrono] = useState(chronoOpen)
   return <section className={`flex-rubric${filled ? ' filled' : ''}`} aria-label={rubric.title}>
     <h3>{rubric.title}{rubric.chrono && !chronoOpen && <button type="button" className={`chrono-toggle${chrono ? ' open' : ''}`} aria-label={chrono ? 'Fermer le chronomètre' : 'Ouvrir le chronomètre'} aria-expanded={chrono} onClick={() => setChrono(open => !open)}>⏱</button>}</h3>
-    {measure && <p className="previous-measure"><span className="previous-mark" aria-hidden="true">★</span> {measure.text} · {shortDate(measure.date)}</p>}
+    {measure && <p className={`previous-measure${measure.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> {measure.text} · {shortDate(measure.date)}</p>}
     {rubric.chrono && chrono && <ChronoPanel chrono={rubric.chrono} disabled={busy} onTime={onValue} />}
     {ai.checks.filter(check => check.row === rubric.id).map((check, index) => <p key={index} className="row-doubt" role="note">⚠ {check.reason || 'à vérifier'}</p>)}
     {rubric.controls.map(control => <Control key={control.key} control={control} title={rubric.title} input={input} ai={ai.filled} busy={busy} last={last} onToggle={onToggle} onValue={onValue} />)}
@@ -33,7 +33,8 @@ export function Control({ control, title, input, ai, busy, last, onToggle, onVal
 }) {
   const { choices, values } = input
   const name = control.label ? `${title} – ${control.label}` : title
-  const star = <span className="previous-mark" title="Choix du bilan précédent">★</span>
+  // ★ orange : le bilan précédent n’a pas été copié (non transmis).
+  const star = <span className={`previous-mark${last?.copied ? '' : ' pending'}`} title="Choix du bilan précédent">★</span>
   const sparkle = <span className="ai-mark" title="Ajouté par l’IA d’après la dictée">✨</span>
   const fieldLabel = (control.kind === 'number' || control.kind === 'text') && (control.label || ai.includes(control.key)) ? <span>{control.label}{ai.includes(control.key) && <> {sparkle}</>}</span> : null
   switch (control.kind) {

@@ -14,6 +14,14 @@ Seule dépendance ouverte : le catalogue vient de la base **Convex** de l’orga
 - Sans réseau ni clé : **Insérer les cochés** ajoute les lignes fabriquées par l’application, sans IA.
 - Quitter (‹) garde tout tel quel ; ✕ remet le bilan comme à l’ouverture (texte, cases, mesures).
 
+### Ajouts du 2026-10-15 (retour d’usage en dictée seule)
+
+- **Deux niveaux d’IA**, proposés aussi en dictée seule : **Corriger** (léger : orthographe, ponctuation, accords, civilités ; garde l’ordre et les mots dictés, ne reprend aucune case, repère quand même les tests) et **✨ Mettre en forme** (complet : range dans les sections, fusionne avec les cases cochées, réorganise les idées). Les deux écrivent dans le même texte, retouchable et copiable ; ↶ annule l’un comme l’autre.
+- **Titre** : aucun par défaut (confirmé).
+- **Règles du prompt de mise en forme** : la dictée prime, les cases n’inspirent que l’ordre et ne remplacent ni ne résument ce qui est dicté ; tout ce qui est mesuré, chiffré ou observé (essais, durées, niveau d’aide, déroulé d’un transfert) relève de l’évaluation, jamais du Traitement ; chaque phrase dictée se retrouve dans le résultat avec ses nuances, seuls les parasites de transcription sont écartés ; plusieurs essais d’un test : le meilleur est le score (historique, ★), les autres restent écrits dans le texte.
+- **Repères** : chaque test standardisé a un « Autre » en plus de sa valeur ; option « afficher d’un coup les tests déjà réalisés (★) ». Les ★ orange (non transmis) sont déjà livrés en v0.33.0.
+- Le catalogue viendra de l’arbre général de l’organisateur de bilans (Convex) : attendre qu’il soit poussé et rempli avant l’étape 1.
+
 ## Volet 2 — Repères (tout sous les yeux)
 
 - **Titre** en tête : aucun (bilan simple, par défaut) ou un titre du catalogue (« Évaluation kiné marche / équilibre »…).

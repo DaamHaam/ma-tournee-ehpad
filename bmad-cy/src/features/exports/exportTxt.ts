@@ -18,15 +18,17 @@ function exportName(entry: Entry, entries: Entry[]): string {
   if (firstName && homonyms.filter(other => firstWord(other.patient.firstName) === firstName).length === 1) return `${cased} ${capital(firstName)}`
   return `${cased}_${entry.patient.id.slice(0, 6)}`
 }
-// Seuls la séance et la note entrent dans le TXT ; le bilan reste dans l'application.
-function exported(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' }
+// Seuls la séance, la note et la pause entrent dans le TXT ; le bilan reste dans l'application.
+function exported(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || entry.pause !== undefined }
 export function exportTxt(days: Day[]): string {
   return [...days].sort((a, b) => a.date.localeCompare(b.date)).filter(day => Object.values(day.entries).some(exported) || day.mood !== null || day.comment.trim()).map(day => {
     const entries = day.order.flatMap(id => day.entries[id] ? [day.entries[id]] : [])
     const format = (entry: Entry) => `${exportName(entry, entries)}${entry.note.trim() ? ` (${compact(entry.note)})` : ''}`
     const seen = entries.filter(entry => entry.session !== null).map(format).join(' ')
-    const unseen = entries.filter(entry => entry.session === null && entry.note.trim()).map(format).join(' ')
+    const unseen = entries.filter(entry => entry.session === null && entry.pause === undefined && entry.note.trim()).map(format).join(' ')
+    // Pause : le motif entre parenthèses, la note éventuelle à la suite.
+    const paused = entries.filter(entry => entry.session === null && entry.pause !== undefined).map(entry => [exportName(entry, entries), compact(entry.pause!) && `(${compact(entry.pause!)})`, entry.note.trim() && `(${compact(entry.note)})`].filter(Boolean).join(' ')).join(' ')
     const mood = [moodSigns(day.mood), compact(day.comment)].filter(Boolean).join(' ')
-    return [parseDate(day.date).toLocaleDateString('fr-FR'), mood, seen, unseen ? `Pas vus : ${unseen}` : ''].filter(Boolean).join('\n')
+    return [parseDate(day.date).toLocaleDateString('fr-FR'), mood, seen, unseen ? `Pas vus : ${unseen}` : '', paused ? `Pause : ${paused}` : ''].filter(Boolean).join('\n')
   }).join('\n\n')
 }

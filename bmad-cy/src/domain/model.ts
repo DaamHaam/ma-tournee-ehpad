@@ -6,21 +6,23 @@ export interface Identity { id: string; lastName: string; firstName: string; roo
 // sex : F, H ou vide ; sert seulement aux accords du texte rédigé par l’IA (envoyé sans nom).
 export type Sex = '' | 'F' | 'H'
 // waiting : patient en attente d’une séance, signalé par un « ! » rouge devant son nom.
+// paused / pauseReason : séance en pause (hospitalisation…) avec un motif court facultatif ; patient grisé dans la tournée, sans A, B, note ni bilan.
 // Prescription en cours : intitulé, durée et fin facultatifs. Dès que la date est connue, prescriptionEnd en découle (durée absente = 1 an) ;
 // sans date, la fin se saisit à la main.
 export type DurationUnit = 'weeks' | 'months' | 'years'
 export const DURATION_UNITS: DurationUnit[] = ['weeks', 'months', 'years']
 export const DEFAULT_PRESCRIPTION = { amount: 1, unit: 'years' as DurationUnit }
-export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean }
+export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean; paused: boolean; pauseReason: string }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
-export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false } }
+export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '' } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification ; bilanEditedAt (et editedAt d’un test) : heure de la dernière modification.
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
-export interface Entry { patient: Identity; session: SessionType; note: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>> }
+// pause : motif de la pause (éventuellement vide) figé pour ce jour-là ; absente, le patient n’était pas en pause.
+export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>> }
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
@@ -47,6 +49,11 @@ export function identityKey(patient: Pick<Identity, 'lastName' | 'firstName'>): 
   return `${plain(patient.lastName)}|${plain(patient.firstName)}`
 }
 export function hasTrace(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || (entry.bilan ?? '').trim() !== '' || hasFlexContent(entry.bilanMeasures ?? {}) || Object.values(entry.tests ?? {}).some(hasTestContent) }
+// Pause du jour : aujourd’hui et après, l’état actuel de la fiche ; une journée passée garde celui qu’elle a enregistré.
+export function entryPause(entry: Pick<Entry, 'pause'>, patient: Pick<Patient, 'paused' | 'pauseReason'> | undefined, date: string, today: string): string | null {
+  if (date >= today && patient) return patient.paused ? patient.pauseReason : null
+  return entry.pause ?? null
+}
 // Range les éléments d’une journée selon un ordre modèle ; ceux que le modèle ignore gardent leur place relative, à la fin.
 export function applyOrder(template: string[], current: string[]): string[] {
   const present = new Set(current)

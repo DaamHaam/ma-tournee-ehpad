@@ -11,24 +11,25 @@ export const TINETTI_MEASURE = 'tinetti'
 const SHORT: Record<string, string> = { assisDebout30s: 'Assis-debout 30 s', tug: 'TUG', stationDebout: 'Station debout', trajet: 'Trajet chambre-RDC', test10m: '10 m', test6min: '6 min', [TINETTI_MEASURE]: 'Tinetti' }
 export function measureTitle(id: string): string { return SHORT[id] ?? MEASURE_RUBRICS.find(rubric => rubric.id === id)?.title ?? id }
 
-interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput }
+interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput; bilanCopied?: boolean }
 export interface MeasureDay { date: string; entries: Record<string, MeasureEntry> }
-export interface Measure { date: string; text: string }
+// copied : le test ou le bilan d’où vient la mesure a été copié (transmis) ; sinon la ★ est orange (suivi personnel, à transmettre).
+export interface Measure { date: string; text: string; copied: boolean }
 
 // Valeur d’un test pour une journée : test rapide, puis bilan libre, puis bilan marche / équilibre.
-function dayMeasure(entry: MeasureEntry | undefined, id: string): string {
-  if (!entry) return ''
+function dayMeasure(entry: MeasureEntry | undefined, id: string): Omit<Measure, 'date'> | null {
+  if (!entry) return null
   if (id === TINETTI_MEASURE) {
     const record = entry.tests?.tinetti
-    if (!record) return ''
+    if (!record) return null
     const score = tinettiScore(record.scores)
-    return score.complete ? `${score.total}/${score.max}` : ''
+    return score.complete ? { text: `${score.total}/${score.max}`, copied: !!record.copied } : null
   }
-  for (const source of [entry.tests?.mesures, entry.bilanMeasures, entry.tests?.marcheEquilibre]) {
+  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied]] as const) {
     const text = source ? rubricText(id, source) : ''
-    if (text) return text
+    if (text) return { text, copied: !!copied }
   }
-  return ''
+  return null
 }
 const MEASURE_IDS = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
 
@@ -37,8 +38,8 @@ export function measureHistory(days: MeasureDay[], id: string, before?: string):
   const history: Record<string, Measure[]> = {}
   const sorted = days.filter(day => before === undefined || day.date < before).sort((a, b) => b.date.localeCompare(a.date))
   for (const day of sorted) for (const test of MEASURE_IDS) {
-    const text = dayMeasure(day.entries[id], test)
-    if (text) (history[test] ??= []).push({ date: day.date, text })
+    const measure = dayMeasure(day.entries[id], test)
+    if (measure) (history[test] ??= []).push({ date: day.date, ...measure })
   }
   return history
 }

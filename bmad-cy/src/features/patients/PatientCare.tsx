@@ -43,6 +43,19 @@ function Prescription({ patient, today }: { patient: Patient; today: string }) {
   </div>
 }
 
+// Pause de séance (hospitalisation…) : motif court facultatif, enregistré en quittant le champ ; lever la pause efface le motif.
+function PauseField({ patient }: { patient: Patient }) {
+  const { run } = useSave()
+  const saveReason = async (input: HTMLInputElement) => {
+    const value = input.value.trim()
+    if (value !== patient.pauseReason && !await run(() => repository.updatePatient(patient.id, { pauseReason: value }))) input.value = patient.pauseReason
+  }
+  return <div className="pause-field">
+    <label className="switch-field"><input type="checkbox" role="switch" checked={patient.paused} onChange={event => { const paused = event.target.checked; void run(() => repository.updatePatient(patient.id, paused ? { paused } : { paused, pauseReason: '' })) }} />Pause</label>
+    {patient.paused && <input key={`pause-${patient.pauseReason}`} aria-label="Motif de la pause" placeholder="Motif (hospitalisation…)" maxLength={60} autoComplete="off" defaultValue={patient.pauseReason} onBlur={event => void saveReason(event.currentTarget)} />}
+  </div>
+}
+
 export function PatientCare({ patient }: { patient: Patient }) {
   const { run } = useSave()
   const today = useToday()
@@ -57,6 +70,7 @@ export function PatientCare({ patient }: { patient: Patient }) {
 
   return <section className="card care">
     <label className="switch-field"><input type="checkbox" role="switch" checked={patient.waiting} onChange={event => update({ waiting: event.target.checked })} />Attend une séance</label>
+    <PauseField patient={patient} />
     <div className="check-row">{flag('pointed', 'Pointé')}{flag('billed', 'Facturé')}{flag('group', 'GRP')}
       <fieldset className="sex-field"><legend className="sr-only">Sexe</legend>{(['F', 'H'] as const).map(sex => <button key={sex} type="button" aria-label={`Sexe ${sex}`} aria-pressed={patient.sex === sex} onClick={() => update({ sex: patient.sex === sex ? '' : sex })}>{sex}</button>)}</fieldset></div>
     <div className="form-grid">

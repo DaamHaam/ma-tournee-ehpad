@@ -37,6 +37,11 @@ export class TourDatabase extends Dexie {
     this.version(7).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Patient) => {
       patient.prescriptionEnd = effectivePrescriptionEnd(patient)
     }))
+    // v8 : pause de séance (motif facultatif), désactivée par défaut pour les patients existants.
+    this.version(8).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.paused === undefined) patient.paused = false
+      if (patient.pauseReason === undefined) patient.pauseReason = ''
+    }))
   }
 }
 export const db = new TourDatabase()
