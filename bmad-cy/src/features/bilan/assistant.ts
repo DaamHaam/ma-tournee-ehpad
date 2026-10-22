@@ -189,15 +189,15 @@ function fieldSpec(control: FlexControl) {
 export function correctionRequest(text: string, sex: Sex): string {
   return JSON.stringify({ patient: sexLabel(sex), texte: text, tests: MEASURE_RUBRICS.map(rubric => ({ test: rubric.title, champs: rubric.controls.filter(control => !(control.kind === 'text' && control.ai)).map(fieldSpec) })) })
 }
-// Réponse : texte corrigé, mesures reconnues (champs des tests du catalogue seulement, valeurs contrôlées) et Tinetti évoqué.
+// Réponse : texte corrigé et mesures reconnues (champs des tests du catalogue seulement, valeurs contrôlées).
 // Une réponse en texte simple (prompt retouché dans Réglages) reste acceptée comme texte corrigé, sans mesure.
-export interface CorrectionReply { html: string; measures: FlexInput; tinetti: boolean }
+export interface CorrectionReply { html: string; measures: FlexInput }
 export function parseCorrectionReply(content: string, found: string[], sex: Sex): CorrectionReply {
   let reply: Record<string, unknown> | null = null
   try { reply = readJson(content) } catch { reply = null }
-  if (!reply || typeof reply.texte !== 'string') return { html: sanitizeBilanHtml(finishAiText(parseCorrection(content), found, sex)), measures: { choices: [], values: {} }, tinetti: false }
+  if (!reply || typeof reply.texte !== 'string') return { html: sanitizeBilanHtml(finishAiText(parseCorrection(content), found, sex)), measures: { choices: [], values: {} } }
   const html = sanitizeBilanHtml(finishAiText(parseCorrection(reply.texte), found, sex))
   const values = acceptedValues(reply.mesures, (_, key) => MEASURE_KEYS.has(key), found, sex, '')
   const choices = Array.isArray(reply.cocher) ? [...new Set(reply.cocher.filter((id): id is string => typeof id === 'string' && fieldOf(id)?.control.kind === 'multi' && MEASURE_KEYS.has(fieldOf(id)!.control.key)))] : []
-  return { html, measures: { choices, values }, tinetti: reply.tinetti === true }
+  return { html, measures: { choices, values } }
 }

@@ -7,7 +7,7 @@ import { validDate, type Entry, type Sex } from '../../domain/model'
 import { db } from '../../storage/database'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, correctionRequest, parseCorrectionReply } from './assistant'
-import { filledMeasures, latestMeasures, MEASURE_RUBRICS, TINETTI_MEASURE, type Measure } from '../../domain/mesures'
+import { filledMeasures, latestMeasures, MEASURE_RUBRICS, type Measure } from '../../domain/mesures'
 import { pickRubric, rubricText, withoutRubric, type FlexInput } from '../../domain/marcheEquilibre'
 import { LastMeasures, RecognizedTests, type Recognized } from './RecognizedTests'
 import { useBilanCopy } from './useBilanCopy'
@@ -36,7 +36,7 @@ export function BilanPage() {
 }
 
 const snapshotOf = (entry: Entry): BilanSnapshot => ({ bilan: entry.bilan, bilanHtml: entry.bilanHtml, bilanAt: entry.bilanAt, bilanCopied: entry.bilanCopied, bilanEditedAt: entry.bilanEditedAt, bilanMeasures: entry.bilanMeasures })
-const MEASURE_ORDER = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
+const MEASURE_ORDER = MEASURE_RUBRICS.map(rubric => rubric.id)
 
 function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: string; id: string; back: string; label: string; entry: Entry; sex: Sex; previous: Record<string, Measure> }) {
   const { run } = useSave()
@@ -75,7 +75,7 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
       setCorrection({ previous: before })
       const saved = entry.bilanMeasures ?? {}
       const tests = filledMeasures(reply.measures).filter(test => rubricText(test, reply.measures) !== rubricText(test, saved))
-      if (tests.length || reply.tinetti) setRecognized({ measures: reply.measures, tests, tinetti: reply.tinetti })
+      if (tests.length) setRecognized({ measures: reply.measures, tests })
     } catch (cause) { setCorrection({ error: cause instanceof Error ? cause.message : 'Correction impossible.' }) }
   }
   const undoCorrection = () => { if (correction.previous !== undefined) editor.current?.setHtml(correction.previous); setCorrection({}); setRecognized(null) }
@@ -101,14 +101,14 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
   // ✨ Corriger : en bas de page, et à gauche du petit micro quand le clavier est ouvert (correction sans le fermer).
   const aiButton = (size?: 'small') => <button type="button" className={`round-button ai-round${size ? ` ${size}` : ''}`} aria-label="Corriger avec l’IA" title={assistant.unavailable || 'Corriger avec l’IA'} disabled={!!assistant.unavailable || correction.busy || !htmlToText(html).trim()} onPointerDown={event => event.preventDefault()} onClick={() => void correct()}>{correction.busy ? '…' : '✨'}</button>
   // Clavier ouvert : le panneau des tests reconnus attend sa fermeture ; un compteur le signale et le referme d’un toucher.
-  const recognizedCount = recognized ? recognized.tests.length + (recognized.tinetti ? 1 : 0) : 0
+  const recognizedCount = recognized?.tests.length ?? 0
   // Copier pendant une dictée donnerait un texte incomplet, et la transcription arrivée ensuite retirerait la marque « copié ».
   const dictationBusy = dictation.recording || dictation.transcribing
-  // Dernières mesures : toucher un test ouvre le test rapide du jour sur ce test (ou la grille du Tinetti) ; le retour ramène ici.
+  // Dernières mesures : toucher un test ouvre le test rapide du jour sur ce test ; le retour ramène ici.
   const openMeasure = async (test: string) => {
     await dictation.finish()
     const here = `/bilan/${date}/${id}?from=${encodeURIComponent(back)}`
-    navigate(test === TINETTI_MEASURE ? `/tinetti/${date}/${id}` : `/mesures/${date}/${id}?test=${test}`, { state: { from: here } })
+    navigate(`/mesures/${date}/${id}?test=${test}`, { state: { from: here } })
   }
   return <div className={`bilan-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<FormatButtons editor={editor} state={format} />}
@@ -118,7 +118,7 @@ function BilanEditor({ date, id, back, label, entry, sex, previous }: { date: st
     <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => setKeyboard(true)} onFormatState={setFormat} />
     {keyboard
       ? <KeyboardBar dictation={dictation} left={<>{recognizedCount > 0 && <button type="button" className="recognized-count" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}>{recognizedCount} {recognizedCount > 1 ? 'tests reconnus' : 'test reconnu'}</button>}{aiButton('small')}</>} onHide={() => toggleKeyboard(false)} />
-      : <>{recognized && <RecognizedTests found={recognized} previous={previous} tinettiPath={`/tinetti/${date}/${id}`} onSave={saveMeasures} onDismiss={() => setRecognized(null)} />}<DictationFooter dictation={dictation}
+      : <>{recognized && <RecognizedTests found={recognized} previous={previous} onSave={saveMeasures} onDismiss={() => setRecognized(null)} />}<DictationFooter dictation={dictation}
         extra={correction.error && <p className="field-error" role="alert">{correction.error}</p>}
         left={<>
           {aiButton()}

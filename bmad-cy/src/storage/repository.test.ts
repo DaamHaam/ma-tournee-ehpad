@@ -452,4 +452,36 @@ describe('stockage local', () => {
     expect(patients.find(patient => patient.id === id)).toMatchObject({ paused: true, pauseReason: 'hospitalisation' })
     expect(patients.find(patient => patient.firstName === 'Theta')?.paused).toBe(false)
   })
+
+  it('migre une base v8 : antécédents vides, carnet des médecins vide', async () => {
+    const name = `test-migration-v9-${crypto.randomUUID()}`
+    const legacy = new Dexie(name)
+    legacy.version(8).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
+    const { atcdKine: _a, atcdOther: _b, ...v8Care } = careDefaults()
+    void [_a, _b]
+    await legacy.table('patients').add({ ...v8Care, id: 'p1', lastName: 'Fictif', firstName: 'Iota', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', doctor: 'Dr Fictif' })
+    legacy.close()
+    const migrated = new TourDatabase(name)
+    expect(await migrated.patients.get('p1')).toMatchObject({ doctor: 'Dr Fictif', atcdKine: '', atcdOther: '' })
+    expect(await migrated.doctors.count()).toBe(0)
+    migrated.close(); await migrated.delete()
+  })
+
+  it('tient le carnet des médecins : doublon refusé, renommage reporté dans les fiches, sauvegarde et restauration', async () => {
+    const id = await repository.addPatient({ lastName: 'Fictif', firstName: 'Kappa', room: '', priority: '' })
+    const doctor = await repository.saveDoctor({ name: ' Dr Fictif ', specialty: '', phone: '01 02 03 04 05', email: '', notes: '' })
+    await repository.updatePatient(id, { doctor: 'Dr Fictif', atcdKine: 'PTH droite' })
+    await expect(repository.saveDoctor({ name: 'dr fictif', specialty: '', phone: '', email: '', notes: '' })).rejects.toThrow('déjà dans le carnet')
+    await repository.saveDoctor({ id: doctor, name: 'Dr Fictif-Essai', specialty: 'Gériatre', phone: '01 02 03 04 05', email: '', notes: 'mardi' })
+    expect((await database.patients.get(id))?.doctor).toBe('Dr Fictif-Essai')
+    const saved = await repository.snapshot()
+    expect(saved.doctors).toEqual([{ id: doctor, name: 'Dr Fictif-Essai', specialty: 'Gériatre', phone: '01 02 03 04 05', email: '', notes: 'mardi' }])
+    await repository.deleteDoctor(doctor)
+    expect((await database.patients.get(id))?.doctor).toBe('Dr Fictif-Essai')
+    await repository.restore(saved)
+    expect(await database.doctors.count()).toBe(1)
+    expect((await database.patients.get(id))?.atcdKine).toBe('PTH droite')
+    await repository.restore({ ...saved, doctors: [] })
+    expect(await database.doctors.count()).toBe(0)
+  })
 })

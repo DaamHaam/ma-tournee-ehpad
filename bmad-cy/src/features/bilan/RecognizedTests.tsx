@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { rubricById, rubricFilled, rubricText, type FlexInput } from '../../domain/marcheEquilibre'
 import { measureTitle, type Measure } from '../../domain/mesures'
 import { shortDate } from './display'
@@ -7,9 +6,9 @@ import { Rubric } from './FlexFields'
 
 // Tests standardisés reconnus par l’IA dans le bilan libre : rien n’entre dans l’historique sans validation.
 // Chaque test est coché par défaut, avec sa mesure précédente ★ ; ✎ ouvre ses champs pour corriger la valeur.
-export interface Recognized { measures: FlexInput; tests: string[]; tinetti: boolean }
-export function RecognizedTests({ found, previous, tinettiPath, onSave, onDismiss }: {
-  found: Recognized; previous: Record<string, Measure>; tinettiPath: string
+export interface Recognized { measures: FlexInput; tests: string[] }
+export function RecognizedTests({ found, previous, onSave, onDismiss }: {
+  found: Recognized; previous: Record<string, Measure>
   onSave: (measures: FlexInput, tests: string[]) => void; onDismiss: () => void
 }) {
   const [measures, setMeasures] = useState({ choices: found.measures.choices ?? [], values: found.measures.values ?? {} })
@@ -21,7 +20,7 @@ export function RecognizedTests({ found, previous, tinettiPath, onSave, onDismis
   const valid = kept.filter(test => rubricText(test, measures))
   return <section className="recognized" aria-label="Tests reconnus">
     <p className="recognized-title">Tests reconnus</p>
-    {found.tests.length > 0 && <ul>{found.tests.map(test => {
+    <ul>{found.tests.map(test => {
       const rubric = rubricById(test)!
       const before = previous[test]
       return <li key={test}>
@@ -33,11 +32,10 @@ export function RecognizedTests({ found, previous, tinettiPath, onSave, onDismis
         </div>
         {editing === test && <Rubric rubric={rubric} filled={rubricFilled(rubric, measures)} input={measures} onToggle={onToggle} onValue={onValue} />}
       </li>
-    })}</ul>}
-    {found.tinetti && <p className="recognized-tinetti">Tinetti mentionné : <Link to={tinettiPath}>ouvrir la grille</Link></p>}
+    })}</ul>
     <div className="action-row">
       <button type="button" onClick={onDismiss}>Ignorer</button>
-      {found.tests.length > 0 && <button type="button" className="primary" disabled={!valid.length} onClick={() => onSave(measures, valid)}>Enregistrer les mesures</button>}
+      <button type="button" className="primary" disabled={!valid.length} onClick={() => onSave(measures, valid)}>Enregistrer les mesures</button>
     </div>
   </section>
 }

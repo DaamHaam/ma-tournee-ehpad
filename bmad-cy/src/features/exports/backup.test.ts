@@ -4,7 +4,7 @@ import { buildBackup, parseBackup } from './backup'
 
 const patient: Patient = { ...careDefaults(), id: 'p1', lastName: 'FICTIF', firstName: 'Alpha', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', transDates: ['2026-09-20'] }
 const day: Day = { date: '2026-09-21', mood: 1, comment: 'calme', order: [...SEPARATORS, 'p1'], entries: { p1: { patient, session: 'A', note: 'essai' } } }
-const data = { patients: [patient], days: [day], orders: [{ weekday: 1, order: [...SEPARATORS, 'p1'] }], settings: [{ key: 'initialized', value: 'yes' }] }
+const data = { patients: [patient], days: [day], orders: [{ weekday: 1, order: [...SEPARATORS, 'p1'] }], settings: [{ key: 'initialized', value: 'yes' }], doctors: [{ id: 'd1', name: 'Dr Fictif', specialty: '', phone: '01 02 03 04 05', email: '', notes: '' }] }
 
 describe('sauvegarde complète', () => {
   it('relit exactement ce qu’elle a écrit', () => {
@@ -100,6 +100,18 @@ describe('sauvegarde complète', () => {
     const old = JSON.parse(buildBackup(data, ''))
     old.orders = [{ weekday: 1, order: ['separator:1', 'separator:2', 'separator:3', 'p1'] }]
     expect(parseBackup(JSON.stringify(old)).orders[0].order).toHaveLength(4)
+  })
+  it('restaure une sauvegarde sans carnet des médecins ni antécédents, refuse un médecin sans nom', () => {
+    const old = JSON.parse(buildBackup(data, ''))
+    delete old.doctors
+    delete old.patients[0].atcdKine
+    delete old.patients[0].atcdOther
+    const parsed = parseBackup(JSON.stringify(old))
+    expect(parsed.doctors).toEqual([])
+    expect(parsed.patients[0]).toMatchObject({ atcdKine: '', atcdOther: '' })
+    const broken = JSON.parse(buildBackup(data, ''))
+    broken.doctors[0].name = ' '
+    expect(() => parseBackup(JSON.stringify(broken))).toThrow('pas une sauvegarde')
   })
   it('refuse une identité de journée ou un patient mal formés et complète les champs anciens', () => {
     const broken = JSON.parse(buildBackup(data, ''))

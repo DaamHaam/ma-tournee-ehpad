@@ -12,11 +12,16 @@ export type Sex = '' | 'F' | 'H'
 export type DurationUnit = 'weeks' | 'months' | 'years'
 export const DURATION_UNITS: DurationUnit[] = ['weeks', 'months', 'years']
 export const DEFAULT_PRESCRIPTION = { amount: 1, unit: 'years' as DurationUnit }
-export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean; paused: boolean; pauseReason: string }
+export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean; paused: boolean; pauseReason: string; atcdKine: string; atcdOther: string }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
+// Carnet des médecins : spécialité vide = médecin généraliste (valeur par défaut, non affichée).
+export interface Doctor { id: string; name: string; specialty: string; phone: string; email: string; notes: string }
+export function doctorKey(name: string): string { return name.trim().toLocaleLowerCase('fr') }
+// Médecin du carnet désigné par le nom gardé dans la fiche (casse et espaces ignorés).
+export function findDoctor(doctors: Doctor[], name: string): Doctor | undefined { return name.trim() ? doctors.find(doctor => doctorKey(doctor.name) === doctorKey(name)) : undefined }
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
-export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '' } }
+export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '', atcdKine: '', atcdOther: '' } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification ; bilanEditedAt (et editedAt d’un test) : heure de la dernière modification.
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).

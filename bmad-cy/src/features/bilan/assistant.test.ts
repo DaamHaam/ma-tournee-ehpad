@@ -87,17 +87,16 @@ describe('prompts modifiés dans l’app', () => {
     const sent = JSON.parse(correctionRequest('[patient] TUG 18 s.', 'H'))
     expect(sent.patient).toBe('patient')
     expect(sent.texte).toBe('[patient] TUG 18 s.')
-    expect(sent.tests.map((test: { test: string }) => test.test)).toContain('Timed Up and Go')
+    expect(sent.tests.map((test: { test: string }) => test.test)).toEqual(expect.arrayContaining(['Timed Up and Go', 'Test de Tinetti']))
     expect(sent.tests.find((test: { test: string }) => test.test === 'Assis-debout en 30s').champs[1]).toEqual({ id: 'assisDebout30s.accoudoirs', type: 'choix unique', options: ['avec accoudoirs', 'sans accoudoirs'] })
     const reply = parseCorrectionReply(JSON.stringify({
       texte: '[patient] : Timed Up and Go : 18 s.\nMarche lente.',
-      mesures: { tug: '18', 'test10m.temps': 'vingt', 'assisDebout30s.accoudoirs': 'sans accoudoirs', assisDebout30s: 8, marche: 'x', seances: '2', eva: '12' },
-      cocher: ['perimetre.aides.1', 'marche.1', 'perimetre.aides.99'], tinetti: true,
+      mesures: { tug: '18', tinetti: '22', 'tinetti.marche': '10', 'test10m.temps': 'vingt', 'assisDebout30s.accoudoirs': 'sans accoudoirs', assisDebout30s: 8, marche: 'x', seances: '2', eva: '12' },
+      cocher: ['perimetre.aides.1', 'marche.1', 'perimetre.aides.99'],
     }), ['Robert'], 'H')
     expect(reply.html).toBe('Mr : Timed Up and Go : 18 s.<br>Marche lente.')
-    expect(reply.measures).toEqual({ choices: ['perimetre.aides.1'], values: { tug: '18', 'assisDebout30s.accoudoirs': 'sans accoudoirs', assisDebout30s: '8' } })
-    expect(reply.tinetti).toBe(true)
+    expect(reply.measures).toEqual({ choices: ['perimetre.aides.1'], values: { tug: '18', tinetti: '22', 'tinetti.marche': '10', 'assisDebout30s.accoudoirs': 'sans accoudoirs', assisDebout30s: '8' } })
     // Réponse en texte simple (prompt retouché) : le texte corrigé seul.
-    expect(parseCorrectionReply('Bonjour [patient].', ['Robert'], 'H')).toEqual({ html: 'Bonjour Mr.', measures: { choices: [], values: {} }, tinetti: false })
+    expect(parseCorrectionReply('Bonjour [patient].', ['Robert'], 'H')).toEqual({ html: 'Bonjour Mr.', measures: { choices: [], values: {} } })
   })
 })

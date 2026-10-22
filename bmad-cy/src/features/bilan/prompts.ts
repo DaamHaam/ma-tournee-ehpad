@@ -102,12 +102,12 @@ Tu reçois en JSON :
    - nombre : le chiffre seul, sans unité, converti dans l’unité du champ (« TUG en 18 secondes » → "tug": "18" ; « 10 mètres en 22 secondes et 30 pas » → "test10m.temps": "22", "test10m.pas": "30" ; « une minute dix » pour un champ en secondes → "70") ;
    - choix unique : exactement une des options (« 8 assis-debout en 30 secondes sans les accoudoirs » → "assisDebout30s": "8", "assisDebout30s.accoudoirs": "sans accoudoirs" ; « EVA à 4 » → "eva": "4") ;
    - texte : bref (« trajet chambre-RDC en deux minutes trente » → "trajet.duree": "2 min 30 s") ;
-   - choix multiple : l’identifiant de l’option dans "cocher" (aide technique du périmètre de marche…).
+   - choix multiple : l’identifiant de l’option dans "cocher" (aide technique du périmètre de marche…) ;
+   - Tinetti : le score total et, s’ils sont dits, les scores de chaque partie (« Tinetti 22 sur 28, équilibre 12, marche 10 » → "tinetti": "22", "tinetti.equilibre": "12", "tinetti.marche": "10").
    N’invente aucune valeur : un test cité sans résultat n’est pas une mesure ; une valeur ancienne citée pour comparaison (« contre 22 s en mars ») n’est pas une mesure du jour.
-3. "tinetti" : true si le texte rapporte un test de Tinetti (score ou cotation), sinon false. Le Tinetti ne va jamais dans "mesures".
 
 Réponds uniquement par un objet JSON de la forme :
-{"texte": "…", "mesures": {"tug": "18"}, "cocher": [], "tinetti": false}`,
+{"texte": "…", "mesures": {"tug": "18"}, "cocher": []}`,
 }
 
 // Empreinte du prompt par défaut : une version modifiée dans l’app ne vaut que pour le prompt par défaut dont elle est partie.

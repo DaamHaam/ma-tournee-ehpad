@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { careDefaults, effectivePrescriptionEnd, type Day, type Patient } from '../domain/model'
+import { careDefaults, effectivePrescriptionEnd, type Day, type Doctor, type Patient } from '../domain/model'
 export interface OrderTemplate { weekday: number; order: string[] }
 export interface Setting { key: string; value: string }
 // Réglages propres à l’appareil, jamais exportés dans la sauvegarde ni remplacés par une restauration.
@@ -9,6 +9,7 @@ export class TourDatabase extends Dexie {
   days!: EntityTable<Day, 'date'>
   orders!: EntityTable<OrderTemplate, 'weekday'>
   settings!: EntityTable<Setting, 'key'>
+  doctors!: EntityTable<Doctor, 'id'>
   constructor(name = 'bmad-cy-tournee') {
     super(name)
     this.version(1).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
@@ -41,6 +42,11 @@ export class TourDatabase extends Dexie {
     this.version(8).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       if (patient.paused === undefined) patient.paused = false
       if (patient.pauseReason === undefined) patient.pauseReason = ''
+    }))
+    // v9 : antécédents en deux parties (kiné, autres), vides par défaut ; carnet des médecins.
+    this.version(9).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key', doctors: 'id' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.atcdKine === undefined) patient.atcdKine = ''
+      if (patient.atcdOther === undefined) patient.atcdOther = ''
     }))
   }
 }

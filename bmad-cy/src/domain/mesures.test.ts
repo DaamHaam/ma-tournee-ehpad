@@ -12,7 +12,7 @@ const pick = (key: string, option: string) => {
 
 describe('mesures des tests standardisés', () => {
   it('reprend les tests du bilan marche / équilibre, avec les 5 levers de chaise et l’EVA', () => {
-    expect(MEASURE_RUBRICS.map(rubric => rubric.id)).toEqual(['eva', 'assisDebout30s', 'cinqLevers', 'tug', 'stationDebout', 'perimetre', 'trajet', 'test10m', 'test6min'])
+    expect(MEASURE_RUBRICS.map(rubric => rubric.id)).toEqual(['eva', 'assisDebout30s', 'cinqLevers', 'tug', 'stationDebout', 'perimetre', 'trajet', 'test10m', 'test6min', 'tinetti'])
   })
   it('met en ligne les tests rapides du jour, dans l’ordre du catalogue', () => {
     const input = { values: { tug: '18,4', assisDebout30s: '8', 'assisDebout30s.accoudoirs': 'avec accoudoirs', eva: '3', cinqLevers: '14' } }
@@ -35,7 +35,15 @@ describe('mesures des tests standardisés', () => {
       { date: '2026-10-08', entries: { p: { tests: { mesures: record({ tug: '17' }) } } } },
     ]
     expect(measureHistory(days, 'p').tug.map(measure => measure.text)).toEqual(['17sec', '19sec', '21sec', '25sec'])
-    expect(latestMeasures(days, 'p', '2026-10-08')).toEqual({ tug: { date: '2026-10-01', text: '19sec', copied: false }, test10m: { date: '2026-06-01', text: '15sec', copied: false }, tinetti: { date: '2026-07-01', text: '28/28', copied: false } })
+    expect(latestMeasures(days, 'p', '2026-10-08')).toEqual({ tug: { date: '2026-10-01', text: '19sec', copied: false }, test10m: { date: '2026-06-01', text: '15sec', copied: false }, tinetti: { date: '2026-07-01', text: '28/28 (équilibre 16/16, marche 12/12)', copied: false } })
+  })
+  it('range un score de Tinetti dicté ou saisi comme les autres tests, avant la grille du même jour', () => {
+    const days = [
+      { date: '2026-08-01', entries: { p: { bilanMeasures: { values: { tinetti: '22' } }, tests: { tinetti: { scores: { e1: 1 }, notes: '', at: '' } } } } },
+      { date: '2026-09-01', entries: { p: { tests: { mesures: record({ 'tinetti.equilibre': '12', 'tinetti.marche': '9' }) } } } },
+    ]
+    expect(measureHistory(days, 'p').tinetti.map(measure => measure.text)).toEqual(['21/28 (équilibre 12/16, marche 9/12)', '22/28'])
+    expect(mesuresHtml({ values: { tinetti: '22' } })).toBe('Tinetti : 22/28')
   })
   it('signale si la mesure vient d’un test ou d’un bilan copié (transmis)', () => {
     const days = [

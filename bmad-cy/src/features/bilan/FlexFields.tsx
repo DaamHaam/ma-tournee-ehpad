@@ -12,15 +12,17 @@ export type FlexValues = { choices: string[]; values: Record<string, string> }
 const NO_AI = { filled: [], checks: [] }
 
 // Rubrique (sous-sous-module) : titre, ⏱ pour un test minuté, dernière mesure ★ pour un test standardisé, voyants ⚠, puis ses champs.
-// chronoOpen : chronomètre affiché d’emblée (test rapide) ; sinon ⏱ l’ouvre et le referme.
-export function Rubric({ rubric, filled, input, ai = NO_AI, busy = false, last, measure, chronoOpen = false, onToggle, onValue }: {
+// chronoOpen : chronomètre affiché d’emblée (test rapide) ; sinon ⏱ l’ouvre et le referme. action : bouton sous le titre (reprise de la fiche…).
+export function Rubric({ rubric, filled, input, ai = NO_AI, busy = false, last, measure, chronoOpen = false, action, onToggle, onValue }: {
   rubric: FlexRubric; filled: boolean; input: FlexValues; ai?: { filled: string[]; checks: AiCheck[] }; busy?: boolean
-  last?: TestRecord; measure?: { date: string; text: string; copied: boolean }; chronoOpen?: boolean; onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
+  last?: TestRecord; measure?: { date: string; text: string; copied: boolean }; chronoOpen?: boolean; action?: { label: string; disabled?: boolean; run: () => void }
+  onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
 }) {
   const [chrono, setChrono] = useState(chronoOpen)
   return <section className={`flex-rubric${filled ? ' filled' : ''}`} aria-label={rubric.title}>
     <h3>{rubric.title}{rubric.chrono && !chronoOpen && <button type="button" className={`chrono-toggle${chrono ? ' open' : ''}`} aria-label={chrono ? 'Fermer le chronomètre' : 'Ouvrir le chronomètre'} aria-expanded={chrono} onClick={() => setChrono(open => !open)}>⏱</button>}</h3>
     {measure && <p className={`previous-measure${measure.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> {measure.text} · {shortDate(measure.date)}</p>}
+    {action && <button type="button" className="rubric-action" disabled={busy || action.disabled} onClick={action.run}>{action.label}</button>}
     {rubric.chrono && chrono && <ChronoPanel chrono={rubric.chrono} disabled={busy} onTime={onValue} />}
     {ai.checks.filter(check => check.row === rubric.id).map((check, index) => <p key={index} className="row-doubt" role="note">⚠ {check.reason || 'à vérifier'}</p>)}
     {rubric.controls.map(control => <Control key={control.key} control={control} title={rubric.title} input={input} ai={ai.filled} busy={busy} last={last} onToggle={onToggle} onValue={onValue} />)}

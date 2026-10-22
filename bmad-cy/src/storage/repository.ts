@@ -1,14 +1,14 @@
 import { hasTestContent, type TestRecord, type TestType } from '../domain/tinetti'
 import { hasFlexContent, type FlexInput } from '../domain/marcheEquilibre'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
-import { applyOrder, careDefaults, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+import { applyOrder, careDefaults, doctorKey, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Doctor, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures'>
-export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[] }
-// GRP, sexe, attente, pause et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
+export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[]; doctors: Doctor[] }
+// GRP, sexe, attente, pause, antécédents et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
-const NOT_IMPORTED = ['group', 'sex', 'waiting', 'paused', 'pauseReason', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
+const NOT_IMPORTED = ['group', 'sex', 'waiting', 'paused', 'pauseReason', 'atcdKine', 'atcdOther', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
-type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit'
+type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'atcdKine' | 'atcdOther'
 // Pause de la fiche recopiée dans une journée d’aujourd’hui ou à venir ; renvoie vrai si l’entrée a changé.
 function syncPause(entry: Entry, patient: Pick<Patient, 'paused' | 'pauseReason'>): boolean {
   const pause = patient.paused ? patient.pauseReason : undefined
@@ -262,18 +262,35 @@ export class TourRepository {
   }
   async archivePatient(id: string, archived: boolean): Promise<void> { if (await this.database.patients.update(id, { archived }) === 0) throw new Error('Ce patient n’existe plus.') }
   async deletePatient(id: string): Promise<void> { await this.database.patients.delete(id) }
+  // Carnet des médecins : la fiche patient garde le nom du médecin (texte, aussi importé) ; renommer un médecin le renomme dans les fiches.
+  async saveDoctor(input: Omit<Doctor, 'id'> & { id?: string }): Promise<string> {
+    const doctor: Doctor = { id: input.id ?? crypto.randomUUID(), name: input.name.trim(), specialty: input.specialty.trim(), phone: input.phone.trim(), email: input.email.trim(), notes: input.notes.trim() }
+    if (!doctor.name) throw new Error('Le nom du médecin est obligatoire.')
+    await this.database.transaction('rw', this.database.doctors, this.database.patients, async () => {
+      const others = (await this.database.doctors.toArray()).filter(item => item.id !== doctor.id)
+      if (others.some(item => doctorKey(item.name) === doctorKey(doctor.name))) throw new Error('Ce médecin est déjà dans le carnet.')
+      const before = input.id ? await this.database.doctors.get(input.id) : undefined
+      await this.database.doctors.put(doctor)
+      if (before && before.name !== doctor.name) await this.database.patients.filter(patient => doctorKey(patient.doctor) === doctorKey(before.name)).modify({ doctor: doctor.name })
+    })
+    return doctor.id
+  }
+  // Retirer un médecin du carnet laisse son nom dans les fiches.
+  async deleteDoctor(id: string): Promise<void> { await this.database.doctors.delete(id) }
   async snapshot(): Promise<BackupData> {
-    return this.database.transaction('r', this.database.patients, this.database.days, this.database.orders, this.database.settings, async () => ({
+    return this.database.transaction('r', [this.database.patients, this.database.days, this.database.orders, this.database.settings, this.database.doctors], async () => ({
       patients: await this.database.patients.toArray(), days: await this.database.days.toArray(),
       orders: await this.database.orders.toArray(), settings: (await this.database.settings.toArray()).filter(item => !PRIVATE_SETTINGS.includes(item.key)),
+      doctors: await this.database.doctors.toArray(),
     }))
   }
-  // Restauration complète : remplace patients, journées, ordres et réglages ; jamais de réinjection des fictifs ensuite.
+  // Restauration complète : remplace patients, journées, ordres, réglages et carnet des médecins ; jamais de réinjection des fictifs ensuite.
   // Les réglages propres à l’appareil (clé OpenRouter) sont conservés et ceux du fichier ignorés.
   async restore(data: BackupData): Promise<void> {
-    await this.database.transaction('rw', this.database.patients, this.database.days, this.database.orders, this.database.settings, async () => {
+    await this.database.transaction('rw', [this.database.patients, this.database.days, this.database.orders, this.database.settings, this.database.doctors], async () => {
       const kept = (await this.database.settings.toArray()).filter(item => PRIVATE_SETTINGS.includes(item.key))
-      await Promise.all([this.database.patients.clear(), this.database.days.clear(), this.database.orders.clear(), this.database.settings.clear()])
+      await Promise.all([this.database.patients.clear(), this.database.days.clear(), this.database.orders.clear(), this.database.settings.clear(), this.database.doctors.clear()])
+      await this.database.doctors.bulkPut(data.doctors)
       await this.database.patients.bulkPut(data.patients)
       await this.database.days.bulkPut(data.days)
       await this.database.orders.bulkPut(data.orders)

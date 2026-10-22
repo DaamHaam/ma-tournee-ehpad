@@ -81,6 +81,12 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
   ] },
   { id: 'equilibre', title: 'Équilibre', rubrics: [
     group('equilibre', 'Équilibre', ['impossible sans appui', 'tient maximum 5s en statique sans appui', 'tient maximum 10s en statique sans appui', 'tient maximum 10s pieds joints yeux ouverts', 'tient maximum 10s pieds joints yeux fermés', 'tient plus de 5s en unipodal', 'impossible pieds joints', 'impossible les yeux fermés', 'impossible en unipodal']),
+    // Score du Tinetti saisi ou dicté comme les autres tests ; la grille complète (écran Tinetti) donne le même score.
+    { id: 'tinetti', title: 'Test de Tinetti', test: true, controls: [
+      { kind: 'number', key: 'tinetti', label: 'Score total', unit: '/28' },
+      { kind: 'number', key: 'tinetti.equilibre', label: 'Équilibre', unit: '/16' },
+      { kind: 'number', key: 'tinetti.marche', label: 'Marche', unit: '/12' },
+    ] },
   ] },
   { id: 'objectifs', title: 'Objectifs', rubrics: [
     group('objectifs', 'Objectifs kiné', ['lutter contre la douleur', 'entretenir les capacités fonctionnelles des membres supérieurs en lien avec les AVQ (repas, toilette, habillage...)', 'récupérer les capacités fonctionnelles des membres supérieurs en lien avec les AVQ (repas, toilette, habillage...)', 'entretenir les amplitudes articulaires', 'récupérer les amplitudes articulaires', 'lutter contre le ralentissement psychomoteur', 'ralentir le déclin cognitif', 'entretenir la marche autonome', 'entretenir les capacités de déplacement', 'récupérer la marche autonome', 'récupérer les capacités de déplacement', 'lutter contre la rétropulsion', 'entretenir le périmètre de marche', 'augmenter le périmètre de marche', 'entretenir les capacités de marche avec accompagnement', 'entretenir la participation active aux transferts', 'entretenir l’autonomie des transferts', 'récupérer la participation active aux transferts', 'récupérer le tonus musculaire des membres inférieurs', 'lutter contre l’apathie', 'lutter contre la camptocormie', 'éviter le syndrome post-chute', 'réduire le risque de chute', 'prévenir le syndrome de glissement', 'retrouver la confiance en soi', 'sécuriser les déplacements', 'entretien des capacités cardio-respiratoires', 'amélioration de la condition physique générale', 'réadaptation à la marche', 'réentraînement à l’effort individualisé', 'éviter la majoration des rétractions musculaires et articulaires', 'maintien à son domicile', 'éviter l’entrée en institution médicalisée', 'faciliter les soins et la toilette', 'améliorer le transit']),
@@ -188,6 +194,14 @@ function rubricLine(id: string, input: FlexInput): Line | null {
     case 'test6min': { const distance = read.number(id); return line('Évaluation endurance, test des 6min', 'plain', distance === null ? '' : `${distance}m`) }
     case 'doubleTache': return line('Test de double tâche', 'i', read.list(id))
     case 'equilibre': return line('Équilibre', 'i', read.list(id))
+    case 'tinetti': {
+      // Total saisi, sinon somme des deux parties quand elles sont connues.
+      const balance = read.number('tinetti.equilibre'), walk = read.number('tinetti.marche')
+      const total = read.number('tinetti') ?? (balance !== null && walk !== null ? balance + walk : null)
+      if (total === null) return null
+      const parts = [balance === null ? '' : `équilibre ${balance}/16`, walk === null ? '' : `marche ${walk}/12`].filter(Boolean).join(', ')
+      return line('Tinetti', 'plain', `${total}/28${parts ? ` (${parts})` : ''}`)
+    }
     case 'escaliers': {
       const steps = read.number('escaliers.marches')
       return line('Escaliers', 'i', [steps === null ? '' : `${steps} marches montées`, read.list('escaliers.pas', otherKey('escaliers'))].filter(Boolean).join(', '))
@@ -208,7 +222,7 @@ function rubricLine(id: string, input: FlexInput): Line | null {
 
 const OBSERVATIONS = ['troublesComplementaires', 'troublesComportement', 'installation', 'raideurs', 'douleur', 'eva', 'verticalisation', 'allongeAssis']
 const BEFORE = ['contexte', 'atcd']
-const AFTER = ['assisDebout30s', 'cinqLevers', 'passageDeboutAssis', 'transferts', 'tug', 'stationDebout', 'marche', 'marcheArriere', 'perimetre', 'trajet', 'test10m', 'analyseMarche', 'test6min', 'doubleTache', 'equilibre', 'escaliers', 'objectifs', 'moyens', 'seances', 'commentaires']
+const AFTER = ['assisDebout30s', 'cinqLevers', 'passageDeboutAssis', 'transferts', 'tug', 'stationDebout', 'marche', 'marcheArriere', 'perimetre', 'trajet', 'test10m', 'analyseMarche', 'test6min', 'doubleTache', 'equilibre', 'tinetti', 'escaliers', 'objectifs', 'moyens', 'seances', 'commentaires']
 const LABEL: Record<Exclude<Style, 'bare'>, (label: string) => string> = { bu: label => `<b><u>${label}</u></b>`, i: label => `<i>${label}</i>`, plain: label => label, sub: label => `- <i>${label}</i>` }
 const render = (item: Line) => item.style === 'bare' ? item.content : `${LABEL[item.style](escapeHtml(item.label))} : ${item.content}`
 // La ligne Marche porte aussi l’aide technique.

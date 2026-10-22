@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { BilanActions } from '../bilan/BilanActions'
 import { bilanHtml } from '../bilan/richText'
 import { itemHtml, shortDate } from '../bilan/display'
-import { MEASURE_RUBRICS, measureHistory, measureTitle, TINETTI_MEASURE } from '../../domain/mesures'
+import { MEASURE_RUBRICS, measureHistory, measureTitle } from '../../domain/mesures'
 import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -10,7 +10,7 @@ import { dateLabel, fullName, hasTrace, parseDate, validDate, type Patient } fro
 import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
-import { FollowUps, PatientCare } from './PatientCare'
+import { Antecedents, FollowUps, PatientCare } from './PatientCare'
 import { WaitingLabel, WaitingMark } from './WaitingMark'
 import { PrescriptionMark } from './PrescriptionMark'
 import { useToday } from '../../app/useToday'
@@ -121,6 +121,7 @@ export function PatientDetail() {
     <FollowUps patient={patient} />
     <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />
+    <Antecedents patient={patient} />
     {history && <MeasuresHistory days={history} id={id} />}
     {!!history?.length && <button type="button" className="history-toggle" aria-expanded={historyOpen} aria-controls="patient-history" onClick={() => setHistoryOpen(open => !open)}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 7v5l3 2M3.5 12a8.5 8.5 0 1 0 2.5-6M3 4v4h4" /></svg>Séances ({history.length})</button>}
     {!!history?.length && historyOpen && <section id="patient-history" className="card history" aria-label="Séances et notes">
@@ -141,7 +142,7 @@ export function PatientDetail() {
 
 // Suivi des tests standardisés : les dernières mesures de chaque test, toutes sources confondues (tests rapides, bilans) ;
 // en orange, celles dont le test ou le bilan n’a pas été copié (non transmis).
-const MEASURE_ORDER = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
+const MEASURE_ORDER = MEASURE_RUBRICS.map(rubric => rubric.id)
 function MeasuresHistory({ days, id }: { days: Parameters<typeof measureHistory>[0]; id: string }) {
   const history = measureHistory(days, id)
   const tests = MEASURE_ORDER.filter(test => history[test]?.length)

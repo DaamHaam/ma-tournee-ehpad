@@ -34,14 +34,15 @@ export function MarcheEquilibrePage() {
   const day = useLiveQuery(() => valid ? repository.dayView(date) : undefined, [date, valid])
   const previous = useLiveQuery(async () => valid ? previousMarcheEquilibre(await db.days.where('date').below(date).toArray(), id, date) : undefined, [date, id, valid])
   const sex = useLiveQuery(async () => (await db.patients.get(id))?.sex ?? '', [id])
+  const atcdKine = useLiveQuery(async () => (await db.patients.get(id))?.atcdKine ?? '', [id])
   if (!valid) return <Navigate replace to="/" />
-  if (!day || !previous || sex === undefined) return null
+  if (!day || !previous || sex === undefined || atcdKine === undefined) return null
   const entry = day.entries[id]
   if (!entry) return <Navigate replace to={`/?date=${date}`} />
-  return <MarcheEquilibreEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} previous={previous} sex={sex} />
+  return <MarcheEquilibreEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} previous={previous} sex={sex} atcdKine={atcdKine} />
 }
 
-function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: { date: string; id: string; back: string; label: string; entry: Entry; previous: PreviousFlex; sex: Sex }) {
+function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex, atcdKine }: { date: string; id: string; back: string; label: string; entry: Entry; previous: PreviousFlex; sex: Sex; atcdKine: string }) {
   const { run } = useSave()
   const navigate = useNavigate()
   const name = fullName(entry.patient)
@@ -164,7 +165,7 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
     {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="marcheEquilibre" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Formulaire', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
-      <FlexForm input={input} ai={ai} busy={busy} previous={previous} quick={quickMissing.length ? { tests: quickMissing.map(test => `${measureTitle(test)} : ${rubricText(test, quick!)}`), take: takeQuick } : undefined} onToggle={toggle} onValue={setValue} />
+      <FlexForm input={input} ai={ai} busy={busy} previous={previous} atcdKine={atcdKine} quick={quickMissing.length ? { tests: quickMissing.map(test => `${measureTitle(test)} : ${rubricText(test, quick!)}`), take: takeQuick } : undefined} onToggle={toggle} onValue={setValue} />
       <NotesPane editor={editor} initialHtml={startNotes} label={`Dictée marche / équilibre pour ${name}`} tools={screen.pane === 1 ? screen.keyboardTools(dictation) : undefined} onChange={saveNotes} onFocus={screen.onEditorFocus(1)} />
       <ResultPane editor={result} version={version} initialHtml={marked} label={`Compte rendu marche / équilibre pour ${name}`} tools={screen.pane === 2 ? screen.keyboardTools(dictation) : undefined} ai={integration} onChange={editResult} onFocus={screen.onEditorFocus(2)} onValidate={() => navigate(back)} />
     </div>
@@ -173,8 +174,8 @@ function MarcheEquilibreEditor({ date, id, back, label, entry, previous, sex }: 
 }
 
 // Formulaire d’un seul tenant : les sous-modules se suivent au défilement ; les onglets (deux rangées) y sautent et suivent la lecture.
-function FlexForm({ input, ai, busy, previous, quick, onToggle, onValue }: {
-  input: { choices: string[]; values: Record<string, string> }; ai: { filled: string[]; checks: AiCheck[] }; busy: boolean; previous: PreviousFlex
+function FlexForm({ input, ai, busy, previous, atcdKine, quick, onToggle, onValue }: {
+  input: { choices: string[]; values: Record<string, string> }; ai: { filled: string[]; checks: AiCheck[] }; busy: boolean; previous: PreviousFlex; atcdKine: string
   quick?: { tests: string[]; take: () => void }; onToggle: (choice: string) => void; onValue: (key: string, value: string) => void
 }) {
   const box = useRef<HTMLDivElement>(null)
@@ -196,6 +197,9 @@ function FlexForm({ input, ai, busy, previous, quick, onToggle, onValue }: {
     if (current !== active) setActive(current)
   }
   const last = previous.last?.record
+  // Antécédents utiles en séance, repris de la fiche à la demande (ajoutés à la suite de ce qui est déjà écrit).
+  const atcd = input.values.atcd ?? ''
+  const takeAtcd = atcdKine ? { label: 'Reprendre de la fiche', disabled: atcd.includes(atcdKine), run: () => onValue('atcd', atcd.trim() ? `${atcd.trimEnd()}\n${atcdKine}` : atcdKine) } : undefined
   return <div className="pane flex-form" role="tabpanel" aria-label="Formulaire" ref={box} onScroll={follow}>
     {previous.last && <p className={`previous-note${previous.last.record.copied ? '' : ' pending'}`}>★ bilan précédent du {shortDate(previous.last.date)}</p>}
     {quick && <div className="quick-note" role="note"><p>Tests rapides du jour : {quick.tests.join(' · ')}</p><button type="button" disabled={busy} onClick={quick.take}>Reprendre</button></div>}
@@ -207,7 +211,7 @@ function FlexForm({ input, ai, busy, previous, quick, onToggle, onValue }: {
     </div>
     {MARCHE_EQUILIBRE.map(module => <section key={module.id} id={`module-${module.id}`} className="flex-module" aria-label={`Sous-module ${module.title}`}>
       <h2 className="module-title">{module.title}</h2>
-      {module.rubrics.map(rubric => <Rubric key={rubric.id} rubric={rubric} filled={rubricFilled(rubric, input)} input={input} ai={ai} busy={busy} last={last} measure={previous.measures[rubric.id]} onToggle={onToggle} onValue={onValue} />)}
+      {module.rubrics.map(rubric => <Rubric key={rubric.id} rubric={rubric} filled={rubricFilled(rubric, input)} input={input} ai={ai} busy={busy} last={last} measure={previous.measures[rubric.id]} action={rubric.id === 'atcd' ? takeAtcd : undefined} onToggle={onToggle} onValue={onValue} />)}
     </section>)}
   </div>
 }

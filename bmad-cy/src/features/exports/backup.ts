@@ -1,4 +1,4 @@
-import { careDefaults, DURATION_UNITS, effectivePrescriptionEnd, validDate, type Day, type Patient } from '../../domain/model'
+import { careDefaults, DURATION_UNITS, effectivePrescriptionEnd, validDate, type Day, type Doctor, type Patient } from '../../domain/model'
 import type { OrderTemplate, Setting } from '../../storage/database'
 import type { BackupData } from '../../storage/repository'
 
@@ -18,7 +18,7 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString)
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
-const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating', 'pauseReason'] as const
+const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating', 'pauseReason', 'atcdKine', 'atcdOther'] as const
 const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group', 'waiting', 'paused'] as const
 
 function checkPatient(value: unknown): Patient {
@@ -63,6 +63,14 @@ function checkDay(value: unknown): Day {
   if (!isString(day.comment) || !(day.mood === null || [-3, -2, -1, 0, 1, 2, 3].includes(day.mood))) throw new Error(INVALID)
   return day
 }
+// Carnet des médecins (après la v0.34) : absent des anciennes sauvegardes ; champs facultatifs complétés à vide.
+const DOCTOR_TEXT = ['name', 'specialty', 'phone', 'email', 'notes'] as const
+function checkDoctor(value: unknown): Doctor {
+  if (!isObject(value) || !isString(value.id)) throw new Error(INVALID)
+  const doctor = { name: '', specialty: '', phone: '', email: '', notes: '', ...value } as Doctor
+  if (DOCTOR_TEXT.some(key => !isString(doctor[key])) || !doctor.name.trim()) throw new Error(INVALID)
+  return doctor
+}
 function checkOrder(value: unknown): OrderTemplate {
   if (!isObject(value) || typeof value.weekday !== 'number' || !isStringList(value.order)) throw new Error(INVALID)
   return value as unknown as OrderTemplate
@@ -73,12 +81,13 @@ export function parseBackup(text: string): Backup {
   try { raw = JSON.parse(text) } catch { throw new Error(INVALID) }
   if (!isObject(raw) || raw.format !== BACKUP_FORMAT || typeof raw.version !== 'number') throw new Error(INVALID)
   if (raw.version > BACKUP_VERSION) throw new Error('Cette sauvegarde vient d’une version plus récente de l’application. Mettez l’application à jour.')
-  if (!Array.isArray(raw.patients) || !Array.isArray(raw.days) || !Array.isArray(raw.orders) || !Array.isArray(raw.settings)) throw new Error(INVALID)
+  if (!Array.isArray(raw.patients) || !Array.isArray(raw.days) || !Array.isArray(raw.orders) || !Array.isArray(raw.settings) || (raw.doctors !== undefined && !Array.isArray(raw.doctors))) throw new Error(INVALID)
   return {
     format: BACKUP_FORMAT, version: raw.version, createdAt: isString(raw.createdAt) ? raw.createdAt : '',
     patients: raw.patients.map(checkPatient),
     days: raw.days.map(checkDay),
     orders: raw.orders.map(checkOrder),
     settings: raw.settings.filter((item): item is Setting => isObject(item) && isString(item.key) && isString(item.value)),
+    doctors: (raw.doctors ?? []).map(checkDoctor),
   }
 }

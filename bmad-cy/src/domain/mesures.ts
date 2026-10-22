@@ -5,7 +5,7 @@ import { hasFlexContent, MARCHE_EQUILIBRE, rubricHtml, rubricText, type FlexInpu
 import { tinettiScore, type TestRecord } from './tinetti'
 
 export const MEASURE_RUBRICS: FlexRubric[] = MARCHE_EQUILIBRE.flatMap(module => module.rubrics).filter(rubric => rubric.test)
-// Le Tinetti garde toujours sa grille complète : son score entre dans l’historique, jamais saisi seul.
+// Le Tinetti est un test comme les autres (score saisi ou dicté) ; une grille complète du même jour donne aussi son score.
 export const TINETTI_MEASURE = 'tinetti'
 // Nom court (onglets, listes) ; le titre complet reste celui de la rubrique.
 const SHORT: Record<string, string> = { assisDebout30s: 'Assis-debout 30 s', tug: 'TUG', stationDebout: 'Station debout', trajet: 'Trajet chambre-RDC', test10m: '10 m', test6min: '6 min', [TINETTI_MEASURE]: 'Tinetti' }
@@ -16,22 +16,22 @@ export interface MeasureDay { date: string; entries: Record<string, MeasureEntry
 // copied : le test ou le bilan d’où vient la mesure a été copié (transmis) ; sinon la ★ est orange (suivi personnel, à transmettre).
 export interface Measure { date: string; text: string; copied: boolean }
 
-// Valeur d’un test pour une journée : test rapide, puis bilan libre, puis bilan marche / équilibre.
+// Score d’une grille de Tinetti complète, sous la forme des champs du test.
+function gridMeasure(record: TestRecord | undefined): FlexInput | undefined {
+  const score = record && tinettiScore(record.scores)
+  return score?.complete ? { values: { [TINETTI_MEASURE]: String(score.total), 'tinetti.equilibre': String(score.equilibre.score), 'tinetti.marche': String(score.marche.score) } } : undefined
+}
+// Valeur d’un test pour une journée : test rapide, puis bilan libre, puis bilan marche / équilibre, puis grille du Tinetti.
 function dayMeasure(entry: MeasureEntry | undefined, id: string): Omit<Measure, 'date'> | null {
   if (!entry) return null
-  if (id === TINETTI_MEASURE) {
-    const record = entry.tests?.tinetti
-    if (!record) return null
-    const score = tinettiScore(record.scores)
-    return score.complete ? { text: `${score.total}/${score.max}`, copied: !!record.copied } : null
-  }
-  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied]] as const) {
+  const grid = id === TINETTI_MEASURE ? gridMeasure(entry.tests?.tinetti) : undefined
+  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
     const text = source ? rubricText(id, source) : ''
     if (text) return { text, copied: !!copied }
   }
   return null
 }
-const MEASURE_IDS = [...MEASURE_RUBRICS.map(rubric => rubric.id), TINETTI_MEASURE]
+const MEASURE_IDS = MEASURE_RUBRICS.map(rubric => rubric.id)
 
 // Historique d’un patient, du plus récent au plus ancien, par test ; before : journées strictement antérieures seulement.
 export function measureHistory(days: MeasureDay[], id: string, before?: string): Record<string, Measure[]> {

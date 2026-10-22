@@ -1,9 +1,12 @@
-import { COVERAGES, effectivePrescriptionEnd, parseDate, prescriptionEndDate, prescriptionStatus, prescriptionText, toggleLetter, WEEKDAY_LETTERS, type Patient } from '../../domain/model'
+import { Link } from 'react-router-dom'
+import { COVERAGES, effectivePrescriptionEnd, findDoctor, parseDate, prescriptionEndDate, prescriptionStatus, prescriptionText, toggleLetter, WEEKDAY_LETTERS, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { useToday } from '../../app/useToday'
 import { repository } from '../../storage/repository'
+import { DoctorContacts } from './Doctors'
+import { useDoctors } from './useDoctors'
 
-type TextField = 'doctor' | 'rating'
+type TextField = 'rating'
 function shortDate(date: string) { return parseDate(date).toLocaleDateString('fr-FR') }
 
 // Éval et Trans, mis en avant sous le nom : cocher marque le suivi du jour, la dernière date reste visible dessous.
@@ -56,6 +59,36 @@ function PauseField({ patient }: { patient: Patient }) {
   </div>
 }
 
+// Médecin traitant choisi dans le carnet (Réglages) ; un nom hors carnet (import, ancienne fiche) reste proposé tel quel.
+function DoctorField({ patient }: { patient: Patient }) {
+  const { run } = useSave()
+  const doctors = useDoctors() ?? []
+  const known = findDoctor(doctors, patient.doctor)
+  const names = doctors.map(doctor => doctor.name)
+  return <div className="doctor-field">
+    <label>Médecin traitant <select value={known?.name ?? patient.doctor} onChange={event => { const doctor = event.target.value; void run(() => repository.updatePatient(patient.id, { doctor })) }}>
+      <option value="">—</option>
+      {patient.doctor && !known && <option value={patient.doctor}>{patient.doctor} (hors carnet)</option>}
+      {names.map(name => <option key={name}>{name}</option>)}
+    </select></label>
+    {known ? <DoctorContacts doctor={known} /> : !doctors.length && <p className="subtle"><Link to="/settings">Remplir le carnet des médecins</Link></p>}
+  </div>
+}
+
+// Antécédents en deux parties : ceux utiles en séance (repris par le bilan sur demande) et les autres. Enregistrés en quittant le champ.
+export function Antecedents({ patient }: { patient: Patient }) {
+  const { run } = useSave()
+  const save = async (field: 'atcdKine' | 'atcdOther', input: HTMLTextAreaElement) => {
+    const value = input.value.trim()
+    if (value !== patient[field] && !await run(() => repository.updatePatient(patient.id, { [field]: value }))) input.value = patient[field]
+  }
+  return <section className="card antecedents" aria-label="Antécédents">
+    <h2>Antécédents</h2>
+    <label>Utiles en séance (kiné)<textarea key={`kine-${patient.atcdKine}`} rows={3} defaultValue={patient.atcdKine} onBlur={event => void save('atcdKine', event.currentTarget)} /></label>
+    <label>Autres antécédents<textarea key={`other-${patient.atcdOther}`} rows={3} defaultValue={patient.atcdOther} onBlur={event => void save('atcdOther', event.currentTarget)} /></label>
+  </section>
+}
+
 export function PatientCare({ patient }: { patient: Patient }) {
   const { run } = useSave()
   const today = useToday()
@@ -77,7 +110,7 @@ export function PatientCare({ patient }: { patient: Patient }) {
       <label>Couverture <select value={patient.coverage} onChange={event => update({ coverage: event.target.value })}><option value="">—</option>{[...COVERAGES, ...(patient.coverage && !COVERAGES.includes(patient.coverage) ? [patient.coverage] : [])].map(option => <option key={option}>{option}</option>)}</select></label>
       {letters('days', 'Séances')}
       {letters('ifd', 'Fact. IFD')}
-      <label>Médecin traitant <input key={`doctor-${patient.doctor}`} autoComplete="off" defaultValue={patient.doctor} onBlur={event => void saveText('doctor', event.currentTarget)} /></label>
+      <DoctorField patient={patient} />
       <label>Cotation <input key={`rating-${patient.rating}`} autoComplete="off" defaultValue={patient.rating} onBlur={event => void saveText('rating', event.currentTarget)} /></label>
     </div>
     <Prescription key={patient.id} patient={patient} today={today} />
