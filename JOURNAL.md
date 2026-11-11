@@ -1,5 +1,12 @@
 # Journal des clôtures
 
+## 2026-11-11 — Claude · cloud
+- Livré : v0.35.0 — antécédents en deux parties dans la fiche (kiné / autres, « Reprendre de la fiche » dans le bilan marche / équilibre) ; carnet des médecins dans Réglages (contacts touchables, spécialité discrète, renommage reporté dans les fiches, Dexie v9, inclus dans la sauvegarde) ; Tinetti test du catalogue comme les autres (score total, équilibre, marche ; reconnu par « Corriger », test rapide, bilan marche / équilibre, grille complète dans le même historique).
+- Tests : npm test 117/117, lint, build, Playwright 26/26 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne).
+- Corrigé à la revue : documentation (Tinetti des dernières mesures, partage des prompts via Convex).
+- En attente : essais sur iPhone (carnet, antécédents, Tinetti dicté) ; vue « Tableau » pointé / facturé dans Patients (questions posées : remise à zéro mensuelle, colonnes, repères, copie vers le tableur) ; bilan unifié à deux volets ; prompts à partager avec LS via Convex.
+- Prochaine étape : répondre aux questions de la vue Tableau, puis l'implémenter ; ensuite le bilan unifié (étape 1 sur le catalogue en code).
+
 ## 2026-10-16 — Claude · cloud
 - Livré : v0.33.0 à v0.34.1 — pause de séance (motif, patient grisé sans A/B/note/bilan, trace dans les journées passées et l'export TXT, Dexie v8) ; ★ orange quand le bilan d'origine n'est pas transmis (bilans, dernières mesures, suivi des tests) ; prompt marche / équilibre (mesures et essais dans l'évaluation, meilleur essai comme score, aucune phrase perdue) ; bande des bilans en cours sans limite de temps, seulement pour aujourd'hui ; ✨ dans la rangée du clavier avec compteur des tests reconnus ; dernières mesures cliquables (test rapide ou Tinetti, retour au bilan avec son origine) ; bouton Copier qui garde le focus, coche verte durable, inactif pendant une dictée ; signes H sur la ligne de la date dans l'export. Notes Notion : ajouts du 15/10 au bilan unifié, consignes CY / LS de l'organisateur de bilans.
 - Tests : npm test 113/113, lint, build, Playwright 25/25 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne) à chaque version.
