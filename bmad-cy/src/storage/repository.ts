@@ -231,6 +231,11 @@ export class TourRepository {
     // Mettre en pause laisse une trace dans la journée du jour, même si elle n’avait pas encore été ouverte.
     if (patch.paused !== undefined || patch.pauseReason !== undefined) await this.ensureDay(this.today())
   }
+  // Tableau des patients : décoche Pointé ou Facturé pour tous les patients actifs (ni archivés ni supprimés), en une transaction.
+  // Rien d’autre n’est touché (séances, IFD, ordonnance, médecin).
+  async resetPatientFlag(field: 'pointed' | 'billed'): Promise<number> {
+    return this.database.transaction('rw', this.database.patients, () => this.database.patients.filter(patient => !patient.archived && patient[field]).modify(patient => { patient[field] = false }))
+  }
   async toggleFollowUp(id: string, kind: 'evalDates' | 'transDates', date: string): Promise<void> {
     await this.database.transaction('rw', this.database.patients, async () => {
       const patient = await this.database.patients.get(id)

@@ -484,4 +484,17 @@ describe('stockage local', () => {
     await repository.restore({ ...saved, doctors: [] })
     expect(await database.doctors.count()).toBe(0)
   })
+
+  it('remet Pointé ou Facturé à zéro pour les patients actifs seulement, sans toucher au reste', async () => {
+    const active = await repository.addPatient({ lastName: 'Actif', firstName: '', room: '', priority: '' })
+    const archived = await repository.addPatient({ lastName: 'Archivé', firstName: '', room: '', priority: '' })
+    await repository.updatePatient(active, { pointed: true, billed: true, days: 'LJ', ifd: 'L', doctor: 'Dr Fictif' })
+    await repository.updatePatient(archived, { pointed: true, billed: true })
+    await repository.archivePatient(archived, true)
+    expect(await repository.resetPatientFlag('pointed')).toBe(1)
+    expect(await database.patients.get(active)).toMatchObject({ pointed: false, billed: true, days: 'LJ', ifd: 'L', doctor: 'Dr Fictif' })
+    expect(await database.patients.get(archived)).toMatchObject({ pointed: true, billed: true })
+    await repository.resetPatientFlag('billed')
+    expect(await database.patients.get(active)).toMatchObject({ pointed: false, billed: false })
+  })
 })

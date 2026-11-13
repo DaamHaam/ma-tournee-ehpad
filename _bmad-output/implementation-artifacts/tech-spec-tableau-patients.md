@@ -1,4 +1,4 @@
-# Vue « Tableau » des patients — préparée, à valider avant de coder
+# Vue « Tableau » des patients — codée (v0.36.0)
 
 Décidée avec l’utilisateur le 2026-11-13. Objectif : voir d’un coup d’œil, dans Patients, la prise en charge administrative de tous les patients (séances, pointage, facturation, IFD, ordonnance, médecin), pour remplacer le tableur tenu à part.
 
@@ -36,7 +36,7 @@ Aucune nouvelle donnée : tous les champs existent déjà dans la fiche (`Patien
 7. **Toucher le nom** : ouvre la fiche du patient, avec retour au tableau.
 8. **Total** : petite ligne discrète en bas (« 12/20 pointés · 9/20 facturés »), facultative.
 
-Prêt à coder.
+Codé le 2026-11-13 : règles pures dans `domain/tableau.ts`, vue `features/patients/PatientTable.tsx`, remise à zéro `repository.resetPatientFlag` (patients non archivés, une transaction). Le sélecteur est gardé dans l’adresse (`/patients?vue=tableau`) pour que la fiche ramène au tableau. Une valeur de séances ou d’IFD hors combinaisons reste proposée telle quelle, comme la couverture importée.
 
 ## Vérifications prévues
 

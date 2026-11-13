@@ -5,7 +5,7 @@ import { itemHtml, shortDate } from '../bilan/display'
 import { MEASURE_RUBRICS, measureHistory, measureTitle } from '../../domain/mesures'
 import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { dateLabel, fullName, hasTrace, parseDate, validDate, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
@@ -14,14 +14,14 @@ import { Antecedents, FollowUps, PatientCare } from './PatientCare'
 import { WaitingLabel, WaitingMark } from './WaitingMark'
 import { PrescriptionMark } from './PrescriptionMark'
 import { useToday } from '../../app/useToday'
-
-function byName(a: Patient, b: Patient) {
-  return a.lastName.localeCompare(b.lastName, 'fr', { sensitivity: 'base' }) || a.firstName.localeCompare(b.firstName, 'fr', { sensitivity: 'base' })
-}
+import { byName } from '../../domain/tableau'
+import { PatientTable, TABLE_PATH } from './PatientTable'
 
 export function Patients() {
   const patients = useLiveQuery(() => db.patients.toArray(), [])
   const [showArchived, setShowArchived] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const table = params.get('vue') === 'tableau'
   const today = useToday()
   const [formOpen, setFormOpen] = useState(false)
   const [formError, setFormError] = useState('')
@@ -49,9 +49,18 @@ export function Patients() {
     setAdding(false)
   }
 
+  const viewSwitch = <div className="view-switch" role="group" aria-label="Affichage des patients">
+    <button type="button" aria-pressed={!table} onClick={() => setParams({}, { replace: true })}>Liste</button>
+    <button type="button" aria-pressed={table} onClick={() => setParams({ vue: 'tableau' }, { replace: true })}>Tableau</button>
+  </div>
+  if (table) return <>
+    <div className="page-heading"><h1 className="sr-only">Patients</h1>{viewSwitch}</div>
+    {patients && <PatientTable patients={patients} />}
+  </>
   return <>
-    <div className="page-heading end">
+    <div className="page-heading">
       <h1 className="sr-only">Patients</h1>
+      {viewSwitch}
       <button className="primary" onClick={() => setFormOpen(value => !value)}>{formOpen ? 'Fermer' : 'Ajouter'}</button>
     </div>
     {formOpen && <form className="card patient-form" onSubmit={event => void add(event)}>
@@ -92,9 +101,10 @@ function EditableIdentity({ patient }: { patient: Patient }) {
   </section>
 }
 
-// Ouverte depuis une journée, la fiche y ramène (même date) ; sinon retour à la liste des patients.
+// Ouverte depuis une journée, la fiche y ramène (même date) ; depuis le tableau, au tableau ; sinon retour à la liste des patients.
 function backTarget(state: unknown): { to: string; label: string } {
   const from = (state as { from?: unknown } | null)?.from
+  if (from === TABLE_PATH) return { to: TABLE_PATH, label: 'Tableau' }
   const date = typeof from === 'string' && from.startsWith('/?date=') ? from.slice(7) : ''
   return validDate(date) ? { to: from as string, label: parseDate(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) } : { to: '/patients', label: 'Patients' }
 }
