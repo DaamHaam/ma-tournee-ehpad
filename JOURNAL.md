@@ -1,5 +1,12 @@
 # Journal des clôtures
 
+## 2026-11-13 — Claude · cloud
+- Livré : vue Tableau des patients préparée et validée (`tech-spec-tableau-patients.md`, pas encore codée) ; environnement cloud prêt pour travailler sans le Mac (script de démarrage `npm ci`, réseau ouvert au déploiement Convex `keen-pig-304` et à `api.convex.dev`, clé `CONVEX_DEPLOY_KEY` saisie par l'utilisateur) ; `ACCOUNTS.md` et `deferred-work.md` à jour.
+- Tests : aucun code modifié ; serveur Convex joignable depuis le cloud vérifié.
+- Corrigé à la revue : rien.
+- En attente : clé Convex à vérifier dans une nouvelle session ; export du tableau patients et partage des prompts avec LS reportés.
+- Prochaine étape : nouvelle session — vérifier l'environnement et l'accès Convex, puis coder la vue Tableau.
+
 ## 2026-11-11 — Claude · cloud
 - Livré : v0.35.0 — antécédents en deux parties dans la fiche (kiné / autres, « Reprendre de la fiche » dans le bilan marche / équilibre) ; carnet des médecins dans Réglages (contacts touchables, spécialité discrète, renommage reporté dans les fiches, Dexie v9, inclus dans la sauvegarde) ; Tinetti test du catalogue comme les autres (score total, équilibre, marche ; reconnu par « Corriger », test rapide, bilan marche / équilibre, grille complète dans le même historique).
 - Tests : npm test 117/117, lint, build, Playwright 26/26 en local (Chromium iPhone) ; CI GitHub verte (WebKit iPhone et Chromium hors ligne).
