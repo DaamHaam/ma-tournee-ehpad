@@ -12,12 +12,13 @@ Carte des comptes utilisés par le projet. **Aucune valeur secrète ici** : seul
 
 ## Base de données
 - Données patients : aucune base distante, IndexedDB (Dexie) sur l'appareil. Sauvegarde JSON `ma-tournee-sauvegarde` exportée par l'utilisateur.
-- Fiches de bilan (à venir) : base Convex partagée avec l'organisateur de bilans et BMAD LSV2, sans aucune donnée patient. Projet, URL de déploiement et clés : à renseigner quand l'utilisateur les transmet (jamais de valeur secrète ici).
+- Fiches de bilan (à venir) : base Convex partagée avec l'organisateur de bilans et BMAD LSV2, sans aucune donnée patient. Au 2026-11-13, projet Convex pas encore créé (équipe `damien-hamon`, voir `ACCOUNTS.md` de `DaamHaam/organisateur-bilans`). URL de déploiement : à renseigner (non secrète). Accès cloud prévu : hôte du déploiement autorisé dans le réseau de l'environnement cloud, clé éventuelle saisie par l'utilisateur dans les réglages de l'environnement (jamais dans le dépôt).
 
 ## API et services externes
 - OpenRouter (transcription des bilans dictés, modèle Whisper choisi dans les réglages ; assistant de rédaction, modèle d’analyse DeepSeek saisi dans les réglages, même clé) : clé personnelle saisie dans `Réglages` de l’app, stockée seulement sur l’iPhone (IndexedDB), exclue de la sauvegarde. Compte et plafond de crédit gérés sur openrouter.ai. Aucun secret OpenRouter côté GitHub.
 
 ## Outils des agents
+- Environnement cloud « MON ENVIRONNEMENT » : script de démarrage qui lance `npm ci` dans `bmad-cy/` (depuis le 2026-11-13).
 - Notification : `tg-notify` en local ; secrets GitHub `TG_CLAUDE_TOKEN`, `TG_CODEX_TOKEN`, `TG_CHAT_ID` pour `.github/workflows/agents.yml` (clôtures et versions)
 
 ## À savoir

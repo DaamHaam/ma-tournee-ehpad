@@ -13,10 +13,14 @@
 
 ## Après l’import de patients
 
-- Import livré par copier-coller (voir `tech-spec-import-patients-suivi.md`). Reste à décider : un export du tableau patient dans le même format (story 8.1) pour le réimporter ailleurs.
+- Import livré par copier-coller (voir `tech-spec-import-patients-suivi.md`). Export du tableau patient dans le même format (story 8.1) : reporté le 2026-11-13, la vue Tableau dans le téléphone (`tech-spec-tableau-patients.md`) suffira peut-être.
 - Filtre « prescriptions proches de fin » (story 6.3) désormais possible grâce à la date de fin d’ordonnance.
 
 ## Après le bilan marche / équilibre (v0.22.0)
 
 - Livré en v0.35.0 (antécédents kiné repris par « Reprendre de la fiche » ; à faire aussi dans le bilan unifié). Idée (2026-10-08) : antécédents dans la fiche patient, en deux parties — ceux qui concernent directement la kiné en séance, et les autres. Les bilans (dont marche / équilibre) reprendraient seulement les antécédents kiné ; aujourd’hui la rubrique Antécédents du bilan est un texte libre.
 - Livré en v0.35.0 (Réglages, choix dans la fiche ; à reporter plus tard dans LS). Idée (2026-10-08) : carnet des médecins dans l’application — enregistrer chaque médecin avec ses contacts (téléphone, mail) et des informations libres ajoutées via un petit bouton.
+
+## 2026-11-13
+
+- Partage des prompts avec LS : attendre que l’organisateur de bilans soit terminé (projet Convex pas encore créé à cette date).
