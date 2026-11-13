@@ -479,3 +479,28 @@ main:has(.patient-table-wrap) { width:100%; }
 .table-total { margin:.5rem .2rem; text-align:right; }
 .table-resets { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
 .table-resets button { font-size:.82rem; }
+
+/* Patients, vue Pointage : séances A en bleu, B en orange, note en petit dessous ; retirées barrées et grisées. */
+.view-switch button { padding:0 .7rem; }
+.pointage-export summary { min-height:44px; display:flex; align-items:center; font-weight:700; cursor:pointer; }
+.pointage-export .date-range { margin:.4rem 0 .6rem; }
+.pointage-preview { max-height:14rem; overflow:auto; margin:0 0 .6rem; border:1px solid #edf0f2; border-radius:9px; background:#f8f9fb; padding:.6rem; font-size:.78rem; white-space:pre-wrap; }
+.pointage-month { display:flex; align-items:center; gap:.6rem; margin:.2rem 0 .8rem; color:#43515f; font-size:.86rem; font-weight:650; }
+.pointage-month select { width:auto; flex:1; }
+.pointage-month-title { margin:1rem 0 .5rem; color:var(--muted); font-size:.9rem; text-transform:capitalize; }
+.pointage-month-block { scroll-margin-top:1rem; }
+.pointage-day { padding:.7rem .8rem; }
+.pointage-day header { display:flex; align-items:baseline; justify-content:space-between; gap:.5rem; margin-bottom:.5rem; }
+.pointage-day h3 { margin:0; font-size:.92rem; text-transform:capitalize; }
+.pointage-exported { color:var(--accent); font-weight:800; }
+.pointage-count { flex:none; color:var(--muted); font-size:.78rem; font-weight:650; }
+.pointage-day ul { display:flex; flex-wrap:wrap; gap:.4rem; margin:0; padding:0; list-style:none; }
+.pointage-chip { display:flex; flex-direction:column; align-items:flex-start; gap:.1rem; min-height:40px; max-width:15rem; border:0; border-radius:9px; padding:.4rem .65rem; color:#fff; text-align:left; line-height:1.2; }
+.pointage-chip.a { background:#2f6fa8; }
+.pointage-chip.b { background:#e08a1e; }
+.pointage-chip.removed { background:#e6e9ed; color:#7d8790; }
+.pointage-chip.removed .pointage-name { text-decoration:line-through; }
+.pointage-name { font-size:.84rem; font-weight:700; }
+.pointage-note { font-size:.7rem; font-weight:500; opacity:.9; }
+.pointage-chip.removed.a { box-shadow:inset 3px 0 0 #2f6fa8; }
+.pointage-chip.removed.b { box-shadow:inset 3px 0 0 #e08a1e; }

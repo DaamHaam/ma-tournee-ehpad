@@ -304,6 +304,21 @@ export class TourRepository {
   }
   async setSetting(key: string, value: string): Promise<void> { await this.database.settings.put({ key, value }) }
   async deleteSetting(key: string): Promise<void> { await this.database.settings.delete(key) }
+  // Vue Pointage : retire ou remet la séance d’un patient pour l’export du pointage seulement, sans toucher à A ou B.
+  async toggleUnpointed(date: string, id: string): Promise<void> {
+    await this.database.transaction('rw', this.database.days, async () => {
+      const day = await this.database.days.get(date)
+      const entry = day?.entries[id]
+      if (!day || !entry || entry.session === null) throw new Error('Cette séance n’existe plus.')
+      if (entry.unpointed) delete entry.unpointed; else entry.unpointed = true
+      await this.database.days.put(day)
+    })
+  }
+  async markPointageExported(dates: string[], at: string): Promise<void> {
+    await this.database.transaction('rw', this.database.days, async () => {
+      await this.database.days.where('date').anyOf(dates).modify(day => { day.pointageExportedAt = at })
+    })
+  }
   async daysBetween(start: string, end: string): Promise<Day[]> {
     if (!validDate(start) || !validDate(end) || start > end) throw new Error('La date de début doit précéder ou être égale à la date de fin.')
     return this.database.days.where('date').between(start, end, true, true).toArray()

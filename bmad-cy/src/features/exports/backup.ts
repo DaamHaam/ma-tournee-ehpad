@@ -53,14 +53,14 @@ function checkDay(value: unknown): Day {
   if (!isObject(value) || !isString(value.date) || !validDate(value.date) || !isObject(value.entries) || !isStringList(value.order)) throw new Error(INVALID)
   const entries: Day['entries'] = {}
   for (const [id, entry] of Object.entries(value.entries)) {
-    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanHtml !== undefined && !isString(entry.bilanHtml)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || (entry.bilanEditedAt !== undefined && !isString(entry.bilanEditedAt)) || (entry.pause !== undefined && !isString(entry.pause)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
+    if (!isObject(entry) || !isString(entry.note) || (entry.bilan !== undefined && !isString(entry.bilan)) || (entry.bilanHtml !== undefined && !isString(entry.bilanHtml)) || (entry.bilanAt !== undefined && !isString(entry.bilanAt)) || (entry.bilanCopied !== undefined && !isBoolean(entry.bilanCopied)) || (entry.bilanEditedAt !== undefined && !isString(entry.bilanEditedAt)) || (entry.pause !== undefined && !isString(entry.pause)) || (entry.unpointed !== undefined && !isBoolean(entry.unpointed)) || !['A', 'B', null].includes(entry.session as string | null)) throw new Error(INVALID)
     if (entry.tests !== undefined && !(isObject(entry.tests) && Object.values(entry.tests).every(checkTest))) throw new Error(INVALID)
     // Mesures reconnues dans le bilan libre (après la v0.30) : choix et champs comme un bilan flexible.
     if (entry.bilanMeasures !== undefined && !(isObject(entry.bilanMeasures) && (entry.bilanMeasures.choices === undefined || isStringList(entry.bilanMeasures.choices)) && (entry.bilanMeasures.values === undefined || (isObject(entry.bilanMeasures.values) && Object.values(entry.bilanMeasures.values).every(isString))))) throw new Error(INVALID)
     entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]
   }
   const day = { mood: null, comment: '', ...value, entries } as Day
-  if (!isString(day.comment) || !(day.mood === null || [-3, -2, -1, 0, 1, 2, 3].includes(day.mood))) throw new Error(INVALID)
+  if (!isString(day.comment) || (day.pointageExportedAt !== undefined && !isString(day.pointageExportedAt)) || !(day.mood === null || [-3, -2, -1, 0, 1, 2, 3].includes(day.mood))) throw new Error(INVALID)
   return day
 }
 // Carnet des médecins (après la v0.34) : absent des anciennes sauvegardes ; champs facultatifs complétés à vide.

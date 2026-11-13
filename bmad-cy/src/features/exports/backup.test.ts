@@ -58,6 +58,14 @@ describe('sauvegarde complète', () => {
     expect(parseBackup(JSON.stringify(withDay)).days[0].entries[firstId].pause).toBe('hospitalisation')
     firstDay.entries[firstId].pause = true
     expect(() => parseBackup(JSON.stringify(withDay))).toThrow('pas une sauvegarde')
+    firstDay.entries[firstId].pause = 'hospitalisation'
+    firstDay.entries[firstId].unpointed = true
+    firstDay.pointageExportedAt = '2026-10-01'
+    const restored = parseBackup(JSON.stringify(withDay)).days[0]
+    expect(restored.entries[firstId].unpointed).toBe(true)
+    expect(restored.pointageExportedAt).toBe('2026-10-01')
+    firstDay.entries[firstId].unpointed = 'oui'
+    expect(() => parseBackup(JSON.stringify(withDay))).toThrow('pas une sauvegarde')
   })
 
   it('restaure une ancienne sauvegarde sans « attend une séance » avec la valeur fausse', () => {

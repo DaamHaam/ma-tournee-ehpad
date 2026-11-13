@@ -497,4 +497,17 @@ describe('stockage local', () => {
     await repository.resetPatientFlag('billed')
     expect(await database.patients.get(active)).toMatchObject({ pointed: false, billed: false })
   })
+
+  it('retire puis remet une séance du pointage sans toucher à A ou B, et marque les jours exportés', async () => {
+    await repository.initialize()
+    const patient = (await database.patients.toArray())[0]
+    await repository.setSession(TODAY, patient.id, 'A')
+    await repository.toggleUnpointed(TODAY, patient.id)
+    expect((await database.days.get(TODAY))?.entries[patient.id]).toMatchObject({ session: 'A', unpointed: true })
+    await repository.toggleUnpointed(TODAY, patient.id)
+    expect((await database.days.get(TODAY))?.entries[patient.id].unpointed).toBeUndefined()
+    await repository.markPointageExported([TODAY], '2026-09-02')
+    expect((await database.days.get(TODAY))?.pointageExportedAt).toBe('2026-09-02')
+    await expect(repository.toggleUnpointed('2026-08-01', patient.id)).rejects.toThrow()
+  })
 })

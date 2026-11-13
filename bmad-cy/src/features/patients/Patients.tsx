@@ -16,12 +16,13 @@ import { PrescriptionMark } from './PrescriptionMark'
 import { useToday } from '../../app/useToday'
 import { byName } from '../../domain/tableau'
 import { PatientTable, TABLE_PATH } from './PatientTable'
+import { Pointage } from './Pointage'
 
 export function Patients() {
   const patients = useLiveQuery(() => db.patients.toArray(), [])
   const [showArchived, setShowArchived] = useState(false)
   const [params, setParams] = useSearchParams()
-  const table = params.get('vue') === 'tableau'
+  const view = params.get('vue') === 'tableau' ? 'tableau' : params.get('vue') === 'pointage' ? 'pointage' : 'liste'
   const today = useToday()
   const [formOpen, setFormOpen] = useState(false)
   const [formError, setFormError] = useState('')
@@ -50,18 +51,19 @@ export function Patients() {
   }
 
   const viewSwitch = <div className="view-switch" role="group" aria-label="Affichage des patients">
-    <button type="button" aria-pressed={!table} onClick={() => setParams({}, { replace: true })}>Liste</button>
-    <button type="button" aria-pressed={table} onClick={() => setParams({ vue: 'tableau' }, { replace: true })}>Tableau</button>
+    <button type="button" aria-pressed={view === 'liste'} onClick={() => setParams({}, { replace: true })}>Liste</button>
+    <button type="button" aria-pressed={view === 'tableau'} onClick={() => setParams({ vue: 'tableau' }, { replace: true })}>Tableau</button>
+    <button type="button" aria-pressed={view === 'pointage'} onClick={() => setParams({ vue: 'pointage' }, { replace: true })}>Pointage</button>
   </div>
-  if (table) return <>
+  if (view !== 'liste') return <>
     <div className="page-heading"><h1 className="sr-only">Patients</h1>{viewSwitch}</div>
-    {patients && <PatientTable patients={patients} />}
+    {view === 'pointage' ? <Pointage /> : patients && <PatientTable patients={patients} />}
   </>
   return <>
     <div className="page-heading">
       <h1 className="sr-only">Patients</h1>
       {viewSwitch}
-      <button className="primary" onClick={() => setFormOpen(value => !value)}>{formOpen ? 'Fermer' : 'Ajouter'}</button>
+      <button className="primary add-patient" onClick={() => setFormOpen(value => !value)}>{formOpen ? 'Fermer' : 'Ajouter'}</button>
     </div>
     {formOpen && <form className="card patient-form" onSubmit={event => void add(event)}>
       <div className="form-grid">

@@ -1,4 +1,5 @@
 import { moodSigns, parseDate, type Day, type Entry } from '../../domain/model'
+import { withoutUnpointed } from '../../domain/pointage'
 function compact(text: string): string { return text.trim().replace(/\s+/g, ' ').replace(/[()]/g, '') }
 function firstWord(text: string): string { return compact(text).split(' ')[0].toLocaleLowerCase('fr') }
 // Le nom s'exporte en entier, particule comprise (« Le Gall ») ; le prénom n'apparaît que pour les homonymes.
@@ -35,3 +36,5 @@ export function exportTxt(days: Day[]): string {
     return [heading, compact(day.comment), seen, unseen ? `Pas vus : ${unseen}` : '', paused ? `Pause : ${paused}` : ''].filter(Boolean).join('\n')
   }).join('\n\n')
 }
+// Export du pointage : même format que l’export de la journée, sans les séances retirées dans la vue Pointage.
+export function exportPointage(days: Day[]): string { return exportTxt(days.map(withoutUnpointed)) }

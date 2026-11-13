@@ -27,8 +27,9 @@ export function careDefaults(): PatientCare { return { sex: '', coverage: '', da
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
 // pause : motif de la pause (éventuellement vide) figé pour ce jour-là ; absente, le patient n’était pas en pause.
-export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>> }
-export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string }
+export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean }
+// unpointed : séance retirée dans la vue Pointage seulement (la journée garde A ou B) ; pointageExportedAt : date locale du dernier export du pointage.
+export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string; pointageExportedAt?: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
 export const SEPARATORS = ['separator:1', 'separator:2', 'separator:3', 'separator:4']
 export const OFF_DAY_SEPARATOR = 'separator:4'

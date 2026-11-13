@@ -56,6 +56,7 @@ development_status:
   epic-6: in-progress
   6-1-liste-g-n-rale-patients-alpha-minimaliste: done
   6-4-vue-tableau-patients: done  # tech-spec-tableau-patients
+  6-5-vue-pointage-patients: done  # tech-spec-pointage
   6-2-panneau-de-filtres-validable-incluant-archiv-s: backlog
   6-3-filtre-prescriptions-proches-de-fin: backlog
   epic-6-retrospective: optional
