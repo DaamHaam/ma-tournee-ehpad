@@ -21,13 +21,17 @@ export function doctorKey(name: string): string { return name.trim().toLocaleLow
 export function findDoctor(doctors: Doctor[], name: string): Doctor | undefined { return name.trim() ? doctors.find(doctor => doctorKey(doctor.name) === doctorKey(name)) : undefined }
 export const COVERAGES = ['ALD', 'Mutuelle', '100% invalidité']
 export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
+// Lettre de séance d’une date (lundi L, jeudi J, vendredi V) ; null les autres jours.
+export function weekdayLetter(date: string): string | null { return ({ 1: 'L', 4: 'J', 5: 'V' } as Record<number, string>)[parseDate(date).getDay()] ?? null }
+// Patient prévu ce jour-là d’après ses jours de séance (L, J, V de la fiche).
+export function plannedOn(days: string, date: string): boolean { const letter = weekdayLetter(date); return letter !== null && days.toUpperCase().includes(letter) }
 export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '', atcdKine: '', atcdOther: '' } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification ; bilanEditedAt (et editedAt d’un test) : heure de la dernière modification.
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
 // pause : motif de la pause (éventuellement vide) figé pour ce jour-là ; absente, le patient n’était pas en pause.
-export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean }
+export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean; planned?: boolean }
 // unpointed : séance retirée dans la vue Pointage seulement (la journée garde A ou B) ; pointageExportedAt : date locale du dernier export du pointage.
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string; pointageExportedAt?: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.

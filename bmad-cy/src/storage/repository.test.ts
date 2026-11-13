@@ -510,4 +510,18 @@ describe('stockage local', () => {
     expect((await database.days.get(TODAY))?.pointageExportedAt).toBe('2026-09-02')
     await expect(repository.toggleUnpointed('2026-08-01', patient.id)).rejects.toThrow()
   })
+
+  it('retient dans la journée les patients prévus d’après leurs jours L, J, V, sans changer le passé', async () => {
+    await repository.initialize()
+    const patient = (await database.patients.toArray())[0]
+    // Le 1er septembre 2026 est un mardi : jeudi 3 et vendredi 4.
+    await repository.updatePatient(patient.id, { days: 'J' })
+    await repository.ensureDay('2026-09-03')
+    await repository.ensureDay('2026-09-04')
+    expect((await database.days.get('2026-09-03'))?.entries[patient.id].planned).toBe(true)
+    expect((await database.days.get('2026-09-04'))?.entries[patient.id].planned).toBe(false)
+    await repository.updatePatient(patient.id, { days: 'V' })
+    expect((await database.days.get('2026-09-03'))?.entries[patient.id].planned).toBe(false)
+    expect((await database.days.get('2026-09-04'))?.entries[patient.id].planned).toBe(true)
+  })
 })

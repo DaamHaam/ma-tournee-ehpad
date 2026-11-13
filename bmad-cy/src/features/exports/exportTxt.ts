@@ -21,8 +21,8 @@ function exportName(entry: Entry, entries: Entry[]): string {
 }
 // Seuls la séance, la note et la pause entrent dans le TXT ; le bilan reste dans l'application.
 function exported(entry: Entry): boolean { return entry.session !== null || entry.note.trim() !== '' || entry.pause !== undefined }
-export function exportTxt(days: Day[]): string {
-  return [...days].sort((a, b) => a.date.localeCompare(b.date)).filter(day => Object.values(day.entries).some(exported) || day.mood !== null || day.comment.trim()).map(day => {
+export function exportTxt(days: Day[], { mood = true }: { mood?: boolean } = {}): string {
+  return [...days].sort((a, b) => a.date.localeCompare(b.date)).filter(day => Object.values(day.entries).some(exported) || (mood && day.mood !== null) || day.comment.trim()).map(day => {
     const entries = day.order.flatMap(id => day.entries[id] ? [day.entries[id]] : [])
     // Patient vu puis mis en pause le même jour : la pause suit la note entre parenthèses.
     const pauseNote = (entry: Entry) => entry.pause === undefined ? '' : ` (pause${compact(entry.pause) ? ` : ${compact(entry.pause)}` : ''})`
@@ -32,9 +32,10 @@ export function exportTxt(days: Day[]): string {
     // Pause : le motif entre parenthèses, la note éventuelle à la suite.
     const paused = entries.filter(entry => entry.session === null && entry.pause !== undefined).map(entry => [exportName(entry, entries), compact(entry.pause!) && `(${compact(entry.pause!)})`, entry.note.trim() && `(${compact(entry.note)})`].filter(Boolean).join(' ')).join(' ')
     // Les signes du niveau H suivent la date sur la même ligne ; le commentaire général garde sa ligne.
-    const heading = [parseDate(day.date).toLocaleDateString('fr-FR'), moodSigns(day.mood)].filter(Boolean).join(' ')
+    const heading = [parseDate(day.date).toLocaleDateString('fr-FR'), mood ? moodSigns(day.mood) : ''].filter(Boolean).join(' ')
     return [heading, compact(day.comment), seen, unseen ? `Pas vus : ${unseen}` : '', paused ? `Pause : ${paused}` : ''].filter(Boolean).join('\n')
   }).join('\n\n')
 }
-// Export du pointage : même format que l’export de la journée, sans les séances retirées dans la vue Pointage.
-export function exportPointage(days: Day[]): string { return exportTxt(days.map(withoutUnpointed)) }
+// Export du pointage définitif : format de l’export de la journée (commentaire, Pas vus, Pause), sans les signes H
+// ni les séances retirées dans la vue Pointage.
+export function exportPointage(days: Day[]): string { return exportTxt(days.map(withoutUnpointed), { mood: false }) }

@@ -480,7 +480,7 @@ main:has(.patient-table-wrap) { width:100%; }
 .table-resets { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
 .table-resets button { font-size:.82rem; }
 
-/* Patients, vue Pointage : séances A en bleu, B en orange, note en petit dessous ; retirées barrées et grisées. */
+/* Patients, vue Pointage : A en bleu, B en orange, prévus non vus en rouge ; « Non pointés » en petit dessous. */
 .view-switch button { padding:0 .7rem; }
 .pointage-export summary { min-height:44px; display:flex; align-items:center; font-weight:700; cursor:pointer; }
 .pointage-export .date-range { margin:.4rem 0 .6rem; }
@@ -491,16 +491,25 @@ main:has(.patient-table-wrap) { width:100%; }
 .pointage-month-block { scroll-margin-top:1rem; }
 .pointage-day { padding:.7rem .8rem; }
 .pointage-day header { display:flex; align-items:baseline; justify-content:space-between; gap:.5rem; margin-bottom:.5rem; }
-.pointage-day h3 { margin:0; font-size:.92rem; text-transform:capitalize; }
+.pointage-day h3 { margin:0; font-size:.92rem; }
+.pointage-day h3::first-letter { text-transform:uppercase; }
+.pointage-mood { color:var(--accent); font-weight:800; letter-spacing:.05em; }
 .pointage-exported { color:var(--accent); font-weight:800; }
-.pointage-count { flex:none; color:var(--muted); font-size:.78rem; font-weight:650; }
-.pointage-day ul { display:flex; flex-wrap:wrap; gap:.4rem; margin:0; padding:0; list-style:none; }
+.pointage-count { flex:none; color:var(--muted); font-size:.78rem; font-weight:650; text-align:right; }
+.pointage-warning { display:block; color:#c06f0c; font-size:.72rem; font-weight:750; }
+.pointage-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:0; padding:0; list-style:none; }
 .pointage-chip { display:flex; flex-direction:column; align-items:flex-start; gap:.1rem; min-height:40px; max-width:15rem; border:0; border-radius:9px; padding:.4rem .65rem; color:#fff; text-align:left; line-height:1.2; }
 .pointage-chip.a { background:#2f6fa8; }
 .pointage-chip.b { background:#e08a1e; }
-.pointage-chip.removed { background:#e6e9ed; color:#7d8790; }
-.pointage-chip.removed .pointage-name { text-decoration:line-through; }
+.pointage-chip.red { background:#c43b33; }
 .pointage-name { font-size:.84rem; font-weight:700; }
 .pointage-note { font-size:.7rem; font-weight:500; opacity:.9; }
-.pointage-chip.removed.a { box-shadow:inset 3px 0 0 #2f6fa8; }
-.pointage-chip.removed.b { box-shadow:inset 3px 0 0 #e08a1e; }
+.pointage-below { margin-top:.6rem; border-top:1px solid #edf0f2; padding-top:.45rem; color:var(--muted); font-size:.74rem; }
+.pointage-below-title { font-weight:700; }
+.pointage-below ul { display:inline; margin:0; padding:0; list-style:none; }
+.pointage-below li { display:inline; }
+.pointage-below li::before { content:" · "; }
+.pointage-below li:first-child::before { content:" : "; }
+.pointage-below button { min-height:32px; border:0; border-radius:6px; background:transparent; padding:0 .15rem; color:var(--ink); font-size:.74rem; font-weight:650; text-decoration:underline dotted; }
+.pointage-below .done button { color:#2e7d4f; }
+.pointage-was { font-weight:500; color:var(--muted); }

@@ -1,7 +1,7 @@
 import { hasTestContent, type TestRecord, type TestType } from '../domain/tinetti'
 import { hasFlexContent, type FlexInput } from '../domain/marcheEquilibre'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
-import { applyOrder, careDefaults, doctorKey, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Doctor, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+import { applyOrder, careDefaults, doctorKey, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, plannedOn, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Doctor, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[]; doctors: Doctor[] }
 // GRP, sexe, attente, pause, antécédents et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
@@ -10,6 +10,13 @@ const NOT_IMPORTED = ['group', 'sex', 'waiting', 'paused', 'pauseReason', 'atcdK
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
 type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'atcdKine' | 'atcdOther'
 // Pause de la fiche recopiée dans une journée d’aujourd’hui ou à venir ; renvoie vrai si l’entrée a changé.
+// Jours prévus retenus dans la journée (aujourd’hui et après) : une fiche modifiée plus tard ne change pas le passé.
+function syncPlanned(entry: Entry, patient: Pick<Patient, 'days'>, date: string): boolean {
+  const planned = plannedOn(patient.days ?? '', date)
+  if (entry.planned === planned) return false
+  entry.planned = planned
+  return true
+}
 function syncPause(entry: Entry, patient: Pick<Patient, 'paused' | 'pauseReason'>): boolean {
   const pause = patient.paused ? patient.pauseReason : undefined
   if (entry.pause === pause) return false
@@ -42,7 +49,7 @@ export class TourRepository {
     const order = template?.order.filter(id => SEPARATORS.includes(id) || activeIds.has(id)) ?? [...SEPARATORS]
     for (const separator of SEPARATORS) if (!order.includes(separator)) order.push(separator)
     for (const patient of patients) if (!order.includes(patient.id)) order.push(patient.id)
-    return { date, entries: Object.fromEntries(patients.map(patient => [patient.id, { patient: identityOf(patient), session: null, note: '', ...(patient.paused && date >= this.today() ? { pause: patient.pauseReason } : {}) }])), order, mood: null, comment: '' }
+    return { date, entries: Object.fromEntries(patients.map(patient => [patient.id, { patient: identityOf(patient), session: null, note: '', planned: plannedOn(patient.days ?? '', date), ...(patient.paused && date >= this.today() ? { pause: patient.pauseReason } : {}) }])), order, mood: null, comment: '' }
   }
   // Journée à afficher : celle enregistrée, sinon un brouillon qui ne sera écrit qu’à la première saisie.
   async dayView(date: string): Promise<Day> {
@@ -65,6 +72,7 @@ export class TourRepository {
         if (!entry) { day.entries[patient.id] = { patient: identityOf(patient), session: null, note: '' }; changed = true }
         else if (JSON.stringify(entry.patient) !== JSON.stringify(identityOf(patient))) { entry.patient = identityOf(patient); changed = true }
         if (syncPause(day.entries[patient.id], patient)) changed = true
+        if (syncPlanned(day.entries[patient.id], patient, date)) changed = true
         if (!day.order.includes(patient.id)) { day.order.push(patient.id); changed = true }
       }
       const activeIds = new Set(patients.map(p => p.id))
@@ -77,7 +85,7 @@ export class TourRepository {
   private async refreshSnapshots(patients: Patient[]): Promise<void> {
     const byId = new Map(patients.map(patient => [patient.id, patient]))
     await this.database.days.where('date').aboveOrEqual(this.today()).modify(day => {
-      for (const [id, entry] of Object.entries(day.entries)) { const patient = byId.get(id); if (patient) { entry.patient = identityOf(patient); syncPause(entry, patient) } }
+      for (const [id, entry] of Object.entries(day.entries)) { const patient = byId.get(id); if (patient) { entry.patient = identityOf(patient); syncPause(entry, patient); syncPlanned(entry, patient, day.date) } }
     })
   }
   private async changeDay(date: string, update: (day: Day) => void): Promise<void> {
@@ -304,12 +312,12 @@ export class TourRepository {
   }
   async setSetting(key: string, value: string): Promise<void> { await this.database.settings.put({ key, value }) }
   async deleteSetting(key: string): Promise<void> { await this.database.settings.delete(key) }
-  // Vue Pointage : retire ou remet la séance d’un patient pour l’export du pointage seulement, sans toucher à A ou B.
+  // Vue Pointage : descend ou remonte un patient (séance retirée du pointage définitif, ou prévu non vu déjà dépointé), sans toucher à A ou B.
   async toggleUnpointed(date: string, id: string): Promise<void> {
     await this.database.transaction('rw', this.database.days, async () => {
       const day = await this.database.days.get(date)
       const entry = day?.entries[id]
-      if (!day || !entry || entry.session === null) throw new Error('Cette séance n’existe plus.')
+      if (!day || !entry) throw new Error('Ce patient ne figure pas dans cette journée.')
       if (entry.unpointed) delete entry.unpointed; else entry.unpointed = true
       await this.database.days.put(day)
     })
