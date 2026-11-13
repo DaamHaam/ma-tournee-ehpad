@@ -25,16 +25,18 @@ Aucune nouvelle donnée : tous les champs existent déjà dans la fiche (`Patien
 - Un bouton « Remettre à zéro » décoche Pointé et Facturé pour tous les patients affichés, après confirmation. Séances, IFD, ordonnance et médecin ne sont jamais touchés.
 - Règle pure et testée hors React (`resetBilling` ou équivalent dans `repository.ts`, une seule transaction).
 
-## Questions encore ouvertes
+## Décisions du 2026-11-13 (réponses de l’utilisateur)
 
-1. **Accès** : un sélecteur « Liste / Tableau » en haut de l’onglet Patients ? (proposition)
-2. **Modification dans le tableau** : Pointé et Facturé se cochent d’un toucher dans le tableau ? Séances et IFD aussi (toucher → petit choix L J V), ou seulement dans la fiche ?
-3. **Bouton de remise à zéro** : un seul bouton pour les deux colonnes, ou un par colonne (Pointé seul, Facturé seul) ?
-4. **Patients affichés** : tous les actifs (non archivés) ; les patients en pause aussi, grisés avec leur motif ? les fictifs du premier lancement ?
-5. **Ordre** : alphabétique comme la liste, ou par jour de séance ?
-6. **Taille sur iPhone** : 8 colonnes en portrait demandent un défilement horizontal (nom fixé) ; ou bien tableau pensé pour l’iPhone tourné en paysage ?
-7. **Toucher le nom** : ouvre la fiche du patient (avec retour au tableau) ?
-8. **Total** : une ligne de compte en bas (ex. « 12/20 pointés, 9/20 facturés ») ?
+1. **Accès** : sélecteur « Liste / Tableau » en haut de l’onglet Patients.
+2. **Modification dans le tableau** : Pointé et Facturé se cochent d’un toucher, cases bien accessibles. Couverture, Séances et Fact. IFD s’ouvrent d’un toucher sur un menu déroulant qui propose toutes les options (couverture : —, ALD, Mutuelle, 100% invalidité, plus une valeur importée ; séances : —, L, J, V, LJ, LV, JV, LJV ; IFD : non, puis les mêmes combinaisons). L’enregistrement passe par `updatePatient` comme dans la fiche.
+3. **Remise à zéro** : un bouton par colonne (« Remettre Pointé à zéro », « Remettre Facturé à zéro »), avec confirmation, sur tous les patients du tableau.
+4. **Patients affichés** : tous ceux qui ne sont ni supprimés ni archivés, patients en pause compris (affichés normalement, la pause n’est que passagère).
+5. **Ordre** : alphabétique, comme la liste.
+6. **Taille** : en portrait, colonne du nom fixée et tassée à gauche, le reste défile horizontalement. En paysage, le tableau profite de toute la largeur. Le manifeste de la PWA bloque aujourd’hui l’orientation en portrait (`orientation: 'portrait'` dans `vite.config.ts`) : passer à `'any'` pour que l’application installée bascule en paysage, puis vérifier sur iPhone que les autres écrans restent corrects tournés.
+7. **Toucher le nom** : ouvre la fiche du patient, avec retour au tableau.
+8. **Total** : petite ligne discrète en bas (« 12/20 pointés · 9/20 facturés »), facultative.
+
+Prêt à coder.
 
 ## Vérifications prévues
 
