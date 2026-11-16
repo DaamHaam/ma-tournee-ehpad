@@ -26,10 +26,10 @@ export interface PointageView { top: PointageRow<ChipKind>[]; below: PointageRow
 export const BASE_CAPACITY = 10
 export function capacity(mood: Mood): number { return BASE_CAPACITY + (mood ?? 0) }
 
-// Patients du jour dans l’ordre de la tournée (comme l’export).
+// Patients du jour dans l’ordre de la tournée, comme l’export : un patient archivé ou supprimé sorti de la tournée
+// (son entrée reste dans la journée) n’y figure plus et ne doit pas apparaître en rouge.
 function ordered(day: Pick<Day, 'entries' | 'order'>): { id: string; entry: Entry }[] {
-  const placed = new Set(day.order)
-  return [...day.order, ...Object.keys(day.entries).filter(id => !placed.has(id))].flatMap(id => day.entries[id] ? [{ id, entry: day.entries[id] }] : [])
+  return day.order.flatMap(id => day.entries[id] ? [{ id, entry: day.entries[id] }] : [])
 }
 
 export function pointageView(day: Pick<Day, 'date' | 'entries' | 'order' | 'mood'>, patients: Map<string, Pick<Patient, 'days'>>): PointageView {

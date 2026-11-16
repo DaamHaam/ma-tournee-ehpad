@@ -66,6 +66,7 @@ export function Pointage() {
 // Copier, télécharger ou partager marque les jours exportés (⇪), pour voir plus tard où l’on s’était arrêté.
 function PointageExport({ days }: { days: Day[] }) {
   const today = useToday()
+  const { run } = useSave()
   const [start, setStart] = useState(() => previousMonthStart(today))
   const [end, setEnd] = useState(today)
   const [message, setMessage] = useState('')
@@ -74,7 +75,7 @@ function PointageExport({ days }: { days: Day[] }) {
   const inRange = useMemo(() => valid ? days.filter(day => day.date >= start && day.date <= end) : [], [days, start, end, valid])
   const text = useMemo(() => exportPointage(inRange), [inRange])
   const file = useMemo(() => text ? new File([text], `pointage-${start}-${end}.txt`, { type: 'text/plain;charset=utf-8' }) : null, [text, start, end])
-  const markExported = () => repository.markPointageExported(pointageDays(inRange).map(day => day.date), today)
+  const markExported = () => run(() => repository.markPointageExported(pointageDays(inRange).map(day => day.date), today))
   const copy = async () => {
     if (!await copyText(text)) { setMessage('Copie impossible.'); return }
     setCopied(true); window.setTimeout(() => setCopied(false), 1500)

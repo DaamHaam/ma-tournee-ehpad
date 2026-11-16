@@ -9,7 +9,6 @@ export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTem
 const NOT_IMPORTED = ['group', 'sex', 'waiting', 'paused', 'pauseReason', 'atcdKine', 'atcdOther', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
 type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'atcdKine' | 'atcdOther'
-// Pause de la fiche recopiée dans une journée d’aujourd’hui ou à venir ; renvoie vrai si l’entrée a changé.
 // Jours prévus retenus dans la journée (aujourd’hui et après) : une fiche modifiée plus tard ne change pas le passé.
 function syncPlanned(entry: Entry, patient: Pick<Patient, 'days'>, date: string): boolean {
   const planned = plannedOn(patient.days ?? '', date)
@@ -17,6 +16,7 @@ function syncPlanned(entry: Entry, patient: Pick<Patient, 'days'>, date: string)
   entry.planned = planned
   return true
 }
+// Pause de la fiche recopiée dans une journée d’aujourd’hui ou à venir ; renvoie vrai si l’entrée a changé.
 function syncPause(entry: Entry, patient: Pick<Patient, 'paused' | 'pauseReason'>): boolean {
   const pause = patient.paused ? patient.pauseReason : undefined
   if (entry.pause === pause) return false

@@ -39,6 +39,11 @@ describe('pointage définitif', () => {
     expect([view.a, view.b]).toEqual([1, 1])
   })
 
+  it('ignore un patient sorti de la tournée (archivé ou supprimé) dont l’entrée reste dans la journée', () => {
+    const left = { ...thursday, order: thursday.order.filter(id => id !== 'fictiff') }
+    expect(pointageView(left, new Map()).top.map(row => row.id)).not.toContain('fictiff')
+  })
+
   it('compare les patients gardés à la capacité du jour (10 sans signe, un par signe, ± 1)', () => {
     expect([capacity(null), capacity(-2), capacity(1)]).toEqual([10, 8, 11])
     const seen = (count: number, mood: Day['mood']) => day('2026-09-10', Array.from({ length: count }, (_, index) => entry(`fictif${index}`, index % 2 ? 'B' : 'A')), { mood })
