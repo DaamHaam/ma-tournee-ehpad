@@ -385,7 +385,7 @@ test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouc
 
 test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, reprise dans le bilan et suivi dans la fiche', async ({ page }) => {
   await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Robert Paul', 'Test rapide')
+  await openBilan(page, 'Robert Paul', 'Tests rapides')
   await expect(page.getByRole('tab', { name: 'TUG' })).toHaveAttribute('aria-selected', 'true')
   // ✕ sans rien saisir sur une journée jamais ouverte : elle n’est pas créée.
   await page.getByRole('button', { name: 'Annuler et quitter' }).click()
@@ -394,7 +394,7 @@ test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, repri
     open.onsuccess = () => { const request = open.result.transaction('days').objectStore('days').get('2026-09-22'); request.onsuccess = () => { resolve(!!request.result); open.result.close() } }
   }))
   expect(stored).toBe(false)
-  await openBilan(page, 'Robert Paul', 'Test rapide')
+  await openBilan(page, 'Robert Paul', 'Tests rapides')
   // Chronomètre : le temps arrêté remplit le champ.
   await page.getByRole('button', { name: 'Démarrer' }).click()
   await page.waitForTimeout(1200)
@@ -411,7 +411,7 @@ test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, repri
 
   // Jour suivant : ★ de la dernière mesure, copie d’une ligne par test qui coche la transmission.
   await page.goto('/#/?date=2026-09-25')
-  await openBilan(page, 'Robert Paul', 'Test rapide')
+  await openBilan(page, 'Robert Paul', 'Tests rapides')
   await expect(page.getByRole('region', { name: 'Timed Up and Go' })).toContainText('22sec · 22/09/2026')
   await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('18')
   // Supprimer un test pour le refaire.
@@ -707,7 +707,7 @@ test.describe('dictée', () => {
     // Correction du bilan libre : une seule passe, nom remis à sa place, tests reconnus à valider, correction annulable.
     // Mesure antérieure (test rapide) pour la ★ du panneau.
     await page.goto('/#/?date=2026-09-15')
-    await openBilan(page, 'Petit Jeanne', 'Test rapide')
+    await openBilan(page, 'Petit Jeanne', 'Tests rapides')
     await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('22')
     await page.getByRole('button', { name: 'Valider' }).click()
     await page.goto('/#/?date=2026-09-22')
