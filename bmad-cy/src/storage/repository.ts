@@ -1,8 +1,9 @@
 import { hasTestContent, type TestRecord, type TestType } from '../domain/tinetti'
 import { hasFlexContent, type FlexInput } from '../domain/marcheEquilibre'
+import { hasFormContent, type BilanForm } from '../domain/catalog'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
 import { applyOrder, careDefaults, doctorKey, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, plannedOn, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Doctor, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
-export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures'>
+export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures' | 'bilanForm'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[]; doctors: Doctor[] }
 // GRP, sexe, attente, pause, antécédents et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
@@ -121,6 +122,16 @@ export class TourRepository {
   async deleteBilan(date: string, id: string): Promise<void> {
     await this.setBilan(date, id, '')
     await this.setBilanMeasures(date, id, {})
+    await this.setBilanForm(date, id, undefined)
+  }
+  // Repères cochés du bilan (catalogue de l’organisateur) : vides, ils disparaissent. Ils ne changent pas la marque « copié »
+  // du texte : seule la copie du texte compte, et une case cochée se retrouve dans le texte par ✨ ou « Insérer les cochés ».
+  async setBilanForm(date: string, id: string, form: BilanForm | undefined): Promise<void> {
+    await this.changeDay(date, day => {
+      const entry = this.entry(day, id)
+      if (form && (hasFormContent(form) || form.preset)) entry.bilanForm = form
+      else delete entry.bilanForm
+    })
   }
   // Tests reconnus dans le bilan libre et validés : remplacent ceux déjà enregistrés pour ce jour.
   async setBilanMeasures(date: string, id: string, measures: FlexInput): Promise<void> {
@@ -179,7 +190,7 @@ export class TourRepository {
   async restoreBilan(date: string, id: string, snapshot: BilanSnapshot): Promise<void> {
     await this.changeDay(date, day => {
       const entry = this.entry(day, id)
-      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied', 'bilanEditedAt', 'bilanMeasures'] as const) {
+      for (const key of ['bilan', 'bilanHtml', 'bilanAt', 'bilanCopied', 'bilanEditedAt', 'bilanMeasures', 'bilanForm'] as const) {
         if (snapshot[key] === undefined) delete entry[key]
         else (entry as unknown as Record<string, unknown>)[key] = snapshot[key]
       }

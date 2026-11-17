@@ -6,16 +6,20 @@ import { repository } from '../../storage/repository'
 import { ANALYSIS_MODEL_SETTING, promptSetting, REASONING_LEVELS, REASONING_SETTING } from './assistant'
 import { KEY_SETTING } from './dictation'
 import { chat } from './openrouter'
-import { customPrompt, DEFAULT_PROMPTS, encodeCustomPrompt, PROMPT_KINDS, PROMPT_LABEL, type PromptKind } from './prompts'
+import { customPrompt, defaultPrompt, encodeCustomPrompt, PROMPT_KINDS, PROMPT_LABEL, type PromptKind } from './prompts'
+import { catalogPrompt } from '../../domain/catalog'
+import { useLatestCatalog } from '../../storage/catalogStore'
 import { copyText } from '../exports/clipboard'
 
 // Réglage de l’assistant de rédaction : modèle d’analyse (même clé que la dictée) et prompts modifiables.
 export function AssistantPanel() {
   const { run } = useSave()
+  const published = useLatestCatalog()
+  const DEFAULT_PROMPTS = Object.fromEntries(PROMPT_KINDS.map(kind => [kind, defaultPrompt(kind, catalogPrompt(published.catalog))])) as Record<PromptKind, string>
   const settings = useLiveQuery(async () => {
     const values = new Map((await db.settings.toArray()).map(item => [item.key, item.value]))
-    return { reasoning: values.get(REASONING_SETTING) ?? 'none', key: values.get(KEY_SETTING) ?? '', model: values.get(ANALYSIS_MODEL_SETTING) ?? '', prompts: Object.fromEntries(PROMPT_KINDS.map(kind => [kind, customPrompt(kind, values.get(promptSetting(kind))) ?? ''])) as Record<PromptKind, string> }
-  }, [])
+    return { reasoning: values.get(REASONING_SETTING) ?? 'none', key: values.get(KEY_SETTING) ?? '', model: values.get(ANALYSIS_MODEL_SETTING) ?? '', prompts: Object.fromEntries(PROMPT_KINDS.map(kind => [kind, customPrompt(kind, values.get(promptSetting(kind)), defaultPrompt(kind, catalogPrompt(published.catalog))) ?? ''])) as Record<PromptKind, string> }
+  }, [published])
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   if (!settings) return null
@@ -23,7 +27,7 @@ export function AssistantPanel() {
   // Modification transitoire : elle s’efface d’elle-même quand une mise à jour change le prompt par défaut.
   const savePrompt = (kind: PromptKind, value: string) => {
     const custom = value.trim() && value.trim() !== DEFAULT_PROMPTS[kind].trim() ? value : ''
-    if (custom !== settings.prompts[kind]) void run(() => custom ? repository.setSetting(promptSetting(kind), encodeCustomPrompt(kind, custom)) : repository.deleteSetting(promptSetting(kind)))
+    if (custom !== settings.prompts[kind]) void run(() => custom ? repository.setSetting(promptSetting(kind), encodeCustomPrompt(kind, custom, DEFAULT_PROMPTS[kind])) : repository.deleteSetting(promptSetting(kind)))
   }
   const copyPrompt = async (kind: PromptKind) => setStatus(await copyText(settings.prompts[kind] || DEFAULT_PROMPTS[kind]) ? { ok: true, text: 'Prompt copié.' } : { ok: false, text: 'Copie impossible.' })
   const test = async () => {
@@ -41,7 +45,7 @@ export function AssistantPanel() {
     <div className="action-row"><button type="button" disabled={!settings.key || !settings.model || busy} onClick={() => void test()}>{busy ? 'Test…' : 'Tester le modèle'}</button></div>
     {status && <p className={status.ok ? 'save-hint' : 'field-error'} role="status">{status.text}</p>}
     {PROMPT_KINDS.map(kind => <details key={kind} className="prompt-editor">
-      <summary>Prompt : {PROMPT_LABEL[kind]}{settings.prompts[kind] ? ' (modifié)' : ''}</summary>
+      <summary>Prompt : {PROMPT_LABEL[kind]}{settings.prompts[kind] ? ' (modifié)' : ''}{kind === 'miseEnForme' ? ` · catalogue v${published.number}` : ''}</summary>
       <textarea key={`${kind}-${settings.prompts[kind]}`} aria-label={`Prompt ${PROMPT_LABEL[kind]}`} rows={14} defaultValue={settings.prompts[kind] || DEFAULT_PROMPTS[kind]} onBlur={event => savePrompt(kind, event.target.value)} />
       <div className="action-row"><button type="button" onClick={() => void copyPrompt(kind)}>Copier</button><button type="button" disabled={!settings.prompts[kind]} onClick={() => void run(() => repository.deleteSetting(promptSetting(kind)))}>Rétablir le prompt par défaut</button></div>
     </details>)}

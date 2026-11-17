@@ -513,3 +513,18 @@ main:has(.patient-table-wrap) { width:100%; }
 .pointage-below button { min-height:32px; border:0; border-radius:6px; background:transparent; padding:0 .15rem; color:var(--ink); font-size:.74rem; font-weight:650; text-decoration:underline dotted; }
 .pointage-below .done button { color:#2e7d4f; }
 .pointage-was { font-weight:500; color:var(--muted); }
+
+/* Volet Repères du bilan (catalogue de l’organisateur de bilans) */
+.reperes-head { display:grid; gap:.4rem; margin-bottom:.3rem; }
+.reperes-actions { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+.reperes-actions .primary { min-height:40px; }
+.domain-tabs { position:sticky; top:0; z-index:2; display:flex; gap:.3rem; overflow-x:auto; scrollbar-width:none; padding:.45rem 0 .4rem; background:#f6f7f9; }
+.domain-tabs::-webkit-scrollbar { display:none; }
+.domain-tabs button { position:relative; flex:none; min-height:34px; padding:.15rem .55rem; font-size:.74rem; }
+.domain-tabs button[aria-selected="true"] { border-color:var(--accent); background:var(--accent); color:#fff; }
+.reperes .test-tag { color:var(--muted); font-size:.72rem; font-weight:600; }
+.reperes .other-input { min-height:38px; padding:.4rem .6rem; font-size:.84rem; }
+.reperes .calc-field { margin:0; color:var(--ink); }
+.ai-round.stale { position:relative; }
+.ai-round.stale::after { content:""; position:absolute; top:3px; right:3px; width:9px; height:9px; border-radius:50%; background:#e08a1e; }
+.two-tabs .pane-tabs { grid-template-columns:repeat(2,1fr); }

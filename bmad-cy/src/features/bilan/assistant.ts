@@ -186,8 +186,17 @@ function fieldSpec(control: FlexControl) {
   }
 }
 // Correction du bilan libre, en une seule requête : texte anonymisé, sexe en mot et catalogue des tests (aucune donnée de la base).
+const testsCatalogue = () => MEASURE_RUBRICS.map(rubric => ({ test: rubric.title, champs: rubric.controls.filter(control => !(control.kind === 'text' && control.ai)).map(fieldSpec) }))
 export function correctionRequest(text: string, sex: Sex): string {
-  return JSON.stringify({ patient: sexLabel(sex), texte: text, tests: MEASURE_RUBRICS.map(rubric => ({ test: rubric.title, champs: rubric.controls.filter(control => !(control.kind === 'text' && control.ai)).map(fieldSpec) })) })
+  return JSON.stringify({ patient: sexLabel(sex), texte: text, tests: testsCatalogue() })
+}
+// Mise en forme du bilan avec ses repères cochés (une seule requête) : texte anonymisé, lignes fabriquées par l’application
+// (anonymisées aussi : un « Autre » saisi à la main pourrait contenir le nom), plan du bilan tiré du catalogue, sexe en mot.
+// La réponse a la forme de la correction (texte, mesures, cocher) : elle se lit avec parseCorrectionReply.
+export interface FormatInput { text: string; title: string | null; plan: string[]; lines: string[]; unchecked: string[] }
+export function formatRequest({ text, title, plan, lines, unchecked }: FormatInput, sex: Sex, names: string[]): string {
+  const hide = (value: string) => anonymize(value, names)
+  return JSON.stringify({ patient: sexLabel(sex), titre: title, plan, lignes: lines.map(hide), decoches: unchecked.map(hide), texte: text, tests: testsCatalogue() })
 }
 // Réponse : texte corrigé et mesures reconnues (champs des tests du catalogue seulement, valeurs contrôlées).
 // Une réponse en texte simple (prompt retouché dans Réglages) reste acceptée comme texte corrigé, sans mesure.

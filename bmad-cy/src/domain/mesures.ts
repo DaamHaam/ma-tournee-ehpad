@@ -3,6 +3,7 @@
 // (mesures reconnues puis validées, bilanMeasures) ou d’un bilan marche / équilibre. Les ★ lisent cet historique commun.
 import { hasFlexContent, MARCHE_EQUILIBRE, rubricHtml, rubricText, type FlexInput, type FlexRubric } from './marcheEquilibre'
 import { tinettiScore, type TestRecord } from './tinetti'
+import { catalogFor, formMeasures, hasFormContent, type BilanForm } from './catalog'
 
 export const MEASURE_RUBRICS: FlexRubric[] = MARCHE_EQUILIBRE.flatMap(module => module.rubrics).filter(rubric => rubric.test)
 // Le Tinetti est un test comme les autres (score saisi ou dicté) ; une grille complète du même jour donne aussi son score.
@@ -11,7 +12,7 @@ export const TINETTI_MEASURE = 'tinetti'
 const SHORT: Record<string, string> = { assisDebout30s: 'Assis-debout 30 s', tug: 'TUG', stationDebout: 'Station debout', trajet: 'Trajet chambre-RDC', test10m: '10 m', test6min: '6 min', [TINETTI_MEASURE]: 'Tinetti' }
 export function measureTitle(id: string): string { return SHORT[id] ?? MEASURE_RUBRICS.find(rubric => rubric.id === id)?.title ?? id }
 
-interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput; bilanCopied?: boolean }
+interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput; bilanForm?: BilanForm; bilanCopied?: boolean }
 export interface MeasureDay { date: string; entries: Record<string, MeasureEntry> }
 // copied : le test ou le bilan d’où vient la mesure a été copié (transmis) ; sinon la ★ est orange (suivi personnel, à transmettre).
 export interface Measure { date: string; text: string; copied: boolean }
@@ -21,11 +22,12 @@ function gridMeasure(record: TestRecord | undefined): FlexInput | undefined {
   const score = record && tinettiScore(record.scores)
   return score?.complete ? { values: { [TINETTI_MEASURE]: String(score.total), 'tinetti.equilibre': String(score.equilibre.score), 'tinetti.marche': String(score.marche.score) } } : undefined
 }
-// Valeur d’un test pour une journée : test rapide, puis bilan libre, puis bilan marche / équilibre, puis grille du Tinetti.
+// Valeur d’un test pour une journée : test rapide, puis bilan libre (tests validés, puis repères cochés), puis bilan marche / équilibre, puis grille du Tinetti.
 function dayMeasure(entry: MeasureEntry | undefined, id: string): Omit<Measure, 'date'> | null {
   if (!entry) return null
   const grid = id === TINETTI_MEASURE ? gridMeasure(entry.tests?.tinetti) : undefined
-  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
+  const form = entry.bilanForm && hasFormContent(entry.bilanForm) ? formMeasures(entry.bilanForm, catalogFor(entry.bilanForm.version)) : undefined
+  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [form, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
     const text = source ? rubricText(id, source) : ''
     if (text) return { text, copied: !!copied }
   }

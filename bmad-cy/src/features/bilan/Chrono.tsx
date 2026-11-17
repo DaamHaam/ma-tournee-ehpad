@@ -17,7 +17,8 @@ function beep(audio: AudioContext | null) {
 
 // Chronomètre d’un test minuté : le temps arrêté remplit le champ du test (secondes, ou durée pour un champ texte) ;
 // compte à rebours (30 s, 6 min) avec signal de fin, la mesure (passages, distance) restant à saisir.
-export function ChronoPanel({ chrono, disabled = false, onTime }: { chrono: Chrono; disabled?: boolean; onTime: (key: string, value: string) => void }) {
+// text : le champ rempli est un texte (durée « 2 min 30 s ») ; par défaut, lu dans le catalogue du bilan marche / équilibre.
+export function ChronoPanel({ chrono, disabled = false, text, onTime }: { chrono: Chrono; disabled?: boolean; text?: boolean; onTime: (key: string, value: string) => void }) {
   const [state, setState] = useState<{ start: number | null; elapsed: number }>({ start: null, elapsed: 0 })
   const [now, setNow] = useState(0)
   const audio = useRef<AudioContext | null>(null)
@@ -47,7 +48,7 @@ export function ChronoPanel({ chrono, disabled = false, onTime }: { chrono: Chro
   const stop = () => {
     const total = state.elapsed + performance.now() - state.start!
     setState({ start: null, elapsed: total })
-    if (chrono.mode === 'stopwatch') onTime(chrono.key, fieldOf(chrono.key)?.control.kind === 'text' ? durationText(total) : secondsValue(total))
+    if (chrono.mode === 'stopwatch') onTime(chrono.key, (text ?? fieldOf(chrono.key)?.control.kind === 'text') ? durationText(total) : secondsValue(total))
   }
   const reset = () => setState({ start: null, elapsed: 0 })
   const shown = chrono.mode === 'countdown' ? countdownDisplay(countdown - elapsed) : chronoDisplay(elapsed)

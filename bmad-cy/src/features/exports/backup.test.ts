@@ -36,6 +36,11 @@ describe('sauvegarde complète', () => {
     expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
     withBilan.days[0].entries.p1.bilanMeasures = { values: { tug: '18' } }
     expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1).toMatchObject({ bilanEditedAt: '2026-09-21T09:05:00Z', bilanMeasures: { values: { tug: '18' } } })
+    // Repères cochés du bilan (catalogue de l’organisateur) : version, choix et valeurs contrôlés.
+    withBilan.days[0].entries.p1.bilanForm = { version: 1, choices: ['contexte.contexte.contexte:chute_recente'], values: { 'transferts.tug.temps': 18 } }
+    expect(() => parseBackup(JSON.stringify(withBilan))).toThrow('pas une sauvegarde')
+    withBilan.days[0].entries.p1.bilanForm = { version: 1, preset: 'post_chute', choices: ['contexte.contexte.contexte:chute_recente'], values: { 'transferts.tug.temps': '18' } }
+    expect(parseBackup(JSON.stringify(withBilan)).days[0].entries.p1.bilanForm).toMatchObject({ version: 1, preset: 'post_chute' })
   })
 
   it('complète les champs absents d’un patient plus ancien', () => {

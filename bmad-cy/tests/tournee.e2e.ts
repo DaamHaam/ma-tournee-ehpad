@@ -198,6 +198,36 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await expect(page.getByText('Rien à exporter sur cette période.')).toBeVisible()
 })
 
+test('bilan : volet Repères tiré du catalogue, cochés insérés dans le texte et TUG dans les ★', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Bernard Louis')
+  const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })
+  await bilan.fill('Vu au fauteuil.')
+  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+  await page.getByRole('tab', { name: 'Repères' }).click()
+  const reperes = page.getByRole('tabpanel', { name: 'Repères' })
+  await reperes.getByRole('radio', { name: 'Marche / équilibre' }).click()
+  await reperes.getByRole('group', { name: 'Contexte du bilan' }).getByRole('checkbox', { name: 'chute récente' }).click()
+  await reperes.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('18')
+  await expect(page.getByRole('tab', { name: 'Repères · 2' })).toBeVisible()
+  // Filtre de relecture : seulement ce qui est coché.
+  await reperes.getByRole('switch', { name: 'Cochés seulement' }).click()
+  await expect(reperes.getByRole('region', { name: 'Timed Up and Go' })).toBeVisible()
+  await expect(reperes.getByRole('region', { name: 'Durée de maintien de la station debout' })).toHaveCount(0)
+  // Sans IA : les lignes cochées s’ajoutent à la fin du texte, dans l’ordre du bilan.
+  await reperes.getByRole('button', { name: 'Insérer les cochés (2)' }).click()
+  await expect.poll(() => bilan.innerText()).toContain('Vu au fauteuil.\nContexte : chute récente')
+  await expect.poll(() => bilan.innerText()).toContain('Timed Up and Go : 18sec')
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  // Le lendemain, le TUG coché est la dernière mesure ★, et les repères gardent la trace du bilan précédent.
+  await page.goto('/#/?date=2026-09-23')
+  await openBilan(page, 'Bernard Louis')
+  await page.locator('.last-measures summary').click()
+  await expect(page.locator('.last-measures')).toContainText('TUG : 18sec')
+  await page.getByRole('tab', { name: 'Repères' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Repères' }).getByText(/★ bilan précédent du 22\/09/)).toBeVisible()
+})
+
 test('onglet Bilans : ordre de saisie, copie qui coche la transmission, suppression, passage à la ligne', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
   await page.goto('/#/?date=2026-09-22')
@@ -1281,4 +1311,47 @@ test('pointage définitif : vus en bleu et orange, prévus non vus en rouge, non
   // La journée garde son B et son export habituel.
   await page.goto('/#/?date=2026-09-03')
   await expect(page.getByRole('button', { name: 'B pour Bernard Louis' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test.describe('mise en forme', () => {
+  test.use({ serviceWorkers: 'block' })
+  test('✨ avec repères cochés : prompt du catalogue, lignes envoyées sans nom, texte remplacé, voyant et ↶', async ({ page }) => {
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
+    const bodies: { messages: { role: string; content: string }[] }[] = []
+    await page.route('https://openrouter.ai/api/v1/chat/completions', route => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+      bodies.push(route.request().postDataJSON())
+      return route.fulfill({ headers: cors, json: { choices: [{ message: { content: JSON.stringify({ texte: 'Contexte : chute récente.<br>Mme vue au fauteuil, Timed Up and Go : 18 s.', mesures: { tug: '18' }, cocher: [] }) } }] } })
+    })
+    await page.goto('/#/settings')
+    await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test4321')
+    await page.getByRole('button', { name: 'Enregistrer' }).click()
+    const model = page.getByLabel('Modèle d’analyse')
+    await model.fill('deepseek/modele-test')
+    await model.blur()
+    await page.goto('/#/?date=2026-09-22')
+    await openBilan(page, 'Bernard Louis')
+    const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })
+    await bilan.fill('Bernard vu au fauteuil.')
+    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+    await page.getByRole('tab', { name: 'Repères' }).click()
+    const reperes = page.getByRole('tabpanel', { name: 'Repères' })
+    await reperes.getByRole('group', { name: 'Contexte du bilan' }).getByRole('checkbox', { name: 'chute récente' }).click()
+    await reperes.getByRole('group', { name: 'Contexte du bilan' }).getByRole('textbox', { name: 'Contexte du bilan : autre' }).fill('Louis inquiet')
+    await page.getByRole('button', { name: 'Mettre en forme avec les repères cochés' }).click()
+    await expect.poll(() => bilan.innerText()).toBe('Contexte : chute récente.\nMme vue au fauteuil, Timed Up and Go : 18 s.')
+    const [body] = bodies
+    expect(body.messages[0].content).toContain('Tu mets en forme un bilan de kinésithérapie')
+    const sent = JSON.parse(body.messages[1].content)
+    expect(sent.lignes).toEqual(['<b><u>Contexte</u></b> : chute récente, [patient] inquiet'])
+    expect(sent.texte).toBe('[patient] vu au fauteuil.')
+    expect(body.messages[1].content).not.toMatch(/Bernard|Louis/)
+    // Test reconnu proposé à la validation ; une case changée ensuite rallume le voyant (✨ à refaire).
+    await expect(page.getByText(/test reconnu|Tests reconnus/i).first()).toBeVisible()
+    await page.getByRole('tab', { name: /Repères/ }).click()
+    await reperes.getByRole('group', { name: 'Contexte du bilan' }).getByRole('checkbox', { name: 'évaluation de suivi' }).click()
+    await expect(page.getByRole('button', { name: 'Refaire la mise en forme (repères changés depuis)' })).toBeVisible()
+    await page.getByRole('button', { name: 'Annuler la mise en forme' }).click()
+    await expect.poll(() => bilan.innerText()).toBe('Bernard vu au fauteuil.')
+  })
 })

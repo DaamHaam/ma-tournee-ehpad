@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { loadStoredCatalogs, refreshCatalog } from './storage/catalogStore'
 import { HashRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { repository } from './storage/repository'
 import { SaveContext } from './app/SaveContext'
@@ -18,7 +19,8 @@ function App() {
     () => { setError(''); return true },
     (cause: unknown) => { setError(cause instanceof Error ? cause.message : 'Vos dernières modifications ne sont pas enregistrées.'); return false },
   ), [])
-  useEffect(() => { void run(() => repository.initialize()).then(ok => { if (ok) setReady(true) }) }, [run])
+  // Catalogue des bilans : copies locales chargées avant l’affichage, dernière version publiée cherchée ensuite en arrière-plan.
+  useEffect(() => { void run(async () => { await repository.initialize(); await loadStoredCatalogs() }).then(ok => { if (ok) { setReady(true); void refreshCatalog() } }) }, [run])
   return <HashRouter><SaveContext value={{ run }}>
     {error && <div className="error-banner" role="alert"><strong>Échec de l’enregistrement.</strong> {error}{!ready && <p><button onClick={() => void run(() => repository.initialize()).then(ok => setReady(ok))}>Réessayer</button></p>}</div>}
     <main>{ready && <Routes><Route path="/" element={<Journee />} /><Route path="/patients" element={<Patients />} /><Route path="/patients/:id" element={<PatientDetail />} /><Route path="/bilans" element={<BilansPage />} /><Route path="/tinetti/:date/:id" element={<TinettiPage />} /><Route path="/marcheEquilibre/:date/:id" element={<MarcheEquilibrePage />} /><Route path="/mesures/:date/:id" element={<MesuresPage />} /><Route path="/bilan/:date/:id" element={<BilanPage />} /><Route path="/settings" element={<ExportPage />} /><Route path="/export" element={<Navigate replace to="/settings" />} /><Route path="*" element={<Navigate replace to="/" />} /></Routes>}</main>

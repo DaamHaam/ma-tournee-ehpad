@@ -1,8 +1,10 @@
 // Prompts par défaut de l’assistant de rédaction (une seule passe par demande), tenus à jour par l’agent.
 // Une modification faite dans Réglages est transitoire : elle s’efface dès qu’une mise à jour change le prompt par défaut.
-export type PromptKind = 'tinetti' | 'marcheEquilibre' | 'correction'
-export const PROMPT_KINDS: PromptKind[] = ['tinetti', 'marcheEquilibre', 'correction']
-export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', marcheEquilibre: 'Intégration de la dictée au bilan marche / équilibre', correction: 'Correction du bilan libre et tests reconnus' }
+// miseEnForme : prompt du catalogue de l’organisateur de bilans (Convex, `mise_en_forme`), qui fait foi ; DEFAULT_PROMPTS n’en garde
+// qu’une copie de secours (catalogue sans prompt).
+export type PromptKind = 'tinetti' | 'marcheEquilibre' | 'correction' | 'miseEnForme'
+export const PROMPT_KINDS: PromptKind[] = ['tinetti', 'marcheEquilibre', 'correction', 'miseEnForme']
+export const PROMPT_LABEL: Record<PromptKind, string> = { tinetti: 'Synthèse du test de Tinetti', marcheEquilibre: 'Intégration de la dictée au bilan marche / équilibre', correction: 'Correction du bilan libre et tests reconnus', miseEnForme: 'Mise en forme du bilan avec ses repères (catalogue)' }
 
 const PRINCIPLE = `Principe de fonctionnement (commun à tous les bilans) :
 Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche des lignes du formulaire et il dicte librement ses observations. Ton rôle est de cumuler ces deux sources en un seul résultat, sans rien lui faire valider :
@@ -10,6 +12,40 @@ Le kinésithérapeute remplit un bilan de deux façons en même temps : il coche
 - une ligne non cochée que la dictée décrit est remplie d’après la dictée ;
 - un conflit (la dictée contredit une ligne cochée) ou une vraie incertitude (dictée vague ou ambiguë) allume un petit voyant : une entrée dans "a_verifier" avec une raison très courte ; une ligne décrite clairement n’allume jamais de voyant ;
 - la dictée est rédigée en observations propres et concises.`
+
+// Copie de secours du prompt `mise_en_forme` du catalogue (organisateur de bilans, convex/promptsData.ts).
+const MISE_EN_FORME = `Tu mets en forme un bilan de kinésithérapie réalisé en EHPAD. Le kinésithérapeute a, en même temps, dicté ou écrit un texte libre et coché des éléments dans une liste de repères ; l’application a déjà transformé ces éléments cochés en lignes de compte rendu. Tu fusionnes les deux en un seul compte rendu, prêt à coller dans le dossier de soins.
+
+Tu reçois en JSON :
+- "patient" : « patiente », « patient » ou « patient(e) », pour les accords ; la personne est anonymisée ([patient] remplace son nom) ;
+- "titre" : le titre du compte rendu, ou null s’il n’y en a pas ;
+- "plan" : l’ordre des rubriques du bilan (sections comprises), pour savoir où placer chaque information ;
+- "lignes" : les lignes fabriquées à partir des éléments cochés, dans l’ordre du plan, en HTML restreint ;
+- "decoches" : les lignes d’éléments décochés depuis la dernière mise en forme (à retirer du texte) ;
+- "texte" : le texte actuel du bilan (dicté, écrit, ou déjà mis en forme lors d’un passage précédent), en HTML restreint (<b>, <i>, <u> : mise en forme voulue par le kinésithérapeute, <br> : retour à la ligne) ;
+- "tests" : le catalogue des tests standardisés suivis dans le temps, chacun avec ses champs ("id", type, unité ou options).
+
+Règles :
+1. La dictée prime. Chaque phrase du texte se retrouve dans le résultat avec ses nuances (« surtout », « aujourd’hui », « environ », cause, côté, valeurs) ; seuls les mots parasites de la transcription (« euh », « merci », « sous-titres réalisés par… ») sont écartés. Avant de répondre, relis le texte phrase par phrase.
+2. Les lignes cochées sont reprises telles quelles (libellés, valeurs, ponctuation), à leur place dans le plan. Si le texte dit la même chose qu’une ligne, ne l’écris qu’une fois, en gardant les précisions dictées en plus. Une ligne ne remplace ni ne résume jamais ce qui est dicté.
+3. Les lignes de "decoches" sont retirées du texte ; rien d’autre n’est supprimé.
+4. Range chaque information dictée sous la bonne rubrique du plan, dans l’ordre du plan ; écris les titres de section du plan seulement si une rubrique de la section est remplie. Ce qui ne se rattache à aucune rubrique va à la fin, avant les actions et préconisations, un sujet par ligne.
+5. Tout ce qui est observé ou mesuré pendant le bilan (essais, durées, chiffres, niveau d’aide, déroulé d’un transfert, matériel utilisé) relève de l’évaluation, jamais du traitement : le traitement ne reçoit que ce qui est dit comme un moyen ou un exercice de la prise en charge.
+6. Plusieurs essais d’un test chiffré : le meilleur essai est la valeur du test (dans "mesures") ; les autres essais restent écrits dans le texte.
+7. Rédaction : orthographe, grammaire, ponctuation et accords selon "patient" ; phrases courtes et cliniques ; n’invente rien, ne pose aucun diagnostic.
+8. Civilités : garde chaque civilité dictée à sa place, abrégée en « Mr » (monsieur) ou « Mme » (madame) ; garde chaque [patient] exactement à sa place sans en ajouter ; n’écris jamais « le patient » ni « la patiente ».
+9. Mise en forme : garde les balises <b>, <i>, <u> sur les mêmes passages et celles des lignes fabriquées ; une ligne par rubrique, séparées par <br> ; aucune autre balise.
+10. Si "titre" n’est pas null, il est la première ligne du texte, tel quel.
+11. Dans "mesures", note chaque test du catalogue réalisé ce jour et chiffré dans le texte ou dans les lignes : identifiant du champ → valeur.
+   - nombre : le chiffre seul, sans unité, converti dans l’unité du champ (« TUG en 18 secondes » → "tug": "18" ; « une minute dix » pour un champ en secondes → "70") ;
+   - choix unique : exactement une des options (« EVA à 4 » → "eva": "4") ;
+   - texte : bref (« trajet chambre-RDC en deux minutes trente » → "trajet.duree": "2 min 30 s") ;
+   - choix multiple : l’identifiant de l’option dans "cocher" ;
+   - Tinetti : le score total et, s’ils sont dits, les scores de chaque partie ("tinetti", "tinetti.equilibre", "tinetti.marche").
+   N’invente aucune valeur : un test cité sans résultat n’est pas une mesure ; une valeur ancienne citée pour comparaison n’est pas une mesure du jour.
+
+Réponds uniquement par un objet JSON de la forme :
+{"texte": "…", "mesures": {"tug": "18"}, "cocher": []}`
 
 export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
   tinetti: `${PRINCIPLE}
@@ -108,7 +144,11 @@ Tu reçois en JSON :
 
 Réponds uniquement par un objet JSON de la forme :
 {"texte": "…", "mesures": {"tug": "18"}, "cocher": []}`,
+  miseEnForme: MISE_EN_FORME,
 }
+
+// Prompt par défaut d’un type : celui du catalogue publié pour la mise en forme, sinon celui du code.
+export function defaultPrompt(kind: PromptKind, catalogPrompt?: string): string { return kind === 'miseEnForme' && catalogPrompt?.trim() ? catalogPrompt : DEFAULT_PROMPTS[kind] }
 
 // Empreinte du prompt par défaut : une version modifiée dans l’app ne vaut que pour le prompt par défaut dont elle est partie.
 export function promptFingerprint(text: string): string {
@@ -116,12 +156,12 @@ export function promptFingerprint(text: string): string {
   for (let index = 0; index < text.length; index++) hash = ((hash << 5) + hash + text.charCodeAt(index)) >>> 0
   return hash.toString(36)
 }
-export function encodeCustomPrompt(kind: PromptKind, text: string): string { return JSON.stringify({ base: promptFingerprint(DEFAULT_PROMPTS[kind]), text }) }
+export function encodeCustomPrompt(kind: PromptKind, text: string, base = DEFAULT_PROMPTS[kind]): string { return JSON.stringify({ base: promptFingerprint(base), text }) }
 // Version modifiée encore valable, sinon null (prompt par défaut changé depuis, ou ancien format).
-export function customPrompt(kind: PromptKind, stored: string | undefined): string | null {
+export function customPrompt(kind: PromptKind, stored: string | undefined, base = DEFAULT_PROMPTS[kind]): string | null {
   if (!stored) return null
   try {
     const value = JSON.parse(stored) as { base?: unknown; text?: unknown }
-    return value.base === promptFingerprint(DEFAULT_PROMPTS[kind]) && typeof value.text === 'string' && value.text.trim() ? value.text : null
+    return value.base === promptFingerprint(base) && typeof value.text === 'string' && value.text.trim() ? value.text : null
   } catch { return null }
 }

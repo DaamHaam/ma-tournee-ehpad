@@ -57,6 +57,8 @@ function checkDay(value: unknown): Day {
     if (entry.tests !== undefined && !(isObject(entry.tests) && Object.values(entry.tests).every(checkTest))) throw new Error(INVALID)
     // Mesures reconnues dans le bilan libre (après la v0.30) : choix et champs comme un bilan flexible.
     if (entry.bilanMeasures !== undefined && !(isObject(entry.bilanMeasures) && (entry.bilanMeasures.choices === undefined || isStringList(entry.bilanMeasures.choices)) && (entry.bilanMeasures.values === undefined || (isObject(entry.bilanMeasures.values) && Object.values(entry.bilanMeasures.values).every(isString))))) throw new Error(INVALID)
+    // Repères cochés du bilan (après la v0.37) : absents des anciennes sauvegardes.
+    if (entry.bilanForm !== undefined && !(isObject(entry.bilanForm) && typeof entry.bilanForm.version === 'number' && isStringList(entry.bilanForm.choices) && isObject(entry.bilanForm.values) && Object.values(entry.bilanForm.values).every(isString) && (entry.bilanForm.preset === undefined || isString(entry.bilanForm.preset)))) throw new Error(INVALID)
     entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]
   }
   const day = { mood: null, comment: '', ...value, entries } as Day
