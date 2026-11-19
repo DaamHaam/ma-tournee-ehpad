@@ -528,3 +528,14 @@ main:has(.patient-table-wrap) { width:100%; }
 .ai-round.stale { position:relative; }
 .ai-round.stale::after { content:""; position:absolute; top:3px; right:3px; width:9px; height:9px; border-radius:50%; background:#e08a1e; }
 .two-tabs .pane-tabs { grid-template-columns:repeat(2,1fr); }
+
+/* TUG chronométré pendant le Tinetti : bouton dans la partie Marche, barre fixe sous les onglets */
+.tug-start { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin:.2rem 0 .6rem; }
+.tug-button { min-height:44px; padding:.3rem .9rem; font-weight:700; }
+.tug-bar { flex:none; display:flex; align-items:center; gap:.4rem; padding:.35rem .55rem; border:1px solid var(--accent); border-radius:12px; background:var(--paper); }
+.tug-bar.running { background:var(--accent-soft); }
+.tug-label { display:flex; align-items:center; gap:.3rem; font-weight:700; color:var(--accent); }
+.tug-label input { width:4.5rem; min-height:38px; padding:.3rem .45rem; font-size:1rem; }
+.tug-time { flex:1; font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; text-align:center; color:var(--accent); }
+.tug-bar button { min-height:40px; padding:.2rem .7rem; }
+.tug-bar .tug-label + button { margin-left:auto; }

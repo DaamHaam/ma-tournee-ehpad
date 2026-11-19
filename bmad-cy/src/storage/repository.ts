@@ -149,7 +149,7 @@ export class TourRepository {
       delete record.copied
       // Le texte retouché ne vaut que pour ce qu’il résume : cotation et dictée du Tinetti, formulaire du bilan marche / équilibre
       // (la dictée n’y entre qu’au travers du formulaire, quand l’IA l’intègre).
-      const source = type === 'marcheEquilibre' ? [patch.choices, patch.values] : [patch.scores, patch.notes]
+      const source = type === 'marcheEquilibre' ? [patch.choices, patch.values] : [patch.scores, patch.notes, patch.values]
       if (patch.resultHtml === undefined && source.some(value => value !== undefined)) delete record.resultHtml
       if (!record.resultHtml?.trim()) delete record.resultHtml
       if (!record.notes.trim()) delete record.notesHtml

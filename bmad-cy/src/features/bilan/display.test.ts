@@ -11,6 +11,10 @@ describe('texte d’un test à copier', () => {
     expect(testCopyHtml({ ...base, aiObservations: 'Ancienne synthèse.', aiSource: 'autre dictée' })).toMatch(/marche lente$/)
     expect(testCopyHtml(base)).toMatch(/^<u><b>Tinetti<\/b><\/u> : <b>1\/28<\/b>/)
   })
+  it('ajoute le TUG chronométré pendant le Tinetti en dernière ligne', () => {
+    expect(testCopyHtml({ ...base, values: { tug: '18,4' } })).toMatch(/marche lente<br>Timed Up and Go : 18sec$/)
+    expect(testCopyHtml({ ...base, values: { tug: '18' }, resultHtml: 'Retouché' })).toBe('Retouché')
+  })
   it('génère le bilan marche / équilibre et le copie en chasse fixe avec des fins de ligne CRLF', () => {
     const html = testCopyHtml({ scores: {}, notes: '', choices: ['marche.1'] }, 'marcheEquilibre')
     expect(html).toBe('<i><u>Évaluation kiné marche / équilibre</u></i><br><i>Marche</i> : possible seul')

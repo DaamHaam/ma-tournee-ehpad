@@ -63,4 +63,8 @@ describe('mesures des tests standardisés', () => {
     expect(durationText(150_400)).toBe('2 min 30 s')
     expect(durationText(45_000)).toBe('45 s')
   })
+  it('le TUG chronométré pendant le Tinetti entre dans l’historique, transmis avec le Tinetti', () => {
+    const days = [{ date: '2026-11-10', entries: { p1: { tests: { tinetti: { scores: {}, notes: '', at: '', values: { tug: '19' }, copied: true } } } } }]
+    expect(latestMeasures(days, 'p1', '2026-11-19').tug).toEqual({ date: '2026-11-10', text: '19sec', copied: true })
+  })
 })

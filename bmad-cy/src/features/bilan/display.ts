@@ -1,6 +1,6 @@
 import { parseDate, type BilanKind, type DayBilan, type Identity } from '../../domain/model'
 import { tinettiResultHtml, type TestRecord, type TestType } from '../../domain/tinetti'
-import { marcheEquilibreHtml } from '../../domain/marcheEquilibre'
+import { marcheEquilibreHtml, rubricHtml } from '../../domain/marcheEquilibre'
 import { mesuresHtml } from '../../domain/mesures'
 import { bilanHtml, htmlToText, sanitizeBilanHtml, textToHtml } from './richText'
 
@@ -18,7 +18,9 @@ export function testCopyHtml(record: Pick<TestRecord, 'scores' | 'notes' | 'note
   if (kind === 'marcheEquilibre') return marcheEquilibreHtml(record)
   if (kind === 'mesures') return mesuresHtml(record)
   const fresh = record.aiObservations !== undefined && record.aiSource === record.notes
-  return tinettiResultHtml(record, fresh ? sanitizeBilanHtml(record.aiObservations!) : testNotesHtml(record))
+  // TUG chronométré pendant le Tinetti : dernière ligne du résultat.
+  const tug = record.values?.tug ? rubricHtml('tug', { values: { tug: record.values.tug } }, true) : ''
+  return [tinettiResultHtml(record, fresh ? sanitizeBilanHtml(record.aiObservations!) : testNotesHtml(record)), tug].filter(Boolean).join('<br>')
 }
 // HTML affiché et copié pour un bilan libre ou un test.
 export function itemHtml(item: { kind: BilanKind; text: string; html?: string; record?: TestRecord }): string {

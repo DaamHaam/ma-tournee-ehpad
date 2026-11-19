@@ -1355,3 +1355,26 @@ test.describe('mise en forme', () => {
     await expect.poll(() => bilan.innerText()).toBe('Bernard vu au fauteuil.')
   })
 })
+
+test('Tinetti : TUG chronométré pendant la marche, barre fixe, enregistré à part et ajouté au résultat', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
+  await page.getByRole('button', { name: '⏱ TUG' }).click()
+  const bar = page.getByRole('group', { name: 'Chronomètre du TUG' })
+  // La barre reste visible pendant que l’on descend coter la marche.
+  await page.getByRole('radiogroup', { name: '16. Écartement des pieds' }).getByRole('radio', { name: /^1 – / }).click()
+  await expect(bar).toBeInViewport()
+  await bar.getByRole('button', { name: 'Arrêter' }).click()
+  await bar.getByLabel('Temps du TUG en secondes').fill('17')
+  await bar.getByRole('button', { name: 'Enregistrer le TUG' }).click()
+  await expect(bar).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '⏱ TUG · 17 s' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Résultat' }).click()
+  await expect(page.getByRole('textbox', { name: 'Résultat Tinetti pour Petit Jeanne' })).toContainText('Timed Up and Go : 17sec')
+  await page.getByRole('link', { name: 'Retour à la journée' }).click()
+  // Le lendemain, ce TUG est la dernière mesure ★ du bilan libre.
+  await page.goto('/#/?date=2026-09-23')
+  await openBilan(page, 'Petit Jeanne')
+  await page.locator('.last-measures summary').click()
+  await expect(page.locator('.last-measures')).toContainText('TUG : 17sec')
+})

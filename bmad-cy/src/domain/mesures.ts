@@ -22,12 +22,14 @@ function gridMeasure(record: TestRecord | undefined): FlexInput | undefined {
   const score = record && tinettiScore(record.scores)
   return score?.complete ? { values: { [TINETTI_MEASURE]: String(score.total), 'tinetti.equilibre': String(score.equilibre.score), 'tinetti.marche': String(score.marche.score) } } : undefined
 }
-// Valeur d’un test pour une journée : test rapide, puis bilan libre (tests validés, puis repères cochés), puis bilan marche / équilibre, puis grille du Tinetti.
+// Valeur d’un test pour une journée : test rapide, puis bilan libre (tests validés, puis repères cochés), puis bilan marche / équilibre, puis TUG du Tinetti, puis grille du Tinetti.
 function dayMeasure(entry: MeasureEntry | undefined, id: string): Omit<Measure, 'date'> | null {
   if (!entry) return null
   const grid = id === TINETTI_MEASURE ? gridMeasure(entry.tests?.tinetti) : undefined
+  // TUG chronométré pendant le Tinetti (values.tug du Tinetti) : un test comme les autres, transmis avec le Tinetti.
+  const tug = id === 'tug' && entry.tests?.tinetti?.values?.tug ? { values: { tug: entry.tests.tinetti.values.tug } } : undefined
   const form = entry.bilanForm && hasFormContent(entry.bilanForm) ? formMeasures(entry.bilanForm, catalogFor(entry.bilanForm.version)) : undefined
-  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [form, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
+  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [form, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [tug, entry.tests?.tinetti?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
     const text = source ? rubricText(id, source) : ''
     if (text) return { text, copied: !!copied }
   }

@@ -18,6 +18,8 @@ import { OpenBilansStrip } from './OpenBilans'
 import { backTarget, useOutsideText, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
 import { useTestPanes } from './useTestPanes'
+import { TugBar, TugButton, type TugState } from './TugBar'
+import { latestMeasures, type Measure } from '../../domain/mesures'
 
 
 // Test de Tinetti en plein écran : volets Grille, Dictée et Résultat, d’un seul glissement ; micro toujours accessible.
@@ -26,16 +28,16 @@ export function TinettiPage() {
   const target = backTarget(useLocation().state, date)
   const valid = validDate(date)
   const day = useLiveQuery(() => valid ? repository.dayView(date) : undefined, [date, valid])
-  const previous = useLiveQuery(async () => valid ? { found: previousTest(await db.days.where('date').below(date).toArray(), id, date, 'tinetti') } : undefined, [date, id, valid])
+  const previous = useLiveQuery(async () => { if (!valid) return undefined; const days = await db.days.where('date').below(date).toArray(); return { found: previousTest(days, id, date, 'tinetti'), tug: latestMeasures(days, id, date).tug } }, [date, id, valid])
   const sex = useLiveQuery(async () => (await db.patients.get(id))?.sex ?? '', [id])
   if (!valid) return <Navigate replace to="/" />
   if (!day || !previous || sex === undefined) return null
   const entry = day.entries[id]
   if (!entry) return <Navigate replace to={`/?date=${date}`} />
-  return <TinettiEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} previous={previous.found} sex={sex} />
+  return <TinettiEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} previous={previous.found} previousTug={previous.tug} sex={sex} />
 }
 
-function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: string; id: string; back: string; label: string; entry: Entry; previous: { date: string; record: TestRecord } | null; sex: Sex }) {
+function TinettiEditor({ date, id, back, label, entry, previous, previousTug, sex }: { date: string; id: string; back: string; label: string; entry: Entry; previous: { date: string; record: TestRecord } | null; previousTug?: Measure; sex: Sex }) {
   const { run } = useSave()
   const navigate = useNavigate()
   const name = fullName(entry.patient)
@@ -49,6 +51,16 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
   // Dernière intégration IA, gardée pour la revoir sans nouvel appel.
   const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource })
   const [busy, setBusy] = useState(false)
+  // TUG chronométré pendant l’épreuve de marche : rangé avec le Tinetti (values.tug), compté comme un TUG dans l’historique.
+  const [tug, setTug] = useState(initial?.values?.tug ?? '')
+  const [tugState, setTugState] = useState<TugState>({ mode: 'idle' })
+  const saveTug = () => {
+    if (tugState.mode !== 'stopped') return
+    const value = tugState.value.trim().replace('.', ',')
+    if (tug && tug !== value && !window.confirm(`Remplacer le TUG déjà enregistré (${tug} s) par ${value} s ?`)) return
+    setTug(value); setTugState({ mode: 'idle' }); regenerate()
+    void run(() => repository.setTest(date, id, 'tinetti', { values: { tug: value } }))
+  }
   const [error, setError] = useState('')
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
@@ -117,20 +129,21 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Intégration impossible.') }
     finally { setBusy(false) }
   }
-  const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source }
+  const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source, values: (tug ? { tug } : {}) as Record<string, string> }
   const generated = testCopyHtml({ ...record, resultHtml: '' })
   const shown = resultHtml || generated
   // À l’écran seulement : score en violet si l’IA a coté des lignes (orange s’il y a des doutes), observations rédigées en violet.
   const fresh = ai.observations !== undefined && ai.source === record.notes
   const [scoreLine, ...details] = tinettiResultHtml({ scores }).split('<br>')
-  const marked = resultHtml || [markLine(scoreLine, ai.filled.length > 0, ai.checks.length > 0), ...details, ...(fresh && ai.observations ? [markLine(sanitizeBilanHtml(ai.observations), true)] : fresh ? [] : [testNotesHtml(record)].filter(html => htmlToText(html).trim()))].join('<br>')
+  const tugLine = generated.split('<br>').at(-1)
+  const marked = resultHtml || [markLine(scoreLine, ai.filled.length > 0, ai.checks.length > 0), ...details, ...(fresh && ai.observations ? [markLine(sanitizeBilanHtml(ai.observations), true)] : fresh ? [] : [testNotesHtml(record)].filter(html => htmlToText(html).trim())), ...(tug && tugLine ? [tugLine] : [])].join('<br>')
   const editResult = (html: string) => {
     const value = html === sanitizeBilanHtml(generated) ? '' : html
     setResultHtml(value); changed.current = true
     void run(() => repository.setTest(date, id, 'tinetti', { resultHtml: value }))
   }
   const notesText = htmlToText(notesHtml)
-  const empty = !hasTestContent({ scores, notes: notesText })
+  const empty = !hasTestContent({ scores, notes: notesText, values: record.values })
   // ↶ : retire les cotations de l’IA restées intactes, ses voyants et ses observations ; les cotations à la main restent.
   const undoIntegration = () => {
     if (resultHtml && !window.confirm('Annuler l’intégration efface le texte retouché du résultat. Continuer ?')) return
@@ -150,10 +163,12 @@ function TinettiEditor({ date, id, back, label, entry, previous, sex }: { date: 
       copied={copied} done={!!entry.tests?.tinetti?.copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
     {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="tinetti" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
+    <TugBar state={tugState} saved={tug} onStop={value => setTugState({ mode: 'stopped', value })} onChange={value => setTugState({ mode: 'stopped', value })} onSave={saveTug} onRestart={() => setTugState({ mode: 'running', start: performance.now() })} onClose={() => setTugState({ mode: 'idle' })} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <div className="pane" role="tabpanel" aria-label="Grille">{previous && <p className={`previous-note${previous.record.copied ? '' : ' pending'}`}>★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}<div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={busy || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
         <h2 className="section-title">{section.title} <span>{sections[section.id].score}/{sections[section.id].max}</span></h2>
         <p className="pane-instructions">{section.instructions}</p>
+        {section.id === 'marche' && <TugButton saved={tug} previous={previousTug} disabled={busy || tugState.mode !== 'idle'} onStart={() => setTugState({ mode: 'running', start: performance.now() })} />}
         {section.items.map(item => <div key={item.number} className="test-item">
           <h3>{item.number}. {item.title}</h3>
           {item.rows.map(row => <div key={row.id} className="test-row" role="radiogroup" aria-label={`${item.number}. ${item.title}${row.sub ? ` – ${row.sub}` : ''}`}>
