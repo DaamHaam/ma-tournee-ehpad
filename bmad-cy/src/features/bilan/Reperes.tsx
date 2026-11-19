@@ -4,13 +4,19 @@ import {
   type BilanForm, type CatField, type CatRubric, type Catalog, type Values,
 } from '../../domain/catalog'
 import type { Measure } from '../../domain/mesures'
+import { TUG_STEPS } from '../../domain/tug'
 import { ChronoPanel } from './Chrono'
 import { shortDate } from './display'
+import { TugBar, TugButtons } from './TugBar'
+import { useTugTimer, type TugResult } from './useTugTimer'
 
 // Volet « Repères » du bilan : le catalogue de l’organisateur de bilans, que l’on consulte et coche pendant que l’on dicte.
-// Bilan prédéfini (ou arbre complet), domaines à la suite avec onglets pour y sauter, tests avec ★ et chronomètre,
-// filtre « cochés seulement ». Les éléments cochés deviennent des lignes de compte rendu (✨ ou « Insérer les cochés »).
+// Par défaut tout l’arbre ; « + » ouvre un bilan prédéfini (son ordre, ses propositions) ou va droit à un test (Tinetti, TUG…).
+// Domaines à la suite, onglets sur deux lignes pour y sauter, tests avec ★ et chronomètre, « Voir ce qui est rempli ».
+// Ce qui est rempli devient des lignes de compte rendu (✨ ou « Ajouter au texte »).
 export interface PreviousLines { date: string; copied: boolean; lines: Record<string, string> }
+const TUG = 'transferts.tug'
+
 export function ReperesPane({ catalog, form, measures, previous, onChange, onInsert, insertCount }: {
   catalog: Catalog; form: BilanForm; measures: Record<string, Measure>; previous: PreviousLines | null
   onChange: (form: BilanForm) => void; onInsert: () => void; insertCount: number
@@ -18,9 +24,13 @@ export function ReperesPane({ catalog, form, measures, previous, onChange, onIns
   const box = useRef<HTMLDivElement>(null)
   const tabs = useRef<HTMLDivElement>(null)
   const [onlyFilled, setOnlyFilled] = useState(false)
+  const [menu, setMenu] = useState(false)
+  // Test ouvert seul (raccourci du menu « + »), sans changer le bilan.
+  const [focus, setFocus] = useState('')
   const values = useMemo(() => formValues(form, catalog), [form, catalog])
   const rubrics = useMemo(() => orderedRubrics(catalog, form.preset), [catalog, form.preset])
-  const shown = onlyFilled ? rubrics.filter(rubric => rubricFilled(rubric, catalog, values)) : rubrics
+  const tests = useMemo(() => orderedRubrics(catalog).filter(rubric => rubric.tags.includes(TEST_TAG)), [catalog])
+  const shown = focus ? orderedRubrics(catalog).filter(rubric => rubric.key === focus) : onlyFilled ? rubrics.filter(rubric => rubricFilled(rubric, catalog, values)) : rubrics
   // Domaines à la suite, dans l’ordre du bilan (un bilan prédéfini peut revenir sur un domaine : chaque passage a son titre).
   const groups = useMemo(() => {
     const list: { id: string; domain: string; rubrics: CatRubric[] }[] = []
@@ -52,43 +62,66 @@ export function ReperesPane({ catalog, form, measures, previous, onChange, onIns
     const id = choiceKey(field, option)
     set({ choices: form.choices.includes(id) ? form.choices.filter(item => item !== id) : [...form.choices, id] })
   }
-  const setValue = (key: string, value: string) => {
+  const setValues = (patch: Record<string, string>) => {
     const next = { ...form.values }
-    if (value.trim()) next[key] = value
-    else delete next[key]
+    for (const [key, value] of Object.entries(patch)) { if (value.trim()) next[key] = value; else delete next[key] }
     set({ values: next })
   }
+  const setValue = (key: string, value: string) => setValues({ [key]: value })
+  // TUG (simple ou par étapes) : rangé dans les questions du TUG du catalogue, qu’il soit lancé du TUG ou du Tinetti.
+  // Le chronomètre s’affiche en haut du volet, visible pendant que l’on cote.
+  const tugTotal = form.values[`${TUG}.temps`]
+  const timer = useTugTimer((result: TugResult) => setValues({
+    [`${TUG}.temps`]: result.total,
+    ...Object.fromEntries(TUG_STEPS.map((step, index) => [`${TUG}.${step.key}`, result.steps ? String(result.steps[index]) : ''])),
+  }), tugTotal)
   const presets = activePresets(catalog)
+  const preset = presets.find(item => item.key === form.preset)
+  const focused = tests.find(rubric => rubric.key === focus)
+  const choose = (patch: { preset?: string; focus?: string }) => { setMenu(false); setFocus(patch.focus ?? ''); if (!patch.focus) set({ preset: patch.preset }); box.current?.scrollTo({ top: 0 }) }
   return <div className="pane flex-form reperes" role="tabpanel" aria-label="Repères" ref={box} onScroll={follow}>
-    <div className="reperes-head">
-      <div className="flex-options compact" role="radiogroup" aria-label="Bilan">
-        <button type="button" role="radio" className="test-option" aria-checked={!form.preset} onClick={() => set({ preset: undefined })}>Tout</button>
-        {presets.map(preset => <button key={preset.key} type="button" role="radio" className="test-option" aria-checked={form.preset === preset.key} onClick={() => set({ preset: form.preset === preset.key ? undefined : preset.key })}>{preset.title}</button>)}
+    <div className="reperes-sticky" ref={tabs}>
+      <TugBar timer={timer} saved={tugTotal} />
+      <div className="reperes-head">
+        <span className="reperes-current">{focused ? focused.title : preset ? preset.title : 'Tous les repères'}</span>
+        {(focused || preset) && <button type="button" className="reperes-clear" aria-label="Revenir à tous les repères" onClick={() => choose({})}>✕</button>}
+        <button type="button" className="reperes-more" aria-expanded={menu} aria-label="Ouvrir un bilan ou un test" onClick={() => setMenu(open => !open)}>+</button>
       </div>
-      <div className="reperes-actions">
-        <button type="button" role="switch" className="test-option" aria-checked={onlyFilled} onClick={() => setOnlyFilled(on => !on)}>Cochés seulement</button>
-        <button type="button" className="primary" disabled={!insertCount} onClick={onInsert}>Insérer les cochés{insertCount ? ` (${insertCount})` : ''}</button>
-      </div>
-      {previous && <p className={`previous-note${previous.copied ? '' : ' pending'}`}>★ bilan précédent du {shortDate(previous.date)}</p>}
+      {menu && <div className="reperes-menu" role="menu" aria-label="Bilans et tests">
+        <p className="row-sub">Bilans</p>
+        {presets.map(item => <button key={item.key} type="button" role="menuitem" onClick={() => choose({ preset: item.key })}>{item.title}</button>)}
+        <p className="row-sub">Tests</p>
+        {tests.map(rubric => <button key={rubric.key} type="button" role="menuitem" onClick={() => choose({ focus: rubric.key })}>{rubric.title}</button>)}
+      </div>}
+      {!focus && firstGroups.length > 1 && <div className="domain-tabs" role="tablist" aria-label="Domaines">
+        {/* Deux lignes que l’on fait défiler ensemble : largeur du ruban ≈ moitié de la longueur totale des onglets. */}
+        <div className="domain-tabs-rows" style={{ width: `${Math.ceil(firstGroups.reduce((sum, group) => sum + domainTitle(group.domain).length * 7 + 30, 0) / 2) + 20}px` }}>
+        {firstGroups.map(group => {
+          const filled = groups.filter(item => item.domain === group.domain).flatMap(item => item.rubrics).filter(rubric => rubricFilled(rubric, catalog, values)).length
+          return <button key={group.id} type="button" role="tab" aria-selected={group.domain === active} onClick={() => { setActive(group.domain); jump(group.id) }}>{domainTitle(group.domain)}{filled > 0 && <span className="module-count" aria-label={`${filled} rubriques renseignées`}>{filled}</span>}</button>
+        })}
+        </div>
+      </div>}
     </div>
-    {firstGroups.length > 1 && <div className="domain-tabs" role="tablist" aria-label="Domaines" ref={tabs}>
-      {firstGroups.map(group => {
-        const filled = groups.filter(item => item.domain === group.domain).flatMap(item => item.rubrics).filter(rubric => rubricFilled(rubric, catalog, values)).length
-        return <button key={group.id} type="button" role="tab" aria-selected={group.domain === active} onClick={() => { setActive(group.domain); jump(group.id) }}>{domainTitle(group.domain)}{filled > 0 && <span className="module-count" aria-label={`${filled} rubriques renseignées`}>{filled}</span>}</button>
-      })}
-    </div>}
+    {previous && <p className={`previous-note${previous.copied ? '' : ' pending'}`}>★ bilan précédent du {shortDate(previous.date)}</p>}
     {groups.map(group => <section key={group.id} data-group={group.id} className="flex-module" aria-label={domainTitle(group.domain)}>
       <h2 className="module-title">{domainTitle(group.domain)}</h2>
       {group.rubrics.map(rubric => <RubricBlock key={rubric.key} rubric={rubric} catalog={catalog} form={form} values={values}
         measure={measures[TEST_OF_RUBRIC[rubric.key] ?? '']} last={previous?.lines[rubric.key]} lastCopied={!!previous?.copied} lastDate={previous?.date}
+        tug={behaviour(rubric, 'tug_dans_tinetti') !== undefined || behaviour(rubric, 'chronometre_etapes') !== undefined ? { timer, stepsOnly: rubric.key === TUG, measure: measures.tug, saved: tugTotal } : undefined}
         onToggle={toggleChoice} onValue={setValue} />)}
     </section>)}
-    {groups.length === 0 && <p className="pane-instructions">{onlyFilled ? 'Rien n’est encore coché.' : 'Aucune rubrique dans ce bilan.'}</p>}
+    {groups.length === 0 && <p className="pane-instructions">{onlyFilled ? 'Rien n’est encore rempli.' : 'Aucune rubrique dans ce bilan.'}</p>}
+    <div className="reperes-actions">
+      {!focus && <button type="button" role="switch" className="test-option" aria-checked={onlyFilled} onClick={() => setOnlyFilled(on => !on)}>Voir ce qui est rempli</button>}
+      <button type="button" className="primary" disabled={!insertCount} onClick={onInsert}>Ajouter au texte{insertCount ? ` (${insertCount})` : ''}</button>
+    </div>
   </div>
 }
 
-function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied, lastDate, onToggle, onValue }: {
+function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied, lastDate, tug, onToggle, onValue }: {
   rubric: CatRubric; catalog: Catalog; form: BilanForm; values: Values; measure?: Measure; last?: string; lastCopied: boolean; lastDate?: string
+  tug?: { timer: ReturnType<typeof useTugTimer>; stepsOnly: boolean; measure?: Measure; saved?: string }
   onToggle: (field: string, option: string) => void; onValue: (key: string, value: string) => void
 }) {
   const fields = rubricFields(catalog, rubric.key)
@@ -100,12 +133,19 @@ function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied,
   const filled = rubricFilled(rubric, catalog, values)
   // ★ : dernière mesure du test (historique commun), sinon ce qui avait été coché au bilan précédent.
   const star = measure ? { text: measure.text, date: measure.date, copied: measure.copied } : last && lastDate ? { text: last, date: lastDate, copied: lastCopied } : null
+  // Dans le Tinetti, le TUG se lance en tête de l’épreuve de marche (première ligne « m… »).
+  const tugButtons = tug && <TugButtons timer={tug.timer} saved={tug.stepsOnly ? undefined : tug.saved} previous={tug.stepsOnly ? undefined : tug.measure} stepsOnly={tug.stepsOnly} />
+  const walkStart = tug && !tug.stepsOnly ? fields.find(field => /^m/.test(field.key.slice(rubric.key.length + 1)))?.key : undefined
   return <section className={`flex-rubric${filled ? ' filled' : ''}`} aria-label={rubric.title}>
     <h3>{rubric.title}{rubric.tags.includes(TEST_TAG) && <span className="test-tag"> · test</span>}{chrono && <button type="button" className={`chrono-toggle${open ? ' open' : ''}`} aria-label={open ? 'Fermer le chronomètre' : 'Ouvrir le chronomètre'} aria-expanded={open} onClick={() => setOpen(value => !value)}>⏱</button>}</h3>
     {star && <p className={`previous-measure${star.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> {star.text} · {shortDate(star.date)}</p>}
     {rubric.passation && <p className="pane-instructions">{rubric.passation}</p>}
     {chrono && open && <ChronoPanel chrono={chrono} text={timed ? resolve(timed, catalog).type === 'text' : false} onTime={onValue} />}
-    {fields.map(field => <Field key={field.key} field={field} rubric={rubric} catalog={catalog} form={form} values={values} onToggle={onToggle} onValue={onValue} />)}
+    {tug?.stepsOnly && tugButtons}
+    {fields.map(field => <div key={field.key} className="field-wrap">
+      {field.key === walkStart && <><p className="row-sub">Épreuve de marche</p>{tugButtons}</>}
+      <Field field={field} rubric={rubric} catalog={catalog} form={form} values={values} onToggle={onToggle} onValue={onValue} />
+    </div>)}
   </section>
 }
 

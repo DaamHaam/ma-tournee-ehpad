@@ -115,6 +115,7 @@ export function PatientDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const back = backTarget(useLocation().state)
+  const today = useToday()
   const [historyOpen, setHistoryOpen] = useState(false)
   const patient = useLiveQuery(async () => (await db.patients.get(id)) ?? null, [id])
   const history = useLiveQuery(async () => (await db.days.toArray())
@@ -129,7 +130,7 @@ export function PatientDetail() {
   if (!patient) return <div className="empty-state"><h1>Fiche introuvable</h1><Link className="button" to="/patients">Patients</Link></div>
   return <>
     <Link className="back-link" to={back.to}>← {back.label}</Link>
-    <div className="page-heading patient-title"><div><h1><WaitingMark waiting={patient.waiting} />{fullName(patient)}</h1>{(patient.room || patient.archived) && <p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}</div></div>
+    <div className="page-heading patient-title"><div><h1><WaitingMark waiting={patient.waiting} />{fullName(patient)}{history && <TestsStar days={history} id={id} today={today} />}</h1>{(patient.room || patient.archived) && <p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}</div></div>
     <FollowUps patient={patient} />
     <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />
@@ -150,6 +151,23 @@ export function PatientDetail() {
     </section>}
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>
   </>
+}
+
+// ★ près du nom : les tests déjà faits pour ce patient, les plus fréquents en premier, avec leur dernière mesure ;
+// toucher un test ouvre le test rapide du jour sur ce test (retour à la fiche).
+function TestsStar({ days, id, today }: { days: Parameters<typeof measureHistory>[0]; id: string; today: string }) {
+  const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
+  const history = measureHistory(days, id)
+  const tests = MEASURE_ORDER.filter(test => history[test]?.length).sort((a, b) => history[b].length - history[a].length)
+  if (!tests.length) return null
+  return <span className="tests-star">
+    <button type="button" className="tests-star-button" aria-expanded={open} aria-label="Dernières mesures des tests" onClick={() => setOpen(value => !value)}>★</button>
+    {open && <ul className="tests-star-list" aria-label="Dernières mesures">{tests.map(test => {
+      const last = history[test][0]
+      return <li key={test}><button type="button" className={last.copied ? undefined : 'pending'} aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => navigate(`/mesures/${today}/${id}?test=${test}`, { state: { from: `/patients/${id}` } })}><strong>{measureTitle(test)}</strong> {last.text} <span>· {shortDate(last.date)}{history[test].length > 1 ? ` · ${history[test].length} fois` : ''}</span></button></li>
+    })}</ul>}
+  </span>
 }
 
 // Suivi des tests standardisés : les dernières mesures de chaque test, toutes sources confondues (tests rapides, bilans) ;

@@ -5,7 +5,7 @@ import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
 import { fullName, parseDate, validDate, type Entry, type Sex } from '../../domain/model'
-import { fillEmptyRows, hasTestContent, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord } from '../../domain/tinetti'
+import { fillEmptyRows, hasTestContent, NETSOIN_LAST_ITEM, previousTest, TINETTI, tinettiResultHtml, tinettiScore, type TestRecord, type TestSection } from '../../domain/tinetti'
 import { useBilanCopy } from './useBilanCopy'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, applyDictatedFormatting, finishAiText, parseTinettiReply, tinettiRequest } from './assistant'
@@ -18,9 +18,14 @@ import { OpenBilansStrip } from './OpenBilans'
 import { backTarget, useOutsideText, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { NotesPane, PaneTabs, ResultPane, TestPage } from './TestScreen'
 import { useTestPanes } from './useTestPanes'
-import { TugBar, TugButton, type TugState } from './TugBar'
+import { TugBar, TugButtons } from './TugBar'
+import { useTugTimer } from './useTugTimer'
+import { encodeTugSteps, TUG_STEPS_KEY } from '../../domain/tug'
 import { latestMeasures, type Measure } from '../../domain/mesures'
 
+
+// Grille dans l’ordre de NetSoin : l’item 9 « S’asseoir » (partie Équilibre) est présenté à la fin, après la marche.
+const gridItems = (section: TestSection) => section.id === 'equilibre' ? section.items.filter(item => item.number !== NETSOIN_LAST_ITEM) : [...section.items, ...TINETTI[0].items.filter(item => item.number === NETSOIN_LAST_ITEM)]
 
 // Test de Tinetti en plein écran : volets Grille, Dictée et Résultat, d’un seul glissement ; micro toujours accessible.
 export function TinettiPage() {
@@ -52,15 +57,14 @@ function TinettiEditor({ date, id, back, label, entry, previous, previousTug, se
   const [ai, setAi] = useState({ observations: initial?.aiObservations, checks: initial?.aiChecks ?? [], filled: initial?.aiFilled ?? [], source: initial?.aiSource })
   const [busy, setBusy] = useState(false)
   // TUG chronométré pendant l’épreuve de marche : rangé avec le Tinetti (values.tug), compté comme un TUG dans l’historique.
-  const [tug, setTug] = useState(initial?.values?.tug ?? '')
-  const [tugState, setTugState] = useState<TugState>({ mode: 'idle' })
-  const saveTug = () => {
-    if (tugState.mode !== 'stopped') return
-    const value = tugState.value.trim().replace('.', ',')
-    if (tug && tug !== value && !window.confirm(`Remplacer le TUG déjà enregistré (${tug} s) par ${value} s ?`)) return
-    setTug(value); setTugState({ mode: 'idle' }); regenerate()
-    void run(() => repository.setTest(date, id, 'tinetti', { values: { tug: value } }))
-  }
+  // Par étapes : les 5 durées sont gardées à côté (tug.etapes) pour être recopiées dans NetSoin.
+  const [tugValues, setTugValues] = useState<Record<string, string>>(initial?.values ?? {})
+  const tug = tugValues.tug ?? ''
+  const timer = useTugTimer(result => {
+    const next: Record<string, string> = result.steps ? { tug: result.total, [TUG_STEPS_KEY]: encodeTugSteps(result.steps) } : { tug: result.total }
+    setTugValues(next); regenerate()
+    void run(() => repository.setTest(date, id, 'tinetti', { values: next }))
+  }, tug)
   const [error, setError] = useState('')
   const assistant = useAssistant()
   const latestNotes = useRef(notesHtml)
@@ -129,7 +133,7 @@ function TinettiEditor({ date, id, back, label, entry, previous, previousTug, se
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Intégration impossible.') }
     finally { setBusy(false) }
   }
-  const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source, values: (tug ? { tug } : {}) as Record<string, string> }
+  const record = { scores, notes: htmlToText(notesHtml), notesHtml, resultHtml, aiObservations: ai.observations, aiSource: ai.source, values: tugValues }
   const generated = testCopyHtml({ ...record, resultHtml: '' })
   const shown = resultHtml || generated
   // À l’écran seulement : score en violet si l’IA a coté des lignes (orange s’il y a des doutes), observations rédigées en violet.
@@ -163,14 +167,14 @@ function TinettiEditor({ date, id, back, label, entry, previous, previousTug, se
       copied={copied} done={!!entry.tests?.tinetti?.copied} copyDisabled={empty} onCopy={() => void copy(shown)} onCancel={() => void cancel()} />
     {!screen.keyboard && <OpenBilansStrip date={date} id={id} kind="tinetti" beforeLeave={dictation.finish} />}
     <PaneTabs tabs={['Grille', 'Dictée', 'Résultat']} pane={screen.tab} goTo={screen.goTo} />
-    <TugBar state={tugState} saved={tug} onStop={value => setTugState({ mode: 'stopped', value })} onChange={value => setTugState({ mode: 'stopped', value })} onSave={saveTug} onRestart={() => setTugState({ mode: 'running', start: performance.now() })} onClose={() => setTugState({ mode: 'idle' })} />
+    <TugBar timer={timer} saved={tug} />
     <div className="panes" ref={screen.panes} onScroll={screen.onScroll}>
       <div className="pane" role="tabpanel" aria-label="Grille">{previous && <p className={`previous-note${previous.record.copied ? '' : ' pending'}`}>★ cotations du {parseDate(previous.date).toLocaleDateString('fr-FR')} : {tinettiScore(previous.record.scores).total}/28</p>}<div className="fill-buttons" role="group" aria-label="Remplir les lignes vides">{(['min', 'max'] as const).map(level => <button key={level} type="button" aria-label={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} title={`Lignes vides au ${level === 'max' ? 'maximum' : 'minimum'}`} disabled={busy || score.complete} onClick={() => fillEmpty(level)}>{level === 'max' ? 'Max' : 'Min'}</button>)}</div>{TINETTI.map(section => <section key={section.id} aria-label={section.title}>
         <h2 className="section-title">{section.title} <span>{sections[section.id].score}/{sections[section.id].max}</span></h2>
         <p className="pane-instructions">{section.instructions}</p>
-        {section.id === 'marche' && <TugButton saved={tug} previous={previousTug} disabled={busy || tugState.mode !== 'idle'} onStart={() => setTugState({ mode: 'running', start: performance.now() })} />}
-        {section.items.map(item => <div key={item.number} className="test-item">
-          <h3>{item.number}. {item.title}</h3>
+        {section.id === 'marche' && <TugButtons timer={timer} saved={tug} previous={previousTug} disabled={busy} />}
+        {gridItems(section).map(item => <div key={item.number} className="test-item">
+          <h3>{item.number}. {item.title}{section.id === 'marche' && item.number === NETSOIN_LAST_ITEM && <span className="item-note"> (équilibre)</span>}</h3>
           {item.rows.map(row => <div key={row.id} className="test-row" role="radiogroup" aria-label={`${item.number}. ${item.title}${row.sub ? ` – ${row.sub}` : ''}`}>
             {row.sub && <p className="row-sub">{row.sub}</p>}
             {row.options.map(option => <button key={option.score} type="button" role="radio" className="test-option" aria-checked={scores[row.id] === option.score} aria-label={`${option.score} – ${option.label}`} disabled={busy} onClick={() => choose(row.id, option.score)}>

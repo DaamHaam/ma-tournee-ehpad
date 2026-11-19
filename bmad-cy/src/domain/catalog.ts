@@ -5,6 +5,7 @@
 import { escapeHtml } from '../features/bilan/richText'
 import { choiceId, MARCHE_EQUILIBRE, type FlexInput } from './marcheEquilibre'
 import type { Sex } from './model'
+import { netsoinDetailText } from './tinetti'
 
 export type FieldType = 'multi' | 'single' | 'number' | 'text' | 'check' | 'score' | 'list' | 'calc'
 export type ReportStyle = 'titre' | 'italique' | 'observation' | 'normal' | 'sans_libelle'
@@ -185,6 +186,9 @@ export function buildReport(rubrics: CatRubric[], catalog: Catalog, values: Valu
       opened.add(section.key)
       if (blocks.length) { blocks.push({ kind: 'section', title: section.title }); previous = null }
     }
+    // Tinetti (comportement `detail_tinetti`) : case cochée, ligne compacte des cotations dans l’ordre de NetSoin.
+    const detail = behaviour(rubric, 'detail_tinetti')
+    if (detail !== undefined && values[`${rubric.key}.${detail || 'detail'}`]) line.text += `\n${netsoinDetailText(rubricScores(rubric, catalog, values))}`
     if (rubric.sameLine && previous) { previous.keys.push(rubric.key); previous.lines.push(line); continue }
     previous = { kind: 'line', keys: [rubric.key], lines: [line] }
     blocks.push(previous)
@@ -238,6 +242,16 @@ export function formHash(form: Pick<BilanForm, 'preset' | 'choices' | 'values'>)
   return hash.toString(36)
 }
 export function behaviour(rubric: CatRubric, consigne: string): string | undefined { return rubric.behaviours.find(item => item.consigne === consigne)?.settings }
+// Cotations des lignes cotées d’une rubrique (grille), par clé locale de question (ex. Tinetti : e1, e8a, m11c…).
+export function rubricScores(rubric: CatRubric, catalog: Pick<Catalog, 'fields' | 'modules'>, values: Values): Record<string, number> {
+  const scores: Record<string, number> = {}
+  for (const field of rubricFields(catalog, rubric.key)) {
+    const { type, options } = resolve(field, catalog)
+    const score = type === 'score' ? options.find(option => option.label === values[field.key])?.score : undefined
+    if (score !== undefined) scores[localKey(field)] = score
+  }
+  return scores
+}
 
 // ★ des repères : ce qui avait été coché au dernier bilan antérieur qui en avait (ligne de chaque rubrique), relu avec sa version.
 export interface FormDay { date: string; entries: Record<string, { bilanForm?: BilanForm; bilanCopied?: boolean } | undefined> }

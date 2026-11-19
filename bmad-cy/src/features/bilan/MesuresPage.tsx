@@ -12,6 +12,9 @@ import { Rubric } from './FlexFields'
 import { ScreenHeader } from './screen'
 import { backTarget, useBlockEdgeSwipe, useVisibleViewport } from './screenUtils'
 import { useBilanCopy } from './useBilanCopy'
+import { TugBar, TugButtons } from './TugBar'
+import { useTugTimer } from './useTugTimer'
+import { encodeTugSteps, parseTugSteps, TUG_STEPS, TUG_STEPS_KEY } from '../../domain/tug'
 
 const KIND = 'mesures'
 const DEFAULT_TEST = 'tug'
@@ -53,12 +56,21 @@ function MesuresEditor({ date, id, back, label, entry, previous }: { date: strin
   }
   const toggle = (choice: string) => save({ choices: choices.includes(choice) ? choices.filter(item => item !== choice) : [...choices, choice], values })
   const setValue = (key: string, value: string) => save({ choices, values: value.trim() ? { ...values, [key]: value } : Object.fromEntries(Object.entries(values).filter(([item]) => item !== key)) })
-  // Supprimer un test pour le refaire : seuls ses champs sont vidés.
+  // Supprimer un test pour le refaire : seuls ses champs sont vidés (étapes du TUG comprises).
   const remove = () => {
     if (!window.confirm(`Supprimer la mesure « ${measureTitle(selected)} » du jour ?`)) return
     const next = withoutRubric(input, selected)
-    save({ choices: next.choices ?? [], values: next.values ?? {} })
+    const rest = { ...next.values }
+    if (selected === 'tug') delete rest[TUG_STEPS_KEY]
+    save({ choices: next.choices ?? [], values: rest })
   }
+  // TUG par étapes : total dans le champ du TUG, 5 durées à côté ; une saisie à la main du total retire les étapes.
+  const timer = useTugTimer(result => {
+    const next: Record<string, string> = { ...values, tug: result.total }
+    if (result.steps) next[TUG_STEPS_KEY] = encodeTugSteps(result.steps)
+    save({ choices, values: next })
+  }, values.tug)
+  const steps = parseTugSteps(values)
   // ✕ : quitte en remettant les tests du jour tels qu’à l’ouverture (sans rien écrire s’ils n’ont pas changé :
   // consulter une journée passée ne doit pas la créer).
   const cancel = async () => {
@@ -73,7 +85,12 @@ function MesuresEditor({ date, id, back, label, entry, previous }: { date: strin
       <div className="measure-tabs" role="tablist" aria-label="Tests">
         {MEASURE_RUBRICS.map(item => <button key={item.id} type="button" role="tab" aria-selected={item.id === selected} className={rubricFilled(item, input) ? 'done' : undefined} onClick={() => setSelected(item.id)}>{measureTitle(item.id)}{rubricFilled(item, input) && <span aria-label=" (fait)"> ✓</span>}</button>)}
       </div>
-      <Rubric key={selected} rubric={rubric} filled={filled} input={input} measure={previous[selected]} chronoOpen onToggle={toggle} onValue={setValue} />
+      <Rubric key={selected} rubric={rubric} filled={filled} input={input} measure={previous[selected]} chronoOpen onToggle={toggle} onValue={(key, value) => { if (key === 'tug' && values[TUG_STEPS_KEY]) { const next = { ...values }; delete next[TUG_STEPS_KEY]; if (value.trim()) next.tug = value; else delete next.tug; save({ choices, values: next }) } else setValue(key, value) }} />
+      {selected === 'tug' && <>
+        <TugButtons timer={timer} saved={values.tug} stepsOnly />
+        <TugBar timer={timer} saved={values.tug} />
+        {steps && <ol className="tug-steps saved" aria-label="Étapes du TUG">{TUG_STEPS.map((step, index) => <li key={step.key}>{step.label} <b>{steps.steps[index]} s</b></li>)}<li className="tug-total">Total <b>{steps.total} s</b></li></ol>}
+      </>}
     </div>
     <div className="action-row mesures-actions">
       {filled && <button type="button" className="danger" onClick={remove}>Supprimer ce test</button>}

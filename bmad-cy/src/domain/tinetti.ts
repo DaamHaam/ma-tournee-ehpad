@@ -41,7 +41,6 @@ export const TINETTI: TestSection[] = [
     { number: 16, title: 'Écartement des pieds', rows: [row('m16', 'talons séparés', 'talons se touchant presque lors de la marche')] },
   ] },
 ]
-export const TINETTI_INTERPRETATION = 'Un score inférieur à 26 signifie généralement qu’il y a un problème ; plus le score est bas, plus le problème est important. Un score inférieur à 19 signifie que le risque de chute est multiplié par cinq.'
 
 const rowsOf = (section: TestSection) => section.items.flatMap(item => item.rows)
 const rowMax = (testRow: TestRow) => Math.max(...testRow.options.map(option => option.score))
@@ -63,19 +62,25 @@ export function tinettiScore(scores: Record<string, number>): TinettiScore {
   const missing = TINETTI.flatMap(section => section.items).filter(item => item.rows.some(testRow => scores[testRow.id] === undefined)).map(item => item.number)
   return { equilibre, marche, total: equilibre.score + marche.score, max: equilibre.max + marche.max, complete: !missing.length, missing }
 }
-// Interprétation de la grille, seulement pour une cotation complète.
-export function tinettiInterpretation(score: TinettiScore): string {
-  if (!score.complete) return ''
-  if (score.total < 19) return 'Score inférieur à 19 : risque de chute multiplié par cinq.'
-  if (score.total < 26) return 'Score inférieur à 26 : problème d’équilibre ou de marche.'
-  return ''
+// Ordre de NetSoin (logiciel de la résidence) : celui de la grille, sauf l’item 9 « S’asseoir », placé à la fin.
+// Il reste compté dans la partie Équilibre.
+export const NETSOIN_LAST_ITEM = 9
+export const TINETTI_NETSOIN_ITEMS: TestItem[] = [...TINETTI.flatMap(section => section.items).filter(item => item.number !== NETSOIN_LAST_ITEM), ...TINETTI[0].items.filter(item => item.number === NETSOIN_LAST_ITEM)]
+// Cotations à recopier dans NetSoin, ligne par ligne dans son ordre, par groupes de 5 ; « – » pour une ligne non cotée.
+export interface CotationGroup { from: string; to: string; values: string[] }
+export function netsoinCotations(scores: Record<string, number>): CotationGroup[] {
+  const rows = TINETTI_NETSOIN_ITEMS.flatMap(item => item.rows.map((testRow, index) => ({ label: item.rows.length > 1 ? `${item.number}${'abcd'[index]}` : String(item.number), value: scores[testRow.id] === undefined ? '–' : String(scores[testRow.id]) })))
+  const groups: CotationGroup[] = []
+  for (let at = 0; at < rows.length; at += 5) { const part = rows.slice(at, at + 5); groups.push({ from: part[0].label, to: part.at(-1)!.label, values: part.map(item => item.value) }) }
+  return groups
 }
-// Résultat court, mis en forme, à copier dans le logiciel métier (notesHtml déjà filtré par l’appelant).
+// Détail compact des cotations, sur une ligne (case « Détail des cotations dans le bilan »).
+export function netsoinDetailText(scores: Record<string, number>): string { return `Cotations : ${netsoinCotations(scores).map(group => group.values.join(' ')).join(' · ')}` }
+// Résultat court, mis en forme, à copier dans le logiciel métier (notesHtml déjà filtré par l’appelant) : le score seul,
+// sans interprétation (demande de l’utilisateur, anciens tests compris).
 export function tinettiResultHtml(record: Pick<TestRecord, 'scores'>, notesHtml = ''): string {
   const score = tinettiScore(record.scores)
   const lines = [`<u><b>Tinetti</b></u> : <b>${score.total}/${score.max}</b> (équilibre ${score.equilibre.score}/${score.equilibre.max}, marche ${score.marche.score}/${score.marche.max})${score.complete ? '' : ' – cotation incomplète'}`]
-  const interpretation = tinettiInterpretation(score)
-  if (interpretation) lines.push(interpretation)
   if (!score.complete) lines.push(`Items non cotés : ${score.missing.join(', ')}.`)
   if (notesHtml.trim()) lines.push(notesHtml)
   return lines.join('<br>')

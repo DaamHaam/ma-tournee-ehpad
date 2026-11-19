@@ -34,7 +34,7 @@ export const ICONS = {
 export function backTarget(state: unknown, date: string) {
   const from = (state as { from?: unknown } | null)?.from
   const back = typeof from === 'string' && from.startsWith('/') ? from : `/?date=${date}`
-  return { back, label: back.startsWith('/bilans') ? 'Retour aux bilans' : back.startsWith('/bilan/') ? 'Retour au bilan' : 'Retour à la journée' }
+  return { back, label: back.startsWith('/bilans') ? 'Retour aux bilans' : back.startsWith('/bilan/') ? 'Retour au bilan' : back.startsWith('/patients/') ? 'Retour à la fiche' : 'Retour à la journée' }
 }
 
 // Dans un bilan, le glissement depuis le bord de l’écran (retour arrière de Safari) ne doit pas quitter la page par mégarde.

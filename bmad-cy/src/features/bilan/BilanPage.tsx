@@ -20,7 +20,6 @@ import { appendText, bilanHtml, htmlToText, sanitizeBilanHtml } from './richText
 import { useDictation } from './useDictation'
 import { BarButton, DictationFooter, KeyboardBar, ScreenHeader } from './screen'
 import { OpenBilansStrip } from './OpenBilans'
-import { PaneTabs } from './TestScreen'
 import { backTarget, ICONS, useBlockEdgeSwipe, useKeyboardLost, useOutsideText, useVisibleViewport } from './screenUtils'
 
 // Bilan du jour en plein écran, en deux volets que l’on fait glisser : « Bilan » (on dicte et on écrit) et « Repères »
@@ -159,7 +158,7 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<FormatButtons editor={editor} state={format} />}
       copied={copied} done={!!entry.bilanCopied} copyDisabled={!htmlToText(html).trim() || dictationBusy} onCopy={() => void copy(html)} onCancel={() => void cancel()} />
     {!keyboard && <OpenBilansStrip date={date} id={id} kind="bilan" beforeLeave={dictation.finish} />}
-    {!keyboard && <div className="two-tabs"><PaneTabs tabs={['Bilan', checked ? `Repères · ${checked}` : 'Repères']} pane={tab} goTo={goTo} /></div>}
+    {!keyboard && <div className="pane-dots" role="tablist" aria-label="Volets">{['Bilan', checked ? `Repères · ${checked}` : 'Repères'].map((name, index) => <button key={index} type="button" role="tab" aria-label={name} aria-selected={tab === index} onClick={() => goTo(index)} />)}</div>}
     <div className="panes" ref={panes} onScroll={event => { scrollPanes(event); if (keyboard && event.currentTarget.scrollLeft > 20) toggleKeyboard(false) }}>
       <section className="pane notes-pane" role="tabpanel" aria-label="Bilan">
         {!keyboard && <LastMeasures measures={lastMeasures} onOpen={test => void openMeasure(test)} />}

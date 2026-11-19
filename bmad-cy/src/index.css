@@ -515,19 +515,27 @@ main:has(.patient-table-wrap) { width:100%; }
 .pointage-was { font-weight:500; color:var(--muted); }
 
 /* Volet Repères du bilan (catalogue de l’organisateur de bilans) */
-.reperes-head { display:grid; gap:.4rem; margin-bottom:.3rem; }
-.reperes-actions { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+.reperes-sticky { position:sticky; top:0; z-index:3; display:grid; gap:.35rem; padding:.3rem 0 .35rem; background:#f6f7f9; }
+.reperes-head { display:flex; align-items:center; gap:.4rem; }
+.reperes-current { flex:1; min-width:0; color:var(--accent); font-size:.9rem; font-weight:800; }
+.reperes-more, .reperes-clear { flex:none; min-width:40px; min-height:36px; padding:0 .5rem; font-size:1.15rem; font-weight:700; }
+.reperes-more[aria-expanded="true"] { border-color:var(--accent); background:var(--accent-soft); }
+.reperes-menu { display:grid; gap:.3rem; max-height:50vh; overflow-y:auto; padding:.5rem; border:1px solid var(--accent); border-radius:12px; background:var(--paper); }
+.reperes-menu button { min-height:40px; text-align:left; padding:.3rem .6rem; }
+.reperes-menu .row-sub { margin:.2rem 0 0; }
+.reperes-actions { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.4rem 0 .8rem; }
 .reperes-actions .primary { min-height:40px; }
-.domain-tabs { position:sticky; top:0; z-index:2; display:flex; gap:.3rem; overflow-x:auto; scrollbar-width:none; padding:.45rem 0 .4rem; background:#f6f7f9; }
+.domain-tabs { overflow-x:auto; scrollbar-width:none; padding-top:.4rem; }
+.domain-tabs-rows { display:flex; flex-wrap:wrap; gap:.3rem; min-width:100%; }
 .domain-tabs::-webkit-scrollbar { display:none; }
-.domain-tabs button { position:relative; flex:none; min-height:34px; padding:.15rem .55rem; font-size:.74rem; }
+.domain-tabs button { position:relative; flex:none; width:auto; min-height:32px; padding:.1rem .55rem; font-size:.74rem; white-space:nowrap; }
 .domain-tabs button[aria-selected="true"] { border-color:var(--accent); background:var(--accent); color:#fff; }
 .reperes .test-tag { color:var(--muted); font-size:.72rem; font-weight:600; }
 .reperes .other-input { min-height:38px; padding:.4rem .6rem; font-size:.84rem; }
 .reperes .calc-field { margin:0; color:var(--ink); }
+.reperes .field-wrap { display:grid; gap:.3rem; }
 .ai-round.stale { position:relative; }
 .ai-round.stale::after { content:""; position:absolute; top:3px; right:3px; width:9px; height:9px; border-radius:50%; background:#e08a1e; }
-.two-tabs .pane-tabs { grid-template-columns:repeat(2,1fr); }
 
 /* TUG chronométré pendant le Tinetti : bouton dans la partie Marche, barre fixe sous les onglets */
 .tug-start { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin:.2rem 0 .6rem; }
@@ -539,3 +547,39 @@ main:has(.patient-table-wrap) { width:100%; }
 .tug-time { flex:1; font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; text-align:center; color:var(--accent); }
 .tug-bar button { min-height:40px; padding:.2rem .7rem; }
 .tug-bar .tug-label + button { margin-left:auto; }
+.item-note { color:var(--muted); font-size:.75rem; font-weight:600; }
+.tug-bar.steps .tug-label { flex:1 1 100%; font-size:.95rem; }
+.tug-next { min-height:56px !important; flex:1; font-size:1.1rem; }
+.tug-bar.steps-done { flex-wrap:wrap; }
+.tug-steps { display:grid; grid-template-columns:1fr 1fr; gap:.1rem .8rem; flex:1 1 100%; margin:0; padding:0; list-style:none; font-size:.85rem; }
+.tug-steps b { font-variant-numeric:tabular-nums; }
+.tug-steps .tug-total { font-weight:700; }
+.tug-actions { display:flex; gap:.4rem; flex:1 1 100%; justify-content:flex-end; }
+.tug-steps.saved { margin-top:.5rem; padding:.45rem .6rem; border-radius:10px; background:var(--paper); }
+
+/* Récapitulatif à recopier dans NetSoin (onglet Bilans) */
+.netsoin-button { flex:none; min-height:40px; padding:.2rem .6rem; font-size:.78rem; font-weight:700; }
+.netsoin-button[aria-expanded="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.netsoin { display:grid; gap:.6rem; margin:.4rem 0 .2rem; padding:.6rem .7rem; border:1px solid var(--accent); border-radius:12px; background:var(--paper); }
+.netsoin h3 { margin:0 0 .3rem; color:var(--accent); font-size:.9rem; }
+.netsoin-groups { display:grid; gap:.25rem; margin:0; padding:0; list-style:none; }
+.netsoin-groups li { display:flex; align-items:baseline; gap:.8rem; }
+.netsoin-items { min-width:4.2rem; color:var(--muted); font-size:.78rem; }
+.netsoin-values { font-size:1.5rem; font-weight:800; letter-spacing:.35em; font-variant-numeric:tabular-nums; }
+
+/* Bilan libre : deux traits fins pour les deux volets glissants (Bilan, Repères), sans texte */
+.pane-dots { flex:none; display:flex; justify-content:center; gap:.4rem; padding:.15rem 0; }
+.pane-dots button { width:2.6rem; height:14px; min-height:0; padding:0; border:0; background:none; }
+.pane-dots button::before { content:""; display:block; height:4px; border-radius:2px; background:#cfd6de; }
+.pane-dots button[aria-selected="true"]::before { background:var(--accent); }
+
+/* ★ de la fiche patient : dernières mesures des tests, raccourci vers le test rapide du jour */
+.tests-star { position:relative; display:inline-block; margin-left:.4rem; vertical-align:middle; }
+.tests-star-button { min-width:36px; min-height:34px; padding:0 .4rem; color:#9a6b00; font-size:1.05rem; }
+.tests-star-button[aria-expanded="true"] { border-color:#9a6b00; background:#fff7e0; }
+.tests-star-list { position:absolute; z-index:5; top:calc(100% + .3rem); left:0; display:grid; gap:.25rem; width:min(20rem, 80vw); margin:0; padding:.45rem; list-style:none; border:1px solid #e3c873; border-radius:12px; background:var(--paper); box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:.85rem; font-weight:500; }
+.tests-star-list button { width:100%; min-height:38px; padding:.3rem .5rem; text-align:left; font-size:.85rem; font-weight:500; }
+.tests-star-list button span { color:var(--muted); }
+.tests-star-list button.pending strong { color:#c2410c; }
+.tug-bar.steps { flex-wrap:wrap; }
+.tug-time { white-space:nowrap; }
