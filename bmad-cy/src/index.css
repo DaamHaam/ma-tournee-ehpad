@@ -516,7 +516,8 @@ main:has(.patient-table-wrap) { width:100%; }
 
 /* Volet Repères du bilan (catalogue de l’organisateur de bilans) */
 .reperes-sticky { position:sticky; top:0; z-index:3; display:grid; gap:.35rem; padding:.3rem 0 .35rem; background:#f6f7f9; }
-.reperes-head { display:flex; align-items:center; gap:.4rem; }
+.reperes-head { display:flex; align-items:center; justify-content:flex-end; gap:.4rem; }
+.reperes-filter { min-height:34px; padding:.1rem .6rem; border-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-size:.8rem; font-weight:700; }
 .reperes-current { flex:1; min-width:0; color:var(--accent); font-size:.9rem; font-weight:800; }
 .reperes-more, .reperes-clear { flex:none; min-width:40px; min-height:36px; padding:0 .5rem; font-size:1.15rem; font-weight:700; }
 .reperes-more[aria-expanded="true"] { border-color:var(--accent); background:var(--accent-soft); }
@@ -568,11 +569,29 @@ main:has(.patient-table-wrap) { width:100%; }
 .netsoin-values { font-size:1.5rem; font-weight:800; letter-spacing:.35em; font-variant-numeric:tabular-nums; }
 
 /* Bilan libre : deux traits fins pour les deux volets glissants (Bilan, Repères), sans texte */
-.pane-dots { flex:none; display:flex; justify-content:center; gap:.4rem; padding:.15rem 0; }
-.pane-dots button { width:2.6rem; height:14px; min-height:0; padding:0; border:0; background:none; }
-.pane-dots button::before { content:""; display:block; height:4px; border-radius:2px; background:#cfd6de; }
+.pane-dots { flex:none; display:flex; justify-content:center; gap:.5rem; padding:0; margin:-.25rem 0 -.2rem; }
+.pane-dots button { width:32%; height:10px; min-height:0; padding:0; border:0; background:none; }
+.pane-dots button::before { content:""; display:block; height:3px; border-radius:2px; background:#cfd6de; }
 .pane-dots button[aria-selected="true"]::before { background:var(--accent); }
 
+.list-filters { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem; margin:.3rem 0 .6rem; font-size:.85rem; }
+.list-filters select { min-height:36px; margin-left:.3rem; }
+.ns-late { color:#c2410c; font-weight:600; }
+/* ★ de la fiche : liste en pleine largeur sous le nom (ne déborde plus de l’écran) */
+.patient-title > div { position:relative; }
+.tests-star { position:static; }
+.tests-star-list { left:0; right:0; width:auto; }
+
+/* Chronomètre unique des repères : gros bouton de départ, barre en cours avec ✕ */
+.chrono-starts { display:flex; flex-wrap:wrap; gap:.4rem; }
+.chrono-start { min-height:48px; padding:.3rem .9rem; font-size:.95rem; font-weight:700; }
+.chrono-bar { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; padding:.4rem .55rem; border:1px solid var(--accent); border-radius:12px; background:var(--accent-soft); }
+.chrono-bar.finished { border-color:#2e7a4b; background:#e6f3ea; }
+.chrono-bar-label { flex:1 1 100%; color:var(--accent); font-size:.85rem; font-weight:800; }
+.chrono-bar-time { flex:1; font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--accent); }
+.chrono-bar-main { min-height:52px; flex:1.4; font-size:1.05rem; }
+.chrono-bar-cancel { min-width:44px; min-height:44px; font-size:1.1rem; }
+a.bilan-toggle { border:1px solid var(--line); border-radius:10px; background:var(--paper); text-decoration:none; }
 /* ★ de la fiche patient : dernières mesures des tests, raccourci vers le test rapide du jour */
 .tests-star { position:relative; display:inline-block; margin-left:.4rem; vertical-align:middle; }
 .tests-star-button { min-width:36px; min-height:34px; padding:0 .4rem; color:#9a6b00; font-size:1.05rem; }
@@ -581,5 +600,19 @@ main:has(.patient-table-wrap) { width:100%; }
 .tests-star-list button { width:100%; min-height:38px; padding:.3rem .5rem; text-align:left; font-size:.85rem; font-weight:500; }
 .tests-star-list button span { color:var(--muted); }
 .tests-star-list button.pending strong { color:#c2410c; }
-.tug-bar.steps { flex-wrap:wrap; }
-.tug-time { white-space:nowrap; }
+.netsoin section { display:grid; gap:.3rem; }
+.netsoin-tug { margin:0; }
+.ns-validate { justify-self:start; min-width:52px; min-height:44px; border-color:#2e7a4b; color:#2e7a4b; font-size:1.3rem; font-weight:800; }
+.ns-validate.done, .ns-validate:active { background:#2e7a4b; color:#fff; }
+.ns-done { color:#2e7a4b; font-size:.8rem; }
+.netsoin-comment { margin:0; font-size:.9rem; }
+.netsoin-comment span { color:var(--muted); font-size:.78rem; }
+.netsoin-button.done { border-color:#2e7a4b; color:#2e7a4b; }
+/* ★ de la fiche : liste en pleine largeur sous le nom (ne déborde plus de l’écran) */
+.patient-title > div { position:relative; }
+.tests-star { position:static; }
+.tests-star-list { left:0; right:0; width:auto; }
+
+.reperes-nav { display:flex; align-items:flex-start; gap:.4rem; min-width:0; }
+.reperes-nav .domain-tabs { flex:1; min-width:0; padding-top:0; }
+.reperes-nav .reperes-head { flex:none; margin-left:auto; }

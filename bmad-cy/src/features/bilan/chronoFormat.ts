@@ -1,8 +1,9 @@
-// Mise en forme du temps du chronomètre : affichage (dixièmes), champ nombre en secondes (virgule française) ou durée en texte.
+// Mise en forme du temps du chronomètre, toujours en secondes entières (jamais de dixièmes) : la durée est tronquée
+// (18,9 s → 18 s), à l’affichage comme dans les champs et les résultats.
 export function chronoDisplay(ms: number): string {
-  const tenths = Math.floor(Math.max(0, ms) / 100)
-  const minutes = Math.floor(tenths / 600), seconds = Math.floor((tenths % 600) / 10)
-  return minutes ? `${minutes}:${String(seconds).padStart(2, '0')},${tenths % 10}` : `${seconds},${tenths % 10} s`
+  const total = Math.floor(Math.max(0, ms) / 1000)
+  const minutes = Math.floor(total / 60)
+  return minutes ? `${minutes}:${String(total % 60).padStart(2, '0')}` : `${total} s`
 }
 // Compte à rebours : secondes restantes, arrondies au-dessus (30 s pile au départ, 0 à la fin).
 export function countdownDisplay(ms: number): string {
@@ -10,9 +11,9 @@ export function countdownDisplay(ms: number): string {
   const minutes = Math.floor(left / 60)
   return minutes ? `${minutes}:${String(left % 60).padStart(2, '0')}` : `${left} s`
 }
-export function secondsValue(ms: number): string { return String(Math.round(ms / 100) / 10).replace('.', ',') }
+export function secondsValue(ms: number): string { return String(Math.floor(Math.max(0, ms) / 1000)) }
 export function durationText(ms: number): string {
-  const total = Math.round(ms / 1000)
+  const total = Math.floor(Math.max(0, ms) / 1000)
   const minutes = Math.floor(total / 60), seconds = total % 60
   return minutes ? `${minutes} min${seconds ? ` ${seconds} s` : ''}` : `${seconds} s`
 }

@@ -1,14 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import {
-  activePresets, behaviour, calcText, choiceKey, CHECKED, formValues, orderedRubrics, otherOf, resolve, rubricFields, rubricFilled, TEST_OF_RUBRIC, TEST_TAG, visibleOptions,
+  activePresets, behaviour, calcText, choiceKey, CHECKED, formValues, NS_COMMENT, NS_TAG, orderedRubrics, otherOf, resolve, rubricFields, rubricFilled, TEST_OF_RUBRIC, TEST_TAG, visibleOptions,
   type BilanForm, type CatField, type CatRubric, type Catalog, type Values,
 } from '../../domain/catalog'
 import type { Measure } from '../../domain/mesures'
 import { TUG_STEPS } from '../../domain/tug'
-import { ChronoPanel } from './Chrono'
 import { shortDate } from './display'
-import { TugBar, TugButtons } from './TugBar'
-import { useTugTimer, type TugResult } from './useTugTimer'
+import { ChronoBar, ChronoStart } from './ChronoBar'
+import { useChrono, type Chrono, type ChronoResult } from './useChrono'
 
 // Volet « Repères » du bilan : le catalogue de l’organisateur de bilans, que l’on consulte et coche pendant que l’on dicte.
 // Par défaut tout l’arbre ; « + » ouvre un bilan prédéfini (son ordre, ses propositions) ou va droit à un test (Tinetti, TUG…).
@@ -16,17 +15,20 @@ import { useTugTimer, type TugResult } from './useTugTimer'
 // Ce qui est rempli devient des lignes de compte rendu (✨ ou « Ajouter au texte »).
 export interface PreviousLines { date: string; copied: boolean; lines: Record<string, string> }
 const TUG = 'transferts.tug'
+const ATCD = 'contexte.atcd'
 
-export function ReperesPane({ catalog, form, measures, previous, onChange, onInsert, insertCount }: {
-  catalog: Catalog; form: BilanForm; measures: Record<string, Measure>; previous: PreviousLines | null
-  onChange: (form: BilanForm) => void; onInsert: () => void; insertCount: number
+// initialFocus : test ouvert seul d’emblée (★ de la fiche ou des dernières mesures).
+// atcdKine : antécédents utiles en séance de la fiche, repris dans « Antécédents » sur le bouton « Reprendre de la fiche ».
+export function ReperesPane({ catalog, form, measures, previous, initialFocus = '', atcdKine = '', onChange }: {
+  catalog: Catalog; form: BilanForm; measures: Record<string, Measure>; previous: PreviousLines | null; initialFocus?: string; atcdKine?: string
+  onChange: (form: BilanForm) => void
 }) {
   const box = useRef<HTMLDivElement>(null)
   const tabs = useRef<HTMLDivElement>(null)
   const [onlyFilled, setOnlyFilled] = useState(false)
   const [menu, setMenu] = useState(false)
   // Test ouvert seul (raccourci du menu « + »), sans changer le bilan.
-  const [focus, setFocus] = useState('')
+  const [focus, setFocus] = useState(initialFocus)
   const values = useMemo(() => formValues(form, catalog), [form, catalog])
   const rubrics = useMemo(() => orderedRubrics(catalog, form.preset), [catalog, form.preset])
   const tests = useMemo(() => orderedRubrics(catalog).filter(rubric => rubric.tags.includes(TEST_TAG)), [catalog])
@@ -68,31 +70,21 @@ export function ReperesPane({ catalog, form, measures, previous, onChange, onIns
     set({ values: next })
   }
   const setValue = (key: string, value: string) => setValues({ [key]: value })
-  // TUG (simple ou par étapes) : rangé dans les questions du TUG du catalogue, qu’il soit lancé du TUG ou du Tinetti.
-  // Le chronomètre s’affiche en haut du volet, visible pendant que l’on cote.
-  const tugTotal = form.values[`${TUG}.temps`]
-  const timer = useTugTimer((result: TugResult) => setValues({
-    [`${TUG}.temps`]: result.total,
+  // Chronomètre unique, en haut du volet (visible pendant que l’on cote) ; à l’arrêt, la valeur va directement dans le champ.
+  // TUG (simple ou par étapes, lancé du TUG ou du Tinetti) : questions du TUG du catalogue ; un TUG simple efface les étapes.
+  const chrono = useChrono((result: ChronoResult) => setValues('key' in result ? { [result.key]: result.value } : {
+    [`${TUG}.temps`]: result.tug,
     ...Object.fromEntries(TUG_STEPS.map((step, index) => [`${TUG}.${step.key}`, result.steps ? String(result.steps[index]) : ''])),
-  }), tugTotal)
+  }))
   const presets = activePresets(catalog)
   const preset = presets.find(item => item.key === form.preset)
   const focused = tests.find(rubric => rubric.key === focus)
   const choose = (patch: { preset?: string; focus?: string }) => { setMenu(false); setFocus(patch.focus ?? ''); if (!patch.focus) set({ preset: patch.preset }); box.current?.scrollTo({ top: 0 }) }
   return <div className="pane flex-form reperes" role="tabpanel" aria-label="Repères" ref={box} onScroll={follow}>
     <div className="reperes-sticky" ref={tabs}>
-      <TugBar timer={timer} saved={tugTotal} />
-      <div className="reperes-head">
-        <span className="reperes-current">{focused ? focused.title : preset ? preset.title : 'Tous les repères'}</span>
-        {(focused || preset) && <button type="button" className="reperes-clear" aria-label="Revenir à tous les repères" onClick={() => choose({})}>✕</button>}
-        <button type="button" className="reperes-more" aria-expanded={menu} aria-label="Ouvrir un bilan ou un test" onClick={() => setMenu(open => !open)}>+</button>
-      </div>
-      {menu && <div className="reperes-menu" role="menu" aria-label="Bilans et tests">
-        <p className="row-sub">Bilans</p>
-        {presets.map(item => <button key={item.key} type="button" role="menuitem" onClick={() => choose({ preset: item.key })}>{item.title}</button>)}
-        <p className="row-sub">Tests</p>
-        {tests.map(rubric => <button key={rubric.key} type="button" role="menuitem" onClick={() => choose({ focus: rubric.key })}>{rubric.title}</button>)}
-      </div>}
+      <ChronoBar chrono={chrono} />
+      {/* Domaines (deux lignes) et « + » sur la même rangée, pour gagner de la hauteur. */}
+      <div className="reperes-nav">
       {!focus && firstGroups.length > 1 && <div className="domain-tabs" role="tablist" aria-label="Domaines">
         {/* Deux lignes que l’on fait défiler ensemble : largeur du ruban ≈ moitié de la longueur totale des onglets. */}
         <div className="domain-tabs-rows" style={{ width: `${Math.ceil(firstGroups.reduce((sum, group) => sum + domainTitle(group.domain).length * 7 + 30, 0) / 2) + 20}px` }}>
@@ -102,50 +94,71 @@ export function ReperesPane({ catalog, form, measures, previous, onChange, onIns
         })}
         </div>
       </div>}
+      {/* Tous les repères par défaut : seul le « + » ; une étiquette rappelle un bilan ou un test ouvert, ✕ y revient. */}
+      <div className="reperes-head">
+        {(focused || preset) && <button type="button" className="reperes-filter" aria-label={`Revenir à tous les repères (${(focused ?? preset)!.title} ouvert)`} onClick={() => choose({})}>{(focused ?? preset)!.title} ✕</button>}
+        <button type="button" className="reperes-more" aria-expanded={menu} aria-label="Ouvrir un bilan ou un test" onClick={() => setMenu(open => !open)}>+</button>
+      </div>
+      </div>
+      {menu && <div className="reperes-menu" role="menu" aria-label="Bilans et tests">
+        <p className="row-sub">Bilans</p>
+        {presets.map(item => <button key={item.key} type="button" role="menuitem" onClick={() => choose({ preset: item.key })}>{item.title}</button>)}
+        <p className="row-sub">Tests</p>
+        {tests.map(rubric => <button key={rubric.key} type="button" role="menuitem" onClick={() => choose({ focus: rubric.key })}>{rubric.title}</button>)}
+      </div>}
     </div>
     {previous && <p className={`previous-note${previous.copied ? '' : ' pending'}`}>★ bilan précédent du {shortDate(previous.date)}</p>}
     {groups.map(group => <section key={group.id} data-group={group.id} className="flex-module" aria-label={domainTitle(group.domain)}>
       <h2 className="module-title">{domainTitle(group.domain)}</h2>
       {group.rubrics.map(rubric => <RubricBlock key={rubric.key} rubric={rubric} catalog={catalog} form={form} values={values}
         measure={measures[TEST_OF_RUBRIC[rubric.key] ?? '']} last={previous?.lines[rubric.key]} lastCopied={!!previous?.copied} lastDate={previous?.date}
-        tug={behaviour(rubric, 'tug_dans_tinetti') !== undefined || behaviour(rubric, 'chronometre_etapes') !== undefined ? { timer, stepsOnly: rubric.key === TUG, measure: measures.tug, saved: tugTotal } : undefined}
-        onToggle={toggleChoice} onValue={setValue} />)}
+        chrono={chrono} tugMeasure={measures.tug} atcdKine={atcdKine} onToggle={toggleChoice} onValue={setValue} />)}
     </section>)}
     {groups.length === 0 && <p className="pane-instructions">{onlyFilled ? 'Rien n’est encore rempli.' : 'Aucune rubrique dans ce bilan.'}</p>}
-    <div className="reperes-actions">
-      {!focus && <button type="button" role="switch" className="test-option" aria-checked={onlyFilled} onClick={() => setOnlyFilled(on => !on)}>Voir ce qui est rempli</button>}
-      <button type="button" className="primary" disabled={!insertCount} onClick={onInsert}>Ajouter au texte{insertCount ? ` (${insertCount})` : ''}</button>
-    </div>
+    {!focus && <div className="reperes-actions">
+      <button type="button" role="switch" className="test-option" aria-checked={onlyFilled} onClick={() => setOnlyFilled(on => !on)}>Voir ce qui est rempli</button>
+    </div>}
   </div>
 }
 
-function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied, lastDate, tug, onToggle, onValue }: {
+function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied, lastDate, chrono, tugMeasure, atcdKine, onToggle, onValue }: {
   rubric: CatRubric; catalog: Catalog; form: BilanForm; values: Values; measure?: Measure; last?: string; lastCopied: boolean; lastDate?: string
-  tug?: { timer: ReturnType<typeof useTugTimer>; stepsOnly: boolean; measure?: Measure; saved?: string }
+  chrono: Chrono; tugMeasure?: Measure; atcdKine: string
   onToggle: (field: string, option: string) => void; onValue: (key: string, value: string) => void
 }) {
   const fields = rubricFields(catalog, rubric.key)
   const stopwatch = behaviour(rubric, 'chronometre')
   const countdown = behaviour(rubric, 'compte_a_rebours')
   const timed = fields.find(field => field.key === `${rubric.key}.${stopwatch}`)
-  const chrono = timed ? { mode: 'stopwatch' as const, key: timed.key } : countdown && Number(countdown) > 0 ? { mode: 'countdown' as const, seconds: Number(countdown) } : undefined
-  const [open, setOpen] = useState(false)
   const filled = rubricFilled(rubric, catalog, values)
+  const isTug = rubric.key === TUG
+  const inTinetti = behaviour(rubric, 'tug_dans_tinetti') !== undefined
   // ★ : dernière mesure du test (historique commun), sinon ce qui avait été coché au bilan précédent.
   const star = measure ? { text: measure.text, date: measure.date, copied: measure.copied } : last && lastDate ? { text: last, date: lastDate, copied: lastCopied } : null
-  // Dans le Tinetti, le TUG se lance en tête de l’épreuve de marche (première ligne « m… »).
-  const tugButtons = tug && <TugButtons timer={tug.timer} saved={tug.stepsOnly ? undefined : tug.saved} previous={tug.stepsOnly ? undefined : tug.measure} stepsOnly={tug.stepsOnly} />
-  const walkStart = tug && !tug.stepsOnly ? fields.find(field => /^m/.test(field.key.slice(rubric.key.length + 1)))?.key : undefined
+  // Boutons du chronomètre, les mêmes partout : TUG (simple, par étapes), sinon chronomètre ou compte à rebours du test.
+  const tugButtons = <div className="chrono-starts">
+    <ChronoStart chrono={chrono} spec={{ mode: 'tug', label: 'TUG' }}>TUG</ChronoStart>
+    {(isTug ? behaviour(rubric, 'chronometre_etapes') !== undefined : true) && <ChronoStart chrono={chrono} spec={{ mode: 'steps', label: 'TUG par étapes' }}>TUG par étapes</ChronoStart>}
+  </div>
+  const starts = isTug ? tugButtons
+    : timed ? <div className="chrono-starts"><ChronoStart chrono={chrono} spec={{ mode: 'stopwatch', label: rubric.title, key: timed.key, text: resolve(timed, catalog).type === 'text' }}>Chronomètre</ChronoStart></div>
+    : countdown && Number(countdown) > 0 ? <div className="chrono-starts"><ChronoStart chrono={chrono} spec={{ mode: 'countdown', label: rubric.title, seconds: Number(countdown) }}>{`Compte à rebours ${Number(countdown) >= 60 ? `${Number(countdown) / 60} min` : `${countdown} s`}`}</ChronoStart></div>
+    : null
+  // Dans le Tinetti, le TUG se lance en tête de l’épreuve de marche (première ligne « m… »), avec sa ★.
+  const walkStart = inTinetti ? fields.find(field => /^m/.test(field.key.slice(rubric.key.length + 1)))?.key : undefined
+  // Tests NS : un commentaire libre commun en bas (Tinetti et TUG faits ensemble), repris sous les chiffres à recopier.
+  const ns = rubric.tags.includes(NS_TAG)
   return <section className={`flex-rubric${filled ? ' filled' : ''}`} aria-label={rubric.title}>
-    <h3>{rubric.title}{rubric.tags.includes(TEST_TAG) && <span className="test-tag"> · test</span>}{chrono && <button type="button" className={`chrono-toggle${open ? ' open' : ''}`} aria-label={open ? 'Fermer le chronomètre' : 'Ouvrir le chronomètre'} aria-expanded={open} onClick={() => setOpen(value => !value)}>⏱</button>}</h3>
+    <h3>{rubric.title}{rubric.tags.includes(TEST_TAG) && <span className="test-tag"> · test{ns ? ' NS' : ''}</span>}</h3>
     {star && <p className={`previous-measure${star.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> {star.text} · {shortDate(star.date)}</p>}
     {rubric.passation && <p className="pane-instructions">{rubric.passation}</p>}
-    {chrono && open && <ChronoPanel chrono={chrono} text={timed ? resolve(timed, catalog).type === 'text' : false} onTime={onValue} />}
-    {tug?.stepsOnly && tugButtons}
+    {starts}
+    {rubric.key === ATCD && atcdKine && <button type="button" className="rubric-action" disabled={(form.values[`${ATCD}.atcd`] ?? '').includes(atcdKine)} onClick={() => { const atcd = form.values[`${ATCD}.atcd`] ?? ''; onValue(`${ATCD}.atcd`, atcd.trim() ? `${atcd.trimEnd()}\n${atcdKine}` : atcdKine) }}>Reprendre de la fiche</button>}
     {fields.map(field => <div key={field.key} className="field-wrap">
-      {field.key === walkStart && <><p className="row-sub">Épreuve de marche</p>{tugButtons}</>}
+      {field.key === walkStart && <><p className="row-sub">Épreuve de marche</p>{tugButtons}{tugMeasure && <p className={`previous-measure${tugMeasure.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> TUG {tugMeasure.text} · {shortDate(tugMeasure.date)}</p>}</>}
       <Field field={field} rubric={rubric} catalog={catalog} form={form} values={values} onToggle={onToggle} onValue={onValue} />
     </div>)}
+    {ns && <label className="flex-field ns-comment"><span>Commentaire des tests NS (commun au Tinetti et au TUG)</span><textarea rows={2} aria-label={`Commentaire des tests NS (${rubric.title})`} value={form.values[NS_COMMENT] ?? ''} onChange={event => onValue(NS_COMMENT, event.target.value)} /></label>}
   </section>
 }
 

@@ -13,7 +13,7 @@ export type Sex = '' | 'F' | 'H'
 export type DurationUnit = 'weeks' | 'months' | 'years'
 export const DURATION_UNITS: DurationUnit[] = ['weeks', 'months', 'years']
 export const DEFAULT_PRESCRIPTION = { amount: 1, unit: 'years' as DurationUnit }
-export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean; paused: boolean; pauseReason: string; atcdKine: string; atcdOther: string }
+export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; nsDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean; paused: boolean; pauseReason: string; atcdKine: string; atcdOther: string }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
 // Carnet des médecins : spécialité vide = médecin généraliste (valeur par défaut, non affichée).
 export interface Doctor { id: string; name: string; specialty: string; phone: string; email: string; notes: string }
@@ -26,14 +26,15 @@ export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function weekdayLetter(date: string): string | null { return ({ 1: 'L', 4: 'J', 5: 'V' } as Record<number, string>)[parseDate(date).getDay()] ?? null }
 // Patient prévu ce jour-là d’après ses jours de séance (L, J, V de la fiche).
 export function plannedOn(days: string, date: string): boolean { const letter = weekdayLetter(date); return letter !== null && days.toUpperCase().includes(letter) }
-export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '', atcdKine: '', atcdOther: '' } }
+export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], nsDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '', atcdKine: '', atcdOther: '' } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification ; bilanEditedAt (et editedAt d’un test) : heure de la dernière modification.
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
+// ns : tests NS recopiés dans NetSoin (✓ du bouton NS de l’onglet Bilans), avec l’empreinte des valeurs recopiées.
 // bilanForm : repères cochés du bilan (catalogue de l’organisateur de bilans, version notée) ; voir domain/catalog.ts.
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
 // pause : motif de la pause (éventuellement vide) figé pour ce jour-là ; absente, le patient n’était pas en pause.
-export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; bilanForm?: BilanForm; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean; planned?: boolean }
+export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; bilanForm?: BilanForm; ns?: NsValidations; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean; planned?: boolean }
 // unpointed : séance retirée dans la vue Pointage seulement (la journée garde A ou B) ; pointageExportedAt : date locale du dernier export du pointage.
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string; pointageExportedAt?: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
@@ -109,9 +110,11 @@ export function entryVisible(entry: Entry, patient: Pick<Patient, 'archived'> | 
   return date <= today && hasTrace(entry)
 }
 // Bilans et tests d’une journée dans l’ordre où ils ont été commencés ; ceux sans heure (anciens) suivent l’ordre de la tournée.
+export type NsTest = 'tinetti' | 'tug'
+export type NsValidations = Partial<Record<NsTest, string>>
 export type BilanKind = 'bilan' | TestType
 // form : repères cochés d’un bilan libre (récapitulatif NetSoin).
-export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text: string; html?: string; record?: TestRecord; form?: BilanForm; copied: boolean; at?: string; editedAt?: string }
+export interface DayBilan { id: string; kind: BilanKind; patient: Identity; text: string; html?: string; record?: TestRecord; form?: BilanForm; ns?: NsValidations; copied: boolean; at?: string; editedAt?: string }
 // Un bilan marche / équilibre ne se copie que par son compte rendu : sans formulaire rempli ni résultat retouché (dictée seule),
 // il reste enregistré mais n’a rien à copier dans l’onglet Bilans.
 function listedTest(kind: TestType, record: TestRecord): boolean {
@@ -121,8 +124,9 @@ export function dayBilans(day: Pick<Day, 'entries' | 'order'>): DayBilan[] {
   const rank = new Map(day.order.map((id, index) => [id, index]))
   const items: DayBilan[] = []
   for (const [id, entry] of Object.entries(day.entries)) {
-    if ((entry.bilan ?? '').trim()) items.push({ id, kind: 'bilan', patient: entry.patient, text: entry.bilan!, html: entry.bilanHtml, form: entry.bilanForm, copied: !!entry.bilanCopied, at: entry.bilanAt, editedAt: entry.bilanEditedAt ?? entry.bilanAt })
-    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (listedTest(kind, record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, copied: !!record.copied, at: record.at || undefined, editedAt: record.editedAt ?? (record.at || undefined) })
+    // Un bilan libre est listé dès qu’il a un texte ou des repères (tests NS à recopier sans texte rédigé).
+    if ((entry.bilan ?? '').trim() || hasFormContent(entry.bilanForm)) items.push({ id, kind: 'bilan', patient: entry.patient, text: entry.bilan ?? '', html: entry.bilanHtml, form: entry.bilanForm, ns: entry.ns, copied: !!entry.bilanCopied, at: entry.bilanAt, editedAt: entry.bilanEditedAt ?? entry.bilanAt })
+    for (const [kind, record] of Object.entries(entry.tests ?? {}) as [TestType, TestRecord][]) if (listedTest(kind, record)) items.push({ id, kind, patient: entry.patient, text: record.notes, html: record.notesHtml, record, ns: entry.ns, copied: !!record.copied, at: record.at || undefined, editedAt: record.editedAt ?? (record.at || undefined) })
   }
   return items.sort((x, y) => (x.at ?? '\uffff').localeCompare(y.at ?? '\uffff') || (rank.get(x.id) ?? Infinity) - (rank.get(y.id) ?? Infinity) || x.kind.localeCompare(y.kind))
 }

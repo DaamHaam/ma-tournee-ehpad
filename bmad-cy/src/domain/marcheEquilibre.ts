@@ -133,7 +133,8 @@ function reader(input: FlexInput) {
     const raw = text(key).replace(',', '.')
     if (!raw) return null
     const value = Number(raw)
-    return Number.isFinite(value) ? Math.round(value) : null
+    // Secondes (et autres mesures) entières, tronquées : jamais de dixièmes ni d’arrondi au plus proche.
+    return Number.isFinite(value) ? Math.trunc(value) : null
   }
   // Choix cochés puis « Autre », joints par une virgule.
   const list = (key: string, extra = otherKey(key)) => [...multi(key).map(escapeHtml), html(extra)].filter(Boolean).join(', ')

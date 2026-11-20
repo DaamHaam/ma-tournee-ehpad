@@ -23,6 +23,9 @@ export interface Catalog { domains: CatDomain[]; rubrics: CatRubric[]; fields: C
 export interface PublishedCatalog { number: number; publishedAt: number; catalog: Catalog }
 
 export const TEST_TAG = 'test'
+// Tests NS : chiffrage recopié dans une partie dédiée de NetSoin (Tinetti, TUG…), un commentaire libre commun.
+export const NS_TAG = 'ns'
+export const NS_COMMENT = 'ns#commentaire'
 export const FORMAT_PROMPT = 'mise_en_forme'
 
 // ——— Lecture et contrôle d’une version reçue ———
@@ -152,7 +155,10 @@ export function fieldText(field: CatField, catalog: Pick<Catalog, 'fields' | 'mo
   if (type === 'multi') return [...(Array.isArray(raw) ? raw.map(label => accord(label, sex)) : []), extra].filter(Boolean).join(', ')
   if (type === 'check') return raw ? field.label : ''
   if (type === 'list') return (typeof raw === 'string' ? raw : '').split('\n').map(line => line.trim()).filter(Boolean).map(line => `${field.prefix ?? ''}${line}`).join('\n')
-  return [typeof raw === 'string' ? accord(raw.trim(), sex) : '', extra].filter(Boolean).join(', ')
+  // Durées en secondes : entières, tronquées (jamais de dixièmes).
+  const value = typeof raw === 'string' ? raw.trim() : ''
+  const seconds = type === 'number' && (field.unit === 's' || field.unit === 'sec') && /^\d+[.,]\d+$/.test(value) ? String(Math.trunc(Number(value.replace(',', '.')))) : value
+  return [accord(seconds, sex), extra].filter(Boolean).join(', ')
 }
 
 // ——— Compte rendu ———
@@ -286,6 +292,13 @@ const APP_TESTS = MARCHE_EQUILIBRE.flatMap(module => module.rubrics).filter(rubr
 // Rubrique du catalogue → test de l’application, pour afficher sa ★ dans les repères.
 export const TEST_OF_RUBRIC: Record<string, string> = Object.fromEntries(APP_TESTS.flatMap(test => test.controls
   .map(control => MEASURE_FIELDS[control.key]).filter(Boolean).slice(0, 1).map(key => [key.slice(0, key.lastIndexOf('.')), test.id])))
+
+// Test de l’application (tug, tinetti…) ou rubrique du catalogue → rubrique du catalogue, pour ouvrir le test seul dans les repères.
+export function rubricOfTest(test: string): string {
+  if (!test) return ''
+  if (test.includes('.')) return test
+  return Object.entries(TEST_OF_RUBRIC).find(([, id]) => id === test)?.[0] ?? ''
+}
 
 // Tests du formulaire, sous la forme des champs des tests de l’application (historique commun et ★).
 export function formMeasures(form: Pick<BilanForm, 'choices' | 'values'>, catalog: Catalog): FlexInput {

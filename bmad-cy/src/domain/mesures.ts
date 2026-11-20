@@ -12,7 +12,7 @@ export const TINETTI_MEASURE = 'tinetti'
 const SHORT: Record<string, string> = { assisDebout30s: 'Assis-debout 30 s', tug: 'TUG', stationDebout: 'Station debout', trajet: 'Trajet chambre-RDC', test10m: '10 m', test6min: '6 min', [TINETTI_MEASURE]: 'Tinetti' }
 export function measureTitle(id: string): string { return SHORT[id] ?? MEASURE_RUBRICS.find(rubric => rubric.id === id)?.title ?? id }
 
-interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput; bilanForm?: BilanForm; bilanCopied?: boolean }
+interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput; bilanForm?: BilanForm; bilanCopied?: boolean; ns?: Partial<Record<string, string>> }
 export interface MeasureDay { date: string; entries: Record<string, MeasureEntry> }
 // copied : le test ou le bilan d’où vient la mesure a été copié (transmis) ; sinon la ★ est orange (suivi personnel, à transmettre).
 export interface Measure { date: string; text: string; copied: boolean }
@@ -29,7 +29,7 @@ function dayMeasure(entry: MeasureEntry | undefined, id: string): Omit<Measure, 
   // TUG chronométré pendant le Tinetti (values.tug du Tinetti) : un test comme les autres, transmis avec le Tinetti.
   const tug = id === 'tug' && entry.tests?.tinetti?.values?.tug ? { values: { tug: entry.tests.tinetti.values.tug } } : undefined
   const form = entry.bilanForm && hasFormContent(entry.bilanForm) ? formMeasures(entry.bilanForm, catalogFor(entry.bilanForm.version)) : undefined
-  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [form, entry.bilanCopied], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [tug, entry.tests?.tinetti?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
+  for (const [source, copied] of [[entry.tests?.mesures, entry.tests?.mesures?.copied], [entry.bilanMeasures, entry.bilanCopied], [form, entry.bilanCopied || !!entry.ns?.[id]], [entry.tests?.marcheEquilibre, entry.tests?.marcheEquilibre?.copied], [tug, entry.tests?.tinetti?.copied], [grid, entry.tests?.tinetti?.copied]] as const) {
     const text = source ? rubricText(id, source) : ''
     if (text) return { text, copied: !!copied }
   }

@@ -44,7 +44,7 @@ export function AssistantPanel() {
     <p className="save-hint">Sans réflexion, réponse en 1 à 2 s. Avec réflexion, plusieurs dizaines de secondes, sans gain net constaté sur les bilans.</p>
     <div className="action-row"><button type="button" disabled={!settings.key || !settings.model || busy} onClick={() => void test()}>{busy ? 'Test…' : 'Tester le modèle'}</button></div>
     {status && <p className={status.ok ? 'save-hint' : 'field-error'} role="status">{status.text}</p>}
-    {PROMPT_KINDS.map(kind => <details key={kind} className="prompt-editor">
+    {PROMPT_KINDS.filter(kind => kind === 'correction' || kind === 'miseEnForme').map(kind => <details key={kind} className="prompt-editor">
       <summary>Prompt : {PROMPT_LABEL[kind]}{settings.prompts[kind] ? ' (modifié)' : ''}{kind === 'miseEnForme' ? ` · catalogue v${published.number}` : ''}</summary>
       <textarea key={`${kind}-${settings.prompts[kind]}`} aria-label={`Prompt ${PROMPT_LABEL[kind]}`} rows={14} defaultValue={settings.prompts[kind] || DEFAULT_PROMPTS[kind]} onBlur={event => savePrompt(kind, event.target.value)} />
       <div className="action-row"><button type="button" onClick={() => void copyPrompt(kind)}>Copier</button><button type="button" disabled={!settings.prompts[kind]} onClick={() => void run(() => repository.deleteSetting(promptSetting(kind)))}>Rétablir le prompt par défaut</button></div>

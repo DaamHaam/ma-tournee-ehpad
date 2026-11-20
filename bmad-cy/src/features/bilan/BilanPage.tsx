@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTwoPanes } from './useTwoPanes'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -10,13 +10,13 @@ import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, correctionRequest, formatRequest, parseCorrectionReply } from './assistant'
 import { filledMeasures, latestMeasures, MEASURE_RUBRICS, type Measure } from '../../domain/mesures'
 import { pickRubric, rubricText, withoutRubric, type FlexInput } from '../../domain/marcheEquilibre'
-import { blockHtml, catalogFor, filledCount, formBlocks, formHash, formPlan, formTitle, hasFormContent, previousFormLines, type BilanForm } from '../../domain/catalog'
+import { blockHtml, catalogFor, formBlocks, formHash, NS_COMMENT, rubricOfTest, formPlan, formTitle, hasFormContent, previousFormLines, type BilanForm } from '../../domain/catalog'
 import { useLatestCatalog } from '../../storage/catalogStore'
 import { LastMeasures, RecognizedTests, type Recognized } from './RecognizedTests'
 import { ReperesPane, type PreviousLines } from './Reperes'
 import { useBilanCopy } from './useBilanCopy'
 import { FormatButtons, RichEditor, type FormatState, type RichEditorHandle } from './RichEditor'
-import { appendText, bilanHtml, htmlToText, sanitizeBilanHtml } from './richText'
+import { appendText, bilanHtml, escapeHtml, htmlToText, sanitizeBilanHtml } from './richText'
 import { useDictation } from './useDictation'
 import { BarButton, DictationFooter, KeyboardBar, ScreenHeader } from './screen'
 import { OpenBilansStrip } from './OpenBilans'
@@ -32,22 +32,23 @@ export function BilanPage() {
   const valid = validDate(date)
   const day = useLiveQuery(() => valid ? repository.dayView(date) : undefined, [date, valid])
   const sex = useLiveQuery(async () => (await db.patients.get(id))?.sex ?? '', [id])
+  const atcdKine = useLiveQuery(async () => (await db.patients.get(id))?.atcdKine ?? '', [id])
   const history = useLiveQuery(async () => {
     if (!valid) return undefined
     const days = await db.days.where('date').below(date).toArray()
     return { measures: latestMeasures(days, id, date), form: previousFormLines(days, id, date) }
   }, [date, id, valid])
   if (!valid) return <Navigate replace to="/" />
-  if (!day || sex === undefined || !history) return null
+  if (!day || sex === undefined || atcdKine === undefined || !history) return null
   const entry = day.entries[id]
   if (!entry) return <Navigate replace to={`/?date=${date}`} />
-  return <BilanEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} sex={sex} previous={history.measures} previousForm={history.form} />
+  return <BilanEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} sex={sex} previous={history.measures} previousForm={history.form} atcdKine={atcdKine} initialTest={new URLSearchParams(location.search).get('test') ?? ''} />
 }
 
 const snapshotOf = (entry: Entry): BilanSnapshot => ({ bilan: entry.bilan, bilanHtml: entry.bilanHtml, bilanAt: entry.bilanAt, bilanCopied: entry.bilanCopied, bilanEditedAt: entry.bilanEditedAt, bilanMeasures: entry.bilanMeasures, bilanForm: entry.bilanForm })
 const MEASURE_ORDER = MEASURE_RUBRICS.map(rubric => rubric.id)
 
-function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm }: { date: string; id: string; back: string; label: string; entry: Entry; sex: Sex; previous: Record<string, Measure>; previousForm: PreviousLines | null }) {
+function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm, atcdKine, initialTest }: { date: string; id: string; back: string; label: string; entry: Entry; sex: Sex; previous: Record<string, Measure>; previousForm: PreviousLines | null; atcdKine: string; initialTest: string }) {
   const { run } = useSave()
   const navigate = useNavigate()
   const [initial] = useState(() => ({ html: bilanHtml(entry), snapshot: snapshotOf(entry) }))
@@ -90,7 +91,9 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
   const measuresChanged = useRef(false)
   const context = { catalog, form, sex }
   const blocks = formBlocks(context)
-  const lines = blocks.map(blockHtml)
+  // Commentaire commun des tests NS : une ligne de plus pour ✨ (et sans IA).
+  const nsComment = (form.values[NS_COMMENT] ?? '').trim()
+  const lines = [...blocks.map(blockHtml), ...(nsComment ? [`Commentaire : ${escapeHtml(nsComment)}`] : [])]
   const withForm = lines.length > 0
   const stale = withForm && form.ai?.hash !== formHash(form)
   const runAi = async () => {
@@ -115,13 +118,14 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
     if (correction.previousAi !== undefined) changeForm({ ...form, ai: correction.previousAi ?? undefined })
     setCorrection({}); setRecognized(null)
   }
-  // Sans IA (hors ligne, sans clé) : les lignes cochées s’ajoutent à la fin du texte, titre compris.
+  // ✨ sans IA (hors ligne, sans clé) : les lignes des repères s’ajoutent à la fin du texte, titre compris.
   const insertLines = () => {
     const title = formTitle(context)
     appendHtml(sanitizeBilanHtml([...(title && !htmlToText(latest.current).includes(title) ? [`<i><u>${title}</u></i>`] : []), ...lines].join('<br>')))
     changeForm({ ...form, ai: { hash: formHash(form), lines } })
     goTo(0)
   }
+  const offline = !!assistant.unavailable && withForm
   // Mesures validées : remplacent, test par test, celles déjà tirées de ce bilan.
   const saveMeasures = (measures: FlexInput, tests: string[]) => {
     let next: FlexInput = entry.bilanMeasures ?? { choices: [], values: {} }
@@ -142,17 +146,15 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
   }
   // ✨ : en bas de page, et à gauche du petit micro quand le clavier est ouvert ; pastille orange : repères changés depuis.
   const aiLabel = withForm ? (stale && form.ai ? 'Refaire la mise en forme (repères changés depuis)' : 'Mettre en forme avec les repères cochés') : 'Corriger avec l’IA'
-  const aiButton = (size?: 'small') => <button type="button" className={`round-button ai-round${size ? ` ${size}` : ''}${stale && form.ai ? ' stale' : ''}`} aria-label={aiLabel} title={assistant.unavailable || aiLabel} disabled={!!assistant.unavailable || correction.busy || (!htmlToText(html).trim() && !withForm)} onPointerDown={event => event.preventDefault()} onClick={() => void runAi()}>{correction.busy ? '…' : '✨'}</button>
+  const aiButton = (size?: 'small') => <button type="button" className={`round-button ai-round${size ? ` ${size}` : ''}${stale && form.ai ? ' stale' : ''}`} aria-label={aiLabel} title={offline ? `${assistant.unavailable} ✨ ajoute les repères sans IA.` : assistant.unavailable || aiLabel} disabled={(!!assistant.unavailable && !offline) || correction.busy || (!htmlToText(html).trim() && !withForm)} onPointerDown={event => event.preventDefault()} onClick={() => { if (offline) insertLines(); else void runAi() }}>{correction.busy ? '…' : '✨'}</button>
   // Clavier ouvert : le panneau des tests reconnus attend sa fermeture ; un compteur le signale et le referme d’un toucher.
   const recognizedCount = recognized?.tests.length ?? 0
   // Copier pendant une dictée donnerait un texte incomplet, et la transcription arrivée ensuite retirerait la marque « copié ».
   const dictationBusy = dictation.recording || dictation.transcribing
-  // Dernières mesures : toucher un test ouvre le test rapide du jour sur ce test ; le retour ramène ici.
-  const openMeasure = async (test: string) => {
-    await dictation.finish()
-    const here = `/bilan/${date}/${id}?from=${encodeURIComponent(back)}`
-    navigate(`/mesures/${date}/${id}?test=${test}`, { state: { from: here } })
-  }
+  // Dernières mesures (et ★ de la fiche, par ?test=) : le test s’ouvre seul dans les repères de ce bilan.
+  const [focus, setFocus] = useState(() => rubricOfTest(initialTest))
+  useEffect(() => { if (focus) goTo(1) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const openMeasure = (test: string) => { setFocus(rubricOfTest(test)); goTo(1) }
   const checked = form.choices.length + Object.values(form.values).filter(value => value.trim()).length
   return <div className={`bilan-page${keyboard ? ' keyboard-open' : ''}`} style={viewport ? { height: viewport.height, top: viewport.top, bottom: 'auto' } : undefined}>
     <ScreenHeader back={back} backLabel={label} patient={entry.patient} tools={<FormatButtons editor={editor} state={format} />}
@@ -161,10 +163,10 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
     {!keyboard && <div className="pane-dots" role="tablist" aria-label="Volets">{['Bilan', checked ? `Repères · ${checked}` : 'Repères'].map((name, index) => <button key={index} type="button" role="tab" aria-label={name} aria-selected={tab === index} onClick={() => goTo(index)} />)}</div>}
     <div className="panes" ref={panes} onScroll={event => { scrollPanes(event); if (keyboard && event.currentTarget.scrollLeft > 20) toggleKeyboard(false) }}>
       <section className="pane notes-pane" role="tabpanel" aria-label="Bilan">
-        {!keyboard && <LastMeasures measures={lastMeasures} onOpen={test => void openMeasure(test)} />}
+        {!keyboard && <LastMeasures measures={lastMeasures} onOpen={openMeasure} />}
         <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => { setKeyboard(true); if (tab !== 0) goTo(0) }} onFormatState={setFormat} />
       </section>
-      <ReperesPane catalog={catalog} form={form} measures={previous} previous={previousForm} onChange={changeForm} onInsert={insertLines} insertCount={filledCount(blocks)} />
+      <ReperesPane key={focus} catalog={catalog} form={form} measures={previous} previous={previousForm} initialFocus={focus} atcdKine={atcdKine} onChange={changeForm} />
     </div>
     {keyboard
       ? <KeyboardBar dictation={dictation} left={<>{recognizedCount > 0 && <button type="button" className="recognized-count" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}>{recognizedCount} {recognizedCount > 1 ? 'tests reconnus' : 'test reconnu'}</button>}{aiButton('small')}</>} onHide={() => toggleKeyboard(false)} />

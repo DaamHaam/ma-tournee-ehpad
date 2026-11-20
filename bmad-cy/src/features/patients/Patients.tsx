@@ -3,6 +3,7 @@ import { BilanActions } from '../bilan/BilanActions'
 import { bilanHtml } from '../bilan/richText'
 import { itemHtml, shortDate } from '../bilan/display'
 import { MEASURE_RUBRICS, measureHistory, measureTitle } from '../../domain/mesures'
+import { lastNs, matchesNs, NS_FILTER_LABEL, nsLate, type NsFilter } from '../../domain/suiviNs'
 import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -28,7 +29,11 @@ export function Patients() {
   const [formError, setFormError] = useState('')
   const [adding, setAdding] = useState(false)
   const { run } = useSave()
-  const visible = useMemo(() => (patients ?? []).filter(patient => showArchived || !patient.archived).sort(byName), [patients, showArchived])
+  // Filtres : priorité (ex. groupes 1, 2, 3) et date du dernier test NS (recopié dans NetSoin).
+  const [priority, setPriority] = useState('')
+  const [nsFilter, setNsFilter] = useState<NsFilter>('tous')
+  const priorities = useMemo(() => [...new Set((patients ?? []).map(patient => patient.priority.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true })), [patients])
+  const visible = useMemo(() => (patients ?? []).filter(patient => (showArchived || !patient.archived) && (!priority || patient.priority.trim() === priority) && matchesNs(patient, nsFilter, today)).sort(byName), [patients, showArchived, priority, nsFilter, today])
 
   const add = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -75,11 +80,15 @@ export function Patients() {
       {formError && <p className="field-error" role="alert">{formError}</p>}
       <button className="primary" type="submit" disabled={adding}>Enregistrer</button>
     </form>}
-    <label className="filter-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} /> Archivés</label>
+    <div className="list-filters">
+      <label className="filter-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} /> Archivés</label>
+      {priorities.length > 0 && <label>Priorité <select value={priority} onChange={event => setPriority(event.target.value)}><option value="">Toutes</option>{priorities.map(value => <option key={value} value={value}>{value}</option>)}</select></label>}
+      <label>Dernier test NS <select value={nsFilter} onChange={event => setNsFilter(event.target.value as NsFilter)}>{(Object.keys(NS_FILTER_LABEL) as NsFilter[]).map(value => <option key={value} value={value}>{NS_FILTER_LABEL[value]}</option>)}</select></label>
+    </div>
     {!patients ? null : visible.length === 0 ? <div className="empty-state"><h2>Aucun patient</h2></div> : <ul className="patient-list">
       {visible.map(patient => <li key={patient.id} className={[patient.group && 'group', patient.paused && 'paused'].filter(Boolean).join(' ') || undefined}><Link to={`/patients/${patient.id}`}>
         <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} /><PrescriptionMark patient={patient} today={today} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.paused && <span className="tag muted">{patient.pauseReason ? `Pause · ${patient.pauseReason}` : 'Pause'}</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
-        {(patient.room || patient.priority) && <span className="patient-meta">{[patient.room && `Chambre ${patient.room}`, patient.priority].filter(Boolean).join(' · ')}</span>}
+        {(patient.room || patient.priority || nsFilter !== 'tous') && <span className="patient-meta">{[patient.room && `Chambre ${patient.room}`, patient.priority].filter(Boolean).join(' · ')}{nsFilter !== 'tous' && <span className={nsLate(patient, today) ? 'ns-late' : undefined}>{(patient.room || patient.priority) ? ' · ' : ''}NS {lastNs(patient) ? shortDate(lastNs(patient)!) : 'jamais'}</span>}</span>}
       </Link></li>)}
     </ul>}
   </>
@@ -130,7 +139,7 @@ export function PatientDetail() {
   if (!patient) return <div className="empty-state"><h1>Fiche introuvable</h1><Link className="button" to="/patients">Patients</Link></div>
   return <>
     <Link className="back-link" to={back.to}>← {back.label}</Link>
-    <div className="page-heading patient-title"><div><h1><WaitingMark waiting={patient.waiting} />{fullName(patient)}{history && <TestsStar days={history} id={id} today={today} />}</h1>{(patient.room || patient.archived) && <p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}</div></div>
+    <div className="page-heading patient-title"><div><h1><WaitingMark waiting={patient.waiting} />{fullName(patient)}{history && <TestsStar days={history} id={id} today={today} />}</h1><p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}{(patient.room || patient.archived) ? ' · ' : ''}<span className={nsLate(patient, today) ? 'ns-late' : undefined}>Dernier test NS : {lastNs(patient) ? shortDate(lastNs(patient)!) : 'jamais'}</span></p></div></div>
     <FollowUps patient={patient} />
     <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />
@@ -154,7 +163,7 @@ export function PatientDetail() {
 }
 
 // ★ près du nom : les tests déjà faits pour ce patient, les plus fréquents en premier, avec leur dernière mesure ;
-// toucher un test ouvre le test rapide du jour sur ce test (retour à la fiche).
+// toucher un test l’ouvre seul dans les repères du bilan du jour (retour à la fiche).
 function TestsStar({ days, id, today }: { days: Parameters<typeof measureHistory>[0]; id: string; today: string }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
@@ -165,7 +174,7 @@ function TestsStar({ days, id, today }: { days: Parameters<typeof measureHistory
     <button type="button" className="tests-star-button" aria-expanded={open} aria-label="Dernières mesures des tests" onClick={() => setOpen(value => !value)}>★</button>
     {open && <ul className="tests-star-list" aria-label="Dernières mesures">{tests.map(test => {
       const last = history[test][0]
-      return <li key={test}><button type="button" className={last.copied ? undefined : 'pending'} aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => navigate(`/mesures/${today}/${id}?test=${test}`, { state: { from: `/patients/${id}` } })}><strong>{measureTitle(test)}</strong> {last.text} <span>· {shortDate(last.date)}{history[test].length > 1 ? ` · ${history[test].length} fois` : ''}</span></button></li>
+      return <li key={test}><button type="button" className={last.copied ? undefined : 'pending'} aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => navigate(`/bilan/${today}/${id}?test=${test}`, { state: { from: `/patients/${id}` } })}><strong>{measureTitle(test)}</strong> {last.text} <span>· {shortDate(last.date)}{history[test].length > 1 ? ` · ${history[test].length} fois` : ''}</span></button></li>
     })}</ul>}
   </span>
 }

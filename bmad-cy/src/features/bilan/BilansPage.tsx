@@ -8,7 +8,9 @@ import { BilanActions } from './BilanActions'
 import { editPath, itemHtml, KIND_LABEL, KIND_SHORT, multiBilanGroups } from './display'
 import { useBilanGroupCopy } from './useBilanCopy'
 import { tinettiScore } from '../../domain/tinetti'
-import { hasRecap, netsoinRecap } from '../../domain/netsoin'
+import { hasRecap, netsoinRecap, nsDone } from '../../domain/netsoin'
+import { useSave } from '../../app/SaveContext'
+import { repository } from '../../storage/repository'
 import { NetsoinPanel } from './NetsoinRecap'
 
 // Bilans d’une journée (aujourd’hui par défaut), repliés, à reporter un par un dans le logiciel de la résidence.
@@ -20,6 +22,7 @@ export function BilansPage() {
   const [open, setOpen] = useState<Record<string, boolean>>({})
   // Récapitulatif NetSoin ouvert (Tinetti, TUG par étapes), une ligne à la fois.
   const [recapOpen, setRecapOpen] = useState('')
+  const { run } = useSave()
   const bilans = useLiveQuery(async () => { const day = await db.days.get(date); return day ? dayBilans(day) : [] }, [date])
   const copied = bilans?.filter(bilan => bilan.copied).length ?? 0
   const groups = bilans ? multiBilanGroups(bilans) : []
@@ -44,11 +47,15 @@ export function BilansPage() {
             <button type="button" className="bilan-summary" aria-expanded={expanded} onClick={() => setOpen(current => ({ ...current, [key]: !expanded }))}>
               <span className="triangle" aria-hidden="true" /><strong>{shortName(bilan.patient)}</strong>{bilan.kind !== 'bilan' && <span className="kind-tag" title={KIND_LABEL[bilan.kind]}>{KIND_SHORT[bilan.kind]}{score && ` ${score.total}/${score.max}`}</span>}{bilan.copied && <span className="copied-mark" aria-label="copié">✓</span>}
             </button>
-            {hasRecap(recap) && <button type="button" className="netsoin-button" aria-expanded={recapOpen === key} aria-label={`Valeurs à recopier dans NetSoin pour ${name}`} onClick={() => setRecapOpen(recapOpen === key ? '' : key)}>NetSoin</button>}
+            {hasRecap(recap) && <button type="button" className={`netsoin-button${(['tinetti', 'tug'] as const).every(test => !recap[test] || nsDone(recap, test, bilan.ns)) ? ' done' : ''}`} aria-expanded={recapOpen === key} aria-label={`Valeurs à recopier dans NetSoin pour ${name}`} onClick={() => setRecapOpen(recapOpen === key ? '' : key)}>NS</button>}
             <BilanActions date={date} id={bilan.id} name={name} html={html} kind={bilan.kind} />
           </div>
-          {recapOpen === key && <NetsoinPanel recap={recap} />}
-          {expanded && <div className="bilan-body"><p dangerouslySetInnerHTML={{ __html: html }} /><Link to={editPath(bilan.kind, date, bilan.id)} state={{ from: `/bilans?date=${date}` }}>Modifier</Link></div>}
+          {recapOpen === key && <NetsoinPanel recap={recap} ns={bilan.ns} onDone={(test, fingerprint) => {
+            void run(() => repository.validateNs(date, bilan.id, test, fingerprint))
+            // Tous les tests de la ligne recopiés : le panneau se replie.
+            if ((['tinetti', 'tug'] as const).every(item => item === test || !recap[item] || nsDone(recap, item, bilan.ns))) setRecapOpen('')
+          }} />}
+          {expanded && <div className="bilan-body"><p dangerouslySetInnerHTML={{ __html: html }} />{bilan.kind === 'bilan' && <Link to={editPath(bilan.kind, date, bilan.id)} state={{ from: `/bilans?date=${date}` }}>Modifier</Link>}</div>}
         </li>
       })}</ol>}
     </>}

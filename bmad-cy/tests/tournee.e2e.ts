@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
 // « + » sur la carte propose bilan libre, Tinetti ou bilan marche / équilibre.
-async function openBilan(page: Page, name: string, choice = 'Bilan libre') {
-  await page.getByRole('button', { name: `Bilan pour ${name}` }).click()
-  await page.getByRole('link', { name: choice }).click()
+// Le « + » de la journée ouvre directement le bilan libre du jour (les anciens écrans de tests n’existent plus).
+async function openBilan(page: Page, name: string) {
+  await page.getByRole('link', { name: `Bilan pour ${name}` }).click()
 }
 
 test('première tournée, ajout patient et export', async ({ page }) => {
@@ -187,7 +187,7 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await expect(page.getByRole('button', { name: 'Copié' })).toBeVisible()
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
   await expect(page).toHaveURL(/date=2026-09-22/)
-  await expect(page.getByRole('button', { name: 'Bilan pour Bernard Louis' })).toHaveClass(/filled/)
+  await expect(page.getByRole('link', { name: 'Bilan pour Bernard Louis' })).toHaveClass(/filled/)
   await page.getByRole('link', { name: /Bernard L\./ }).click()
   await page.getByRole('button', { name: /^Séances \(/ }).click()
   await expect.poll(() => page.locator('.history-bilan').innerHTML()).toBe('Marche 10 m en 12 s.<br>Douleur 2/10.')
@@ -198,7 +198,7 @@ test('bilan du jour ouvert par « + » en plein écran, copié et retrouvé dans
   await expect(page.getByText('Rien à exporter sur cette période.')).toBeVisible()
 })
 
-test('bilan : volet Repères tiré du catalogue, cochés insérés dans le texte et TUG dans les ★', async ({ page }) => {
+test('bilan : volet Repères tiré du catalogue, ✨ sans IA ajoute les repères, TUG dans les ★', async ({ page }) => {
   await page.goto('/#/?date=2026-09-22')
   await openBilan(page, 'Bernard Louis')
   const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })
@@ -216,8 +216,8 @@ test('bilan : volet Repères tiré du catalogue, cochés insérés dans le texte
   await reperes.getByRole('switch', { name: 'Voir ce qui est rempli' }).click()
   await expect(reperes.getByRole('region', { name: 'Timed Up and Go' })).toBeVisible()
   await expect(reperes.getByRole('region', { name: 'Durée de maintien de la station debout' })).toHaveCount(0)
-  // Sans IA : les lignes cochées s’ajoutent à la fin du texte, dans l’ordre du bilan.
-  await reperes.getByRole('button', { name: 'Ajouter au texte (2)' }).click()
+  // ✨ sans IA (pas de clé) : les lignes des repères s’ajoutent à la fin du texte, dans l’ordre du bilan.
+  await page.getByRole('button', { name: 'Mettre en forme avec les repères cochés' }).click()
   await expect.poll(() => bilan.innerText()).toContain('Vu au fauteuil.\nContexte : chute récente')
   await expect.poll(() => bilan.innerText()).toContain('Timed Up and Go : 18sec')
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
@@ -298,186 +298,13 @@ test('bilan annulé par la croix : il revient à son état d’ouverture', async
   await page.getByRole('textbox', { name: 'Bilan du jour pour Robert Paul' }).fill('Saisi sur le mauvais patient')
   await page.getByRole('button', { name: 'Annuler et quitter' }).click()
   await expect(page).toHaveURL(/date=2026-09-22/)
-  await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).not.toHaveClass(/filled/)
+  await expect(page.getByRole('link', { name: 'Bilan pour Robert Paul' })).not.toHaveClass(/filled/)
   await openBilan(page, 'Robert Paul')
   await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Robert Paul' })).toHaveText('')
 })
 
-test('Tinetti : cotation, volets, dictée, copie qui coche Éval, consultation et annulation', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
-  await expect(page.getByRole('tab', { name: 'Grille' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('heading', { name: 'Équilibre 0/16' })).toBeVisible()
-  await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
-  await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^2 – / }).click()
-  await page.getByRole('radiogroup', { name: '8. Rotation de 360° – Stabilité' }).getByRole('radio', { name: /^1 – / }).click()
-  await expect(page.getByRole('heading', { name: 'Équilibre 4/16' })).toBeVisible()
-  await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^2 – / }).click()
-  await expect(page.getByRole('heading', { name: 'Équilibre 2/16' })).toBeVisible()
-  // Équilibre puis marche se suivent dans le même volet.
-  await page.getByRole('radiogroup', { name: '14. Marche déviante' }).getByRole('radio', { name: /^2 – / }).click()
-  await expect(page.getByRole('heading', { name: 'Marche 2/12' })).toBeVisible()
-  await expect(page.getByLabel('Total 4 sur 28')).toBeVisible()
-  await page.getByRole('tab', { name: 'Dictée' }).click()
-  await expect(page.getByRole('tab', { name: 'Dictée' })).toHaveAttribute('aria-selected', 'true')
-  const notes = page.getByRole('textbox', { name: 'Observations Tinetti pour Petit Jeanne' })
-  await notes.click()
-  // Clavier ouvert dès qu’on touche le texte : petit micro à côté de la flèche qui rentre le clavier.
-  await expect(page.locator('.keyboard-bar').getByRole('button', { name: 'Démarrer la dictée' })).toBeVisible()
-  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-  await notes.fill('Marche prudente.')
-  await notes.evaluate((element: HTMLElement) => { const range = document.createRange(); range.setStart(element.firstChild!, 0); range.setEnd(element.firstChild!, 6); const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range) })
-  await page.getByRole('tabpanel', { name: 'Dictée' }).getByRole('button', { name: 'Gras' }).click()
-  await page.evaluate(() => {
-    const store = window as unknown as { copied?: { html: string; text: string } }
-    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
-  })
-  await page.getByRole('button', { name: 'Copier' }).click()
-  await expect.poll(() => page.evaluate(() => (window as unknown as { copied?: { html: string } }).copied?.html)).toBe('<u><b>Tinetti</b></u> : <b>4/28</b> (équilibre 2/16, marche 2/12) – cotation incomplète<br>Items non cotés : 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16.<br><b>Marche</b> prudente.')
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
 
-  await page.getByRole('link', { name: 'Bilans' }).click()
-  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
-  await page.getByLabel('Date').fill('2026-09-22')
-  await expect(page.getByText('Tinetti 4/28')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '1 / 1 bilans copiés' })).toBeVisible()
-  await page.getByRole('link', { name: 'Patients' }).click()
-  await page.getByRole('link', { name: /Petit Jeanne/ }).click()
-  await expect(page.getByLabel('Éval')).toBeChecked()
-  await expect(page.getByLabel('Trans')).not.toBeChecked()
-  await page.getByRole('button', { name: /^Séances \(/ }).click()
-  await expect(page.locator('.history-bilan')).toContainText('4/28')
 
-  // Un nouveau Tinetti annulé par la croix ne laisse rien.
-  await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Robert Paul', 'Test de Tinetti')
-  await page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^1 – / }).click()
-  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
-  await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).not.toHaveClass(/filled/)
-})
-
-test('bilan marche / équilibre : sous-modules, choix, mesures, résultat retouchable, copie et ★', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
-  await expect(page.getByRole('tab', { name: 'Formulaire' })).toHaveAttribute('aria-selected', 'true')
-  await page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: 'évaluation de suivi' }).click()
-  await page.getByRole('tab', { name: 'Marche', exact: true }).click()
-  await page.getByRole('group', { name: 'Aide technique', exact: true }).getByRole('checkbox', { name: 'avec un rollator' }).click()
-  await page.getByRole('group', { name: 'Marche', exact: true }).getByRole('checkbox', { name: 'possible avec une surveillance' }).click()
-  await page.getByRole('textbox', { name: 'Test des 10m – Temps' }).fill('18')
-  await page.getByRole('textbox', { name: 'Test des 10m – Nombre de pas' }).fill('24')
-  await expect(page.getByLabel('3 rubriques renseignées')).toBeVisible()
-  await page.getByRole('tab', { name: 'Traitement' }).click()
-  // Sous-modules à la suite : l’onglet fait défiler jusqu’au sous-module et reste allumé.
-  await expect(page.getByRole('heading', { name: 'Traitement', level: 2 })).toBeInViewport()
-  await expect(page.getByRole('tab', { name: 'Traitement' })).toHaveAttribute('aria-selected', 'true')
-  const means = page.getByRole('group', { name: 'Moyens', exact: true })
-  await means.getByRole('checkbox', { name: 'travail des réactions parachute' }).click()
-  await means.getByRole('checkbox', { name: 'travail de l’équilibre' }).click()
-  await expect(means.getByRole('checkbox', { name: 'travail de l’équilibre' })).toHaveAttribute('aria-checked', 'true')
-  await page.getByRole('tab', { name: 'Résultat' }).click()
-  const result = page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })
-  const expected = '<i><u>Évaluation kiné marche / équilibre</u></i><br><b><u>Contexte</u></b> : évaluation de suivi<br><i>Marche</i> : possible avec une surveillance, avec un rollator<br>Test des 10m : 18sec et 24 pas<br><b><u>Traitement kiné</u></b> : travail de l’équilibre et des réactions parachute'
-  await expect(result).toContainText('Test des 10m : 18sec et 24 pas')
-  await page.evaluate(() => {
-    const store = window as unknown as { copied?: { html: string; text: string } }
-    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
-  })
-  await page.getByRole('button', { name: 'Copier' }).click()
-  await expect.poll(() => page.evaluate(() => (window as unknown as { copied?: { html: string } }).copied?.html)).toBe(`<div style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;white-space:pre-wrap;">${expected}</div>`)
-  expect(await page.evaluate(() => (window as unknown as { copied: { text: string } }).copied.text)).toContain('Évaluation kiné marche / équilibre\r\nContexte : évaluation de suivi\r\n')
-  // Retouche du résultat : copiée telle quelle, puis effacée par un changement du formulaire.
-  await result.evaluate((element: HTMLElement) => { element.append(' fin'); element.dispatchEvent(new Event('input', { bubbles: true })) })
-  await expect(result).toContainText('réactions parachute fin')
-  await page.getByRole('tab', { name: 'Formulaire' }).click()
-  // Formulaire jusqu’en bas : micro seul, flottant.
-  await expect(page.locator('.bilan-dictation.floating')).toBeVisible()
-  await means.getByRole('checkbox', { name: 'pédalier' }).click()
-  await page.getByRole('tab', { name: 'Résultat' }).click()
-  await expect(result).toContainText('réactions parachute, pédalier')
-  await expect(result).not.toContainText(' fin')
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).toHaveClass(/filled/)
-  await page.getByRole('link', { name: 'Bilans' }).click()
-  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
-  await page.getByLabel('Date').fill('2026-09-22')
-  await expect(page.getByText('Marche/éq.')).toBeVisible()
-
-  // Bilan suivant : ★ sur les choix et sur la dernière mesure du test des 10 m.
-  await page.goto('/#/?date=2026-09-25')
-  await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
-  await expect(page.getByText('★ bilan précédent du 22/09/2026')).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: /évaluation de suivi/ })).toContainText('★')
-  await page.getByRole('tab', { name: 'Marche', exact: true }).click()
-  await expect(page.getByRole('region', { name: 'Test des 10m' })).toContainText('18sec et 24 pas · 22/09/2026')
-  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
-  await expect(page.getByRole('button', { name: 'Bilan pour Petit Jeanne' })).not.toHaveClass(/filled/)
-})
-
-test('test rapide : chronomètre, ★ précédente, copie qui coche Trans, reprise dans le bilan et suivi dans la fiche', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Robert Paul', 'Tests rapides')
-  await expect(page.getByRole('tab', { name: 'TUG' })).toHaveAttribute('aria-selected', 'true')
-  // ✕ sans rien saisir sur une journée jamais ouverte : elle n’est pas créée.
-  await page.getByRole('button', { name: 'Annuler et quitter' }).click()
-  const stored = await page.evaluate(() => new Promise<boolean>(resolve => {
-    const open = indexedDB.open('bmad-cy-tournee')
-    open.onsuccess = () => { const request = open.result.transaction('days').objectStore('days').get('2026-09-22'); request.onsuccess = () => { resolve(!!request.result); open.result.close() } }
-  }))
-  expect(stored).toBe(false)
-  await openBilan(page, 'Robert Paul', 'Tests rapides')
-  // Chronomètre : le temps arrêté remplit le champ.
-  await page.getByRole('button', { name: 'Démarrer' }).click()
-  await page.waitForTimeout(1200)
-  await page.getByRole('button', { name: 'Arrêter' }).click()
-  await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toHaveValue(/^1,\d$/)
-  await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('22')
-  await page.getByRole('tab', { name: 'Assis-debout 30 s' }).click()
-  await expect(page.getByRole('button', { name: 'Démarrer 30 s' })).toBeVisible()
-  await page.getByRole('textbox', { name: 'Assis-debout en 30s' }).fill('7')
-  await page.getByRole('radiogroup', { name: 'Assis-debout en 30s' }).getByRole('radio', { name: 'sans accoudoirs' }).click()
-  await expect(page.getByRole('tab', { name: /TUG/ })).toContainText('✓')
-  await page.getByRole('button', { name: 'Valider' }).click()
-  await expect(page.getByRole('button', { name: 'Bilan pour Robert Paul' })).toHaveClass(/filled/)
-
-  // Jour suivant : ★ de la dernière mesure, copie d’une ligne par test qui coche la transmission.
-  await page.goto('/#/?date=2026-09-25')
-  await openBilan(page, 'Robert Paul', 'Tests rapides')
-  await expect(page.getByRole('region', { name: 'Timed Up and Go' })).toContainText('22sec · 22/09/2026')
-  await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('18')
-  // Supprimer un test pour le refaire.
-  page.once('dialog', dialog => void dialog.accept())
-  await page.getByRole('button', { name: 'Supprimer ce test' }).click()
-  await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toHaveValue('')
-  await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('19')
-  await page.evaluate(() => {
-    const store = window as unknown as { copied?: { html: string; text: string } }
-    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
-  })
-  await page.getByRole('button', { name: 'Copier' }).click()
-  await expect.poll(() => page.evaluate(() => (window as unknown as { copied?: { html: string } }).copied?.html)).toBe('Timed Up and Go : 19sec')
-  await page.getByRole('button', { name: 'Valider' }).click()
-
-  // Bilan marche / équilibre du même jour : il propose de reprendre les tests rapides.
-  await openBilan(page, 'Robert Paul', 'Bilan marche / équilibre')
-  await expect(page.getByRole('note').filter({ hasText: 'Tests rapides du jour' })).toContainText('TUG : 19sec')
-  await page.getByRole('button', { name: 'Reprendre' }).click()
-  await page.getByRole('tab', { name: 'Transferts' }).click()
-  await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toHaveValue('19')
-  await expect(page.getByRole('region', { name: 'Assis-debout en 30s' })).toContainText('7, sans accoudoirs · 22/09/2026')
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-
-  // Onglet Bilans et fiche : tests rapides copiés (Trans cochée), suivi des tests.
-  await expect(page.getByRole('button', { name: /^Note pour Robert Paul, dernière éval ou trans le/ })).toBeVisible()
-  await page.goto('/#/bilans?date=2026-09-25')
-  await expect(page.getByText('1 / 2 bilans copiés')).toBeVisible()
-  await expect(page.getByText('Tests rapides')).toBeVisible()
-  await page.getByRole('link', { name: /Patients/ }).click()
-  await page.getByRole('link', { name: /Robert Paul/ }).click()
-  await page.getByText('Suivi des tests').click()
-  await expect(page.locator('.measures-history')).toContainText('TUG19sec (25/09/2026) · 22sec (22/09/2026)')
-})
 
 test('bande des bilans en cours : apparaît au deuxième patient, passe d’un bilan à l’autre, perd un bilan copié', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-22T10:00:00'))
@@ -487,24 +314,25 @@ test('bande des bilans en cours : apparaît au deuxième patient, passe d’un b
   await page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' }).fill('Marche avec rollator.')
   await page.getByRole('button', { name: 'Fermer le clavier' }).click()
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await openBilan(page, 'Bernard Louis', 'Test de Tinetti')
+  await openBilan(page, 'Bernard Louis')
   const strip = page.getByRole('navigation', { name: 'Bilans en cours' })
   await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toBeVisible()
-  await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
-  await expect(strip.getByRole('button', { name: 'Bernard L., Tinetti' })).toHaveAttribute('aria-current', 'page')
+  await page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' }).fill('Transferts seul.')
+  await page.getByRole('button', { name: 'Fermer le clavier' }).click()
+  await expect(strip.getByRole('button', { name: 'Bernard L., Bilan' })).toHaveAttribute('aria-current', 'page')
   await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
   await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })).toHaveText('Marche avec rollator.')
   await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toHaveAttribute('aria-current', 'page')
-  await strip.getByRole('button', { name: 'Bernard L., Tinetti' }).click()
-  await expect(page.getByRole('heading', { name: 'Équilibre 1/16' })).toBeVisible()
+  await strip.getByRole('button', { name: 'Bernard L., Bilan' }).click()
+  await expect(page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' })).toHaveText('Transferts seul.')
   await strip.getByRole('button', { name: 'Martin A., Bilan' }).click()
   // Copié, le bilan sort de la bande ; le retour mène toujours à la journée.
   await page.evaluate(() => { Clipboard.prototype.write = async () => {} })
   await page.getByRole('button', { name: 'Copier' }).click()
   await expect(strip.getByRole('button', { name: 'Martin A., Bilan' })).toHaveCount(0)
-  await expect(strip.getByRole('button', { name: 'Bernard L., Tinetti' })).toBeVisible()
+  await expect(strip.getByRole('button', { name: 'Bernard L., Bilan' })).toBeVisible()
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await expect(page.getByRole('button', { name: 'Bilan pour Martin Alice' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Bilan pour Martin Alice' })).toBeVisible()
 })
 
 test('bande des bilans en cours : un bilan non copié écrit plus tôt reste visible depuis l’autre patient', async ({ page }) => {
@@ -642,246 +470,7 @@ test.describe('dictée', () => {
     await expect.poll(() => bilan.innerHTML()).toBe('Début. Milieu dicté. Suite dictée. Fin.<br>Suite dictée.')
   })
 
-  test('assistant IA simulé : Tinetti, dictée intégrée dans le volet Résultat, retouche et validation ; correction du bilan libre', async ({ page }) => {
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
-    const bodies: { model: string; messages: { role: string; content: string }[]; response_format?: unknown }[] = []
-    await page.route('https://openrouter.ai/api/v1/chat/completions', route => {
-      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
-      const body = route.request().postDataJSON()
-      bodies.push(body)
-      const content = !body.response_format ? 'Modèle joignable.'
-        : body.messages[1].content.includes('"texte"')
-          ? JSON.stringify({ texte: 'Bonjour [patient], la patiente marche lentement. Timed Up and Go : 18 s.', mesures: { tug: '18', 'test10m.temps': '25', tinetti: '22' }, cocher: [] })
-          : JSON.stringify({ cotations: { e2: 2, e3: 1, m16: 1 }, observations: 'Marche <b>prudente</b> avec [patient].\nTransferts lents.', a_verifier: [{ ligne: 'e2', raison: 'dictée : se lève sans les bras' }, { ligne: 'm16', raison: 'talons proches ?' }, { ligne: 'm15', raison: 'non coté' }] })
-      return route.fulfill({ headers: cors, json: { choices: [{ message: { content } }] } })
-    })
-    await page.goto('/#/settings')
-    await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test5678')
-    await page.getByRole('button', { name: 'Enregistrer' }).click()
-    const model = page.getByLabel('Modèle d’analyse')
-    await model.fill('deepseek/modele-test')
-    await model.blur()
-    await page.getByRole('button', { name: 'Tester le modèle' }).click()
-    await expect(page.getByText(/^Modèle joignable \(réponse en/)).toBeVisible()
-    await page.getByText('Prompt : Synthèse du test de Tinetti').click()
-    const prompt = page.getByLabel('Prompt Synthèse du test de Tinetti')
-    await expect(prompt).toHaveValue(/Règles propres au test de Tinetti/)
-    await prompt.fill('Prompt personnalisé de test.')
-    await prompt.blur()
-    await expect(page.getByText('Prompt : Synthèse du test de Tinetti (modifié)')).toBeVisible()
 
-    // Sexe renseigné dans la fiche, utilisé pour les accords.
-    await page.getByRole('link', { name: 'Patients' }).click()
-    await page.getByRole('link', { name: /Petit Jeanne/ }).click()
-    await page.getByRole('button', { name: 'Sexe F' }).click()
-    await expect(page.getByRole('button', { name: 'Sexe F' })).toHaveAttribute('aria-pressed', 'true')
-
-    await page.goto('/#/?date=2026-09-22')
-    await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
-    await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
-    await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / }).click()
-    await page.getByRole('tab', { name: 'Dictée' }).click()
-    await page.getByRole('textbox', { name: 'Observations Tinetti pour Petit Jeanne' }).fill('Madame Petit marche prudemment, Jeanne se lève sans les bras.')
-    // Clavier ouvert par la saisie : onglets masqués ; la flèche le referme.
-    await expect(page.getByRole('tab', { name: 'Résultat' })).toBeHidden()
-    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-    // Volet Résultat : d’abord la cotation et la dictée brute, puis « Intégrer la dictée » (une passe, sans validation ligne à ligne).
-    await page.getByRole('tab', { name: 'Résultat' }).click()
-    const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
-    const result = page.getByRole('textbox', { name: 'Résultat Tinetti pour Petit Jeanne' })
-    await expect(result).toContainText('Madame Petit marche prudemment')
-    await resultPane.getByRole('button', { name: 'Intégrer la dictée' }).click()
-    await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
-    await expect.poll(() => result.innerHTML()).toContain('<b>4/28</b>')
-    // Plus de [patient] dans un texte de l’IA : la civilité (Mme, la fiche dit F), jamais le nom.
-    await expect(result).toContainText('Marche prudente avec Mme.')
-    await expect(result).not.toContainText('[patient]')
-    const request = bodies.at(-1)!
-    expect(request.model).toBe('deepseek/modele-test')
-    expect(request.messages[0].content).toBe('Prompt personnalisé de test.')
-    expect(request.messages[1].content).not.toMatch(/Petit|Jeanne/)
-    expect(JSON.parse(request.messages[1].content)).toMatchObject({ patient: 'patiente', dictee: 'Madame [patient] marche prudemment, [patient] se lève sans les bras.' })
-    // ⚠3 ramène à la grille, sur le premier point à vérifier : ✨ cotées par l’IA, ⚠ sous les lignes en conflit ou en doute, y compris non cotées.
-    await resultPane.getByRole('button', { name: '3 points à vérifier' }).click()
-    await expect(page.getByRole('tab', { name: 'Grille' })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('note')).toBeInViewport()
-    await expect(page.getByRole('heading', { name: 'Équilibre 3/16' })).toBeVisible()
-    const tries = page.getByRole('radiogroup', { name: '3. Tentatives pour se mettre debout' })
-    await expect(tries.getByRole('radio', { name: /^1 – / })).toHaveAttribute('aria-checked', 'true')
-    await expect(tries.getByRole('radio', { name: /^1 – / })).toContainText('✨')
-    await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('note')).toHaveText('⚠ dictée : se lève sans les bras')
-    await expect(page.getByRole('radiogroup', { name: '15. Tronc' }).getByRole('note')).toHaveText('⚠ non coté')
-    // Retouche du résultat au clavier puis Valider : enregistré, retour à la journée.
-    const calls = bodies.length
-    await page.getByRole('tab', { name: 'Résultat' }).click()
-    await page.getByRole('button', { name: 'Aller à la ligne' }).click()
-    await result.press('End')
-    await result.pressSequentially('Revoir dans 3 mois.')
-    await expect(result).toContainText('Revoir dans 3 mois.')
-    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-    await resultPane.getByRole('button', { name: 'Valider' }).click()
-    await expect(page).toHaveURL(/#\/\?date=2026-09-22/)
-    // Relancer sur un résultat retouché demande l’autorisation de le remplacer.
-    await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
-    await page.getByRole('tab', { name: 'Résultat' }).click()
-    await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
-    page.once('dialog', dialog => { expect(dialog.message()).toContain('Remplacer le texte retouché'); void dialog.dismiss() })
-    await resultPane.getByRole('button', { name: 'Relancer l’intégration' }).click()
-    expect(bodies.length).toBe(calls)
-    await page.getByRole('link', { name: 'Retour à la journée' }).click()
-    await page.getByRole('link', { name: 'Bilans' }).click()
-    await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
-    await page.getByLabel('Date').fill('2026-09-22')
-    await page.getByRole('button', { name: /Petit J\./ }).click()
-    await expect(page.locator('.bilan-body b', { hasText: 'prudente' })).toBeVisible()
-    await expect(page.locator('.bilan-body')).toContainText('Revoir dans 3 mois.')
-
-    // Correction du bilan libre : une seule passe, nom remis à sa place, tests reconnus à valider, correction annulable.
-    // Mesure antérieure (test rapide) pour la ★ du panneau.
-    await page.goto('/#/?date=2026-09-15')
-    await openBilan(page, 'Petit Jeanne', 'Tests rapides')
-    await page.getByRole('textbox', { name: 'Timed Up and Go – Temps' }).fill('22')
-    await page.getByRole('button', { name: 'Valider' }).click()
-    await page.goto('/#/?date=2026-09-22')
-    await openBilan(page, 'Petit Jeanne')
-    await page.getByText('★ Dernières mesures').click()
-    await expect(page.locator('.last-measures')).toContainText('TUG : 22sec · 15/09/2026')
-    const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Petit Jeanne' })
-    await bilan.fill('bonjour Jeanne, la patiente marche lentment. TUG 18 secondes.')
-    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-    await page.getByRole('button', { name: 'Corriger avec l’IA' }).click()
-    await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement. Timed Up and Go : 18 s.')
-    const correction = bodies.at(-1)!
-    expect(correction.response_format).toEqual({ type: 'json_object' })
-    const sent = JSON.parse(correction.messages[1].content)
-    expect(sent.patient).toBe('patiente')
-    expect(sent.texte).toBe('bonjour [patient], la patiente marche lentment. TUG 18 secondes.')
-    expect(correction.messages[1].content).not.toContain('Jeanne')
-    const found = page.getByRole('region', { name: 'Tests reconnus' })
-    await expect(found.getByRole('checkbox', { name: /TUG : 18sec · ★ 22sec \(15\/09\/2026\)/ })).toHaveAttribute('aria-checked', 'true')
-    // Le Tinetti dicté entre comme les autres tests ; il est écarté ici.
-    await found.getByRole('checkbox', { name: /^Tinetti : 22\/28/ }).click()
-    // Le 10 m reconnu est faux : corrigé, puis le TUG seul est gardé.
-    await found.getByRole('button', { name: 'Corriger 10 m' }).click()
-    await found.getByRole('textbox', { name: 'Test des 10m – Temps' }).fill('24')
-    await expect(found.getByRole('checkbox', { name: /10 m : 24sec/ })).toBeVisible()
-    await found.getByRole('checkbox', { name: /10 m : 24sec/ }).click()
-    await found.getByRole('button', { name: 'Enregistrer les mesures' }).click()
-    await expect(found).toHaveCount(0)
-    // Relancer la correction ne propose plus le TUG déjà enregistré.
-    await page.getByRole('button', { name: 'Corriger avec l’IA' }).click()
-    await expect(found.getByRole('checkbox', { name: /^10 m/ })).toBeVisible()
-    await expect(found.getByRole('checkbox', { name: /^TUG/ })).toHaveCount(0)
-    await expect(found.getByRole('checkbox', { name: /^Tinetti/ })).toBeVisible()
-    await found.getByRole('button', { name: 'Ignorer' }).click()
-    await page.getByRole('button', { name: 'Annuler la correction' }).click()
-    await expect(bilan).toHaveText('Bonjour Mme, la patiente marche lentement. Timed Up and Go : 18 s.')
-    // Clavier ouvert : ✨ à gauche du petit micro corrige sans fermer le clavier.
-    await bilan.click()
-    const keyboardBar = page.locator('.keyboard-bar')
-    await expect(keyboardBar.getByRole('button', { name: 'Corriger avec l’IA' })).toBeVisible()
-    const before = bodies.length
-    await keyboardBar.getByRole('button', { name: 'Corriger avec l’IA' }).click()
-    await expect.poll(() => bodies.length).toBe(before + 1)
-    await expect(keyboardBar).toBeVisible()
-    // Les tests reconnus attendent la fermeture du clavier : un compteur les signale et la provoque.
-    await keyboardBar.getByRole('button', { name: /tests? reconnus?/ }).click()
-    await expect(keyboardBar).toHaveCount(0)
-    await page.getByRole('region', { name: 'Tests reconnus' }).getByRole('button', { name: 'Ignorer' }).click()
-    // Toucher un test des dernières mesures ouvre le test rapide sur ce test ; le retour ramène au bilan.
-    await page.getByText('★ Dernières mesures').click()
-    await page.getByRole('button', { name: 'Faire le test TUG' }).click()
-    await expect(page).toHaveURL(/#\/mesures\/2026-09-22\/.+\?test=tug/)
-    await expect(page.getByRole('textbox', { name: 'Timed Up and Go – Temps' })).toBeVisible()
-    await page.getByRole('link', { name: 'Retour au bilan' }).click()
-    await expect(bilan).toBeVisible()
-    // Le bilan garde son origine (ici la journée) après l’aller-retour.
-    await page.getByRole('link', { name: 'Retour à la journée' }).click()
-    await expect(page).toHaveURL(/#\/\?date=2026-09-22/)
-    await page.getByRole('link', { name: /Patients/ }).click()
-    await page.getByRole('link', { name: /Petit Jeanne/ }).click()
-    await page.getByText('Suivi des tests').click()
-    await expect(page.locator('.measures-history')).toContainText('TUG18sec (22/09/2026) · 22sec (15/09/2026)')
-  })
-
-  test('assistant IA simulé : dictée intégrée au bilan marche / équilibre', async ({ page }) => {
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }
-    const bodies: { messages: { role: string; content: string }[] }[] = []
-    await page.route('https://openrouter.ai/api/v1/chat/completions', route => {
-      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
-      bodies.push(route.request().postDataJSON())
-      const content = JSON.stringify({ cocher: ['marche.3', 'aideTechnique.8', 'contexte.1'], valeurs: { tug: '18', 'commentaires.ia': 'Souriante.' }, a_verifier: [{ champ: 'marche', raison: 'surveillance ou guidance ?' }] })
-      return route.fulfill({ headers: cors, json: { choices: [{ message: { content } }] } })
-    })
-    await page.goto('/#/settings')
-    await page.getByLabel('Clé OpenRouter').fill('sk-or-v1-test9012')
-    await page.getByRole('button', { name: 'Enregistrer' }).click()
-    const model = page.getByLabel('Modèle d’analyse')
-    await model.fill('deepseek/modele-test')
-    await model.blur()
-    await page.getByLabel('Réflexion du modèle (intégration des tests)').selectOption('medium')
-    await page.getByText('Prompt : Intégration de la dictée au bilan marche / équilibre').click()
-    await expect(page.getByLabel('Prompt Intégration de la dictée au bilan marche / équilibre')).toHaveValue(/Règles propres au bilan marche \/ équilibre/)
-
-    await page.goto('/#/?date=2026-09-22')
-    await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
-    await page.getByRole('group', { name: 'Contexte', exact: true }).getByRole('checkbox', { name: 'évaluation de suivi' }).click()
-    await page.getByRole('tab', { name: 'Dictée' }).click()
-    const notes = page.getByRole('textbox', { name: 'Dictée marche / équilibre pour Petit Jeanne' })
-    await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
-    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-    await page.getByRole('tab', { name: 'Résultat' }).click()
-    const resultPane = page.getByRole('tabpanel', { name: 'Résultat' })
-    const result = page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })
-    await expect(result).not.toContainText('Marche :')
-    await resultPane.getByRole('button', { name: 'Intégrer la dictée' }).click()
-    await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration' })).toHaveClass(/done/)
-    await expect(resultPane.getByRole('button', { name: '1 point à vérifier' })).toBeVisible()
-    await expect(result).toContainText('Marche : possible avec une surveillance, avec un rollator')
-    await expect(result).toContainText('Timed Up and Go : 18sec')
-    await expect(result).toContainText('Souriante.')
-    await expect(result).not.toContainText('Autres commentaires')
-    // Lignes complétées par l’IA en couleur (orange pour celle à vérifier) ; la copie reste en noir.
-    await expect(result.locator('.ai-line')).toHaveCount(3)
-    await expect(result.locator('.ai-line.doubt')).toContainText('Marche :')
-    // Réflexion réglée dans Réglages (Moyenne ici) : le niveau part avec la demande.
-    expect((bodies.at(-1) as unknown as { reasoning: unknown }).reasoning).toEqual({ effort: 'medium' })
-    const sent = bodies.at(-1)!.messages[1].content
-    expect(sent).not.toMatch(/Petit|Jeanne/)
-    expect(JSON.parse(sent).dictee).toBe('[patient] marche avec son rollator sous surveillance, TUG 18 secondes, souriante.')
-    // Dans le formulaire : ✨ sur les ajouts, ⚠ sur la rubrique ; une retouche à la main efface les marques de la rubrique.
-    await page.getByRole('tab', { name: 'Formulaire' }).click()
-    const walk = page.getByRole('region', { name: 'Marche', exact: true })
-    await expect(walk.getByRole('checkbox', { name: /possible avec une surveillance/ })).toHaveAttribute('aria-checked', 'true')
-    await expect(walk.getByRole('checkbox', { name: /possible avec une surveillance/ })).toContainText('✨')
-    await expect(walk.getByRole('note')).toHaveText('⚠ surveillance ou guidance ?')
-    await walk.getByRole('checkbox', { name: /possible avec une surveillance/ }).click()
-    await walk.getByRole('checkbox', { name: /possible avec une guidance/ }).click()
-    await expect(walk.getByRole('note')).toHaveCount(0)
-    await expect(page.getByRole('textbox', { name: 'Autres commentaires – Ajouté par l’IA d’après la dictée' })).toHaveValue('Souriante.')
-    // Dictée modifiée après l’intégration : pastille orange sur ✨.
-    await page.getByRole('tab', { name: 'Dictée' }).click()
-    await notes.fill('Jeanne marche avec son rollator sous surveillance, TUG 18 secondes, souriante. Fatigue.')
-    await page.getByRole('button', { name: 'Fermer le clavier' }).click()
-    await page.getByRole('tab', { name: 'Résultat' }).click()
-    await expect(resultPane.getByRole('button', { name: 'Relancer l’intégration (dictée modifiée depuis)' })).toHaveClass(/stale/)
-    await expect(result).toContainText('Marche : possible avec une guidance, avec un rollator')
-    // ↶ : les ajouts intacts de l’IA partent, la saisie à la main reste.
-    await resultPane.getByRole('button', { name: 'Annuler l’intégration' }).click()
-    await expect(result).not.toContainText('Timed Up and Go')
-    await expect(result).not.toContainText('Souriante')
-    await expect(result).toContainText('Marche : possible avec une guidance')
-    await expect(result).not.toContainText('rollator')
-    await expect(resultPane.getByRole('button', { name: 'Intégrer la dictée' })).toBeVisible()
-    // Corbeille : efface toute la dictée, sans confirmation.
-    await page.getByRole('tab', { name: 'Dictée' }).click()
-    await page.getByRole('button', { name: 'Effacer toute la dictée' }).click()
-    await expect(notes).toHaveText('')
-    await page.getByRole('tab', { name: 'Résultat' }).click()
-    await expect(resultPane.getByRole('button', { name: 'Intégrer la dictée' })).toBeDisabled()
-    await resultPane.getByRole('button', { name: 'Valider' }).click()
-    await expect(page).toHaveURL(/#\/\?date=2026-09-22/)
-  })
 })
 
 test('patient pointé puis archivé le jour même : il reste visible et corrigeable, renommé dans l’export', async ({ page }) => {
@@ -985,7 +574,7 @@ test('patient en attente d’une séance : interrupteur dans la fiche, « ! » r
   expect(await row.locator('.waiting-mark').evaluate(element => getComputedStyle(element).color)).toBe('rgb(196, 59, 51)')
   expect((await row.locator('.waiting-mark').boundingBox())!.x).toBeLessThan((await row.getByText('Martin A.').boundingBox())!.x + 1)
   await expect(page.locator('.tour-list .waiting-mark')).toHaveCount(1)
-  await row.getByRole('link').click()
+  await row.getByRole('link', { name: /Martin A\./ }).click()
   await page.getByRole('switch', { name: 'Attend une séance' }).click()
   await page.getByRole('link', { name: '← jeudi 24 septembre' }).click()
   await expect(page.locator('.tour-list .waiting-mark')).toHaveCount(0)
@@ -1087,71 +676,9 @@ test('prescription : fin calculée depuis la date et la durée, surveillance ora
   await expect(page.getByRole('link', { name: /Martin A\. \(Ordonnance : fin dans 6 j\)/ })).toBeVisible()
 })
 
-test('onglet Bilans : « Tout copier » met bout à bout les bilans d’un patient et les marque tous copiés', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-23')
-  await openBilan(page, 'Martin Alice', 'Test de Tinetti')
-  await page.getByRole('radiogroup', { name: '1. Équilibre en position assise' }).getByRole('radio', { name: /^1 – / }).click()
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await openBilan(page, 'Bernard Louis')
-  await page.getByRole('textbox', { name: 'Bilan du jour pour Bernard Louis' }).fill('Bilan seul.')
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await openBilan(page, 'Martin Alice')
-  await page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' }).fill('Transferts autonomes.')
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
 
-  await page.getByRole('link', { name: 'Bilans' }).click()
-  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
-  await page.getByLabel('Date').fill('2026-09-23')
-  await expect(page.locator('.bilan-summary strong')).toHaveText(['Martin A.', 'Bernard L.', 'Martin A.'])
-  await expect(page.locator('.copy-all-list li')).toHaveCount(1)
-  await expect(page.locator('.copy-all-list li')).toContainText('Martin A. · 2 bilans')
-  // La copie un par un reste disponible.
-  await expect(page.getByRole('button', { name: 'Copier le Tinetti de Martin Alice' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Copier le bilan de Martin Alice' })).toBeVisible()
-  await page.evaluate(() => {
-    const store = window as unknown as { copied?: { html: string; text: string } }
-    Clipboard.prototype.write = async function (items: ClipboardItem[]) { store.copied = { html: await (await items[0].getType('text/html')).text(), text: await (await items[0].getType('text/plain')).text() } }
-  })
-  await page.getByRole('button', { name: 'Tout copier pour Martin Alice' }).click()
-  await expect(page.getByRole('button', { name: 'Tout copié' })).toBeVisible()
-  const copied = await page.evaluate(() => (window as unknown as { copied: { html: string; text: string } }).copied)
-  expect(copied.html).toMatch(/^<u><b>Tinetti<\/b><\/u> : <b>1\/28<\/b>.*<br><br>Transferts autonomes\.$/)
-  expect(copied.text).toMatch(/^Tinetti : 1\/28[^]*\n\nTransferts autonomes\.$/)
-  await expect(page.getByRole('heading', { name: '2 / 3 bilans copiés' })).toBeVisible()
-  await expect(page.locator('.bilan-list li.copied')).toHaveCount(2)
-  await expect(page.locator('.bilan-list li', { hasText: 'Bernard L.' })).not.toHaveClass(/copied/)
 
-  await page.getByRole('link', { name: 'Patients' }).click()
-  await page.getByRole('link', { name: /Martin Alice/ }).click()
-  await expect(page.getByRole('checkbox', { name: 'Éval' })).toBeChecked()
-  await expect(page.getByRole('checkbox', { name: 'Trans' })).toBeChecked()
-  await page.getByRole('link', { name: '← Patients' }).click()
-  await page.getByRole('link', { name: /Bernard Louis/ }).click()
-  await expect(page.getByRole('checkbox', { name: 'Trans' })).not.toBeChecked()
-})
-
-test('Tinetti : Max et Min remplissent les lignes vides, sans toucher aux lignes cochées', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-25')
-  await openBilan(page, 'Robert Paul', 'Test de Tinetti')
-  await page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / }).click()
-  await page.getByRole('button', { name: 'Lignes vides au maximum' }).click()
-  await expect(page.getByLabel('Total 27 sur 28')).toBeVisible()
-  await expect(page.getByRole('radiogroup', { name: '2. Se mettre debout' }).getByRole('radio', { name: /^1 – / })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('button', { name: 'Lignes vides au minimum' })).toBeDisabled()
-  // Décocher une ligne puis compléter au minimum : seule cette ligne passe à 0.
-  await page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^1 – / }).click()
-  await expect(page.getByLabel('Total 26 sur 28')).toBeVisible()
-  await page.getByRole('button', { name: 'Lignes vides au minimum' }).click()
-  await expect(page.getByRole('radiogroup', { name: '7. Yeux fermés (pieds joints)' }).getByRole('radio', { name: /^0 – / })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByLabel('Total 26 sur 28')).toBeVisible()
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  await page.getByRole('link', { name: 'Bilans' }).click()
-  await expect(page.getByRole('heading', { name: /bilans copiés|Aucun bilan ce jour/ })).toBeVisible()
-  await page.getByLabel('Date').fill('2026-09-25')
-  await expect(page.getByText('Tinetti 26/28')).toBeVisible()
-})
-
-test('carnet des médecins dans Réglages, médecin choisi dans la fiche, antécédents repris dans le bilan marche / équilibre', async ({ page }) => {
+test('carnet des médecins dans Réglages, médecin choisi dans la fiche, antécédents repris dans les repères du bilan', async ({ page }) => {
   await page.goto('/#/settings')
   const carnet = page.getByRole('region', { name: 'Carnet des médecins' })
   await carnet.getByRole('button', { name: 'Ajouter' }).click()
@@ -1179,16 +706,13 @@ test('carnet des médecins dans Réglages, médecin choisi dans la fiche, antéc
   await carnet.getByLabel('Nom').fill('Dr Fictif-Essai')
   await carnet.getByRole('button', { name: 'Enregistrer' }).click()
   await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Petit Jeanne', 'Bilan marche / équilibre')
-  const atcd = page.getByRole('textbox', { name: 'Antécédents – Antécédents' })
+  await openBilan(page, 'Petit Jeanne')
+  await page.getByRole('tab', { name: 'Repères' }).click()
+  const atcd = page.getByRole('tabpanel', { name: 'Repères' }).getByRole('textbox', { name: 'Antécédents', exact: true })
   await atcd.fill('Chute en 2025')
   await page.getByRole('button', { name: 'Reprendre de la fiche' }).click()
   await expect(atcd).toHaveValue('Chute en 2025\nPTH droite')
   await expect(page.getByRole('button', { name: 'Reprendre de la fiche' })).toBeDisabled()
-  // Le Tinetti est un test du formulaire comme les autres.
-  await page.getByRole('textbox', { name: 'Test de Tinetti – Score total' }).fill('22')
-  await page.getByRole('tab', { name: 'Résultat' }).click()
-  await expect(page.getByRole('textbox', { name: 'Compte rendu marche / équilibre pour Petit Jeanne' })).toContainText('Tinetti : 22/28')
   await page.goto('/#/patients')
   await page.getByRole('link', { name: /Petit Jeanne/ }).click()
   await expect(page.getByLabel('Médecin traitant')).toHaveValue('Dr Fictif-Essai')
@@ -1358,77 +882,50 @@ test.describe('mise en forme', () => {
   })
 })
 
-test('Tinetti : TUG chronométré pendant la marche, barre fixe, enregistré à part et ajouté au résultat', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Petit Jeanne', 'Test de Tinetti')
-  await page.getByRole('button', { name: '⏱ TUG', exact: true }).click()
-  const bar = page.getByRole('group', { name: 'Chronomètre du TUG' })
-  // La barre reste visible pendant que l’on descend coter la marche.
-  await page.getByRole('radiogroup', { name: '16. Écartement des pieds' }).getByRole('radio', { name: /^1 – / }).click()
-  await expect(bar).toBeInViewport()
-  await bar.getByRole('button', { name: 'Arrêter' }).click()
-  await bar.getByLabel('Temps du TUG en secondes').fill('17')
-  await bar.getByRole('button', { name: 'Enregistrer le TUG' }).click()
-  await expect(bar).toHaveCount(0)
-  await expect(page.getByRole('button', { name: '⏱ TUG · 17 s' })).toBeVisible()
-  await page.getByRole('tab', { name: 'Résultat' }).click()
-  await expect(page.getByRole('textbox', { name: 'Résultat Tinetti pour Petit Jeanne' })).toContainText('Timed Up and Go : 17sec')
-  await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  // Le lendemain, ce TUG est la dernière mesure ★ du bilan libre.
-  await page.goto('/#/?date=2026-09-23')
-  await openBilan(page, 'Petit Jeanne')
-  await page.locator('.last-measures summary').click()
-  await expect(page.locator('.last-measures')).toContainText('TUG : 17sec')
-})
 
-test('repères : Tinetti par le « + », TUG par étapes, détail au choix, récapitulatif NetSoin et ★ de la fiche', async ({ page }) => {
+
+
+test('tests NS dans les repères : chronomètre unique avec ✕, TUG par étapes, commentaire commun, NS validé, suivi et ★ de la fiche', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-22T10:00:00'))
   await page.goto('/#/?date=2026-09-22')
   await openBilan(page, 'Martin Alice')
   await page.getByRole('tab', { name: 'Repères' }).click()
   const reperes = page.getByRole('tabpanel', { name: 'Repères' })
   await reperes.getByRole('button', { name: 'Ouvrir un bilan ou un test' }).click()
   await reperes.getByRole('menuitem', { name: 'Tinetti' }).click()
-  await expect(reperes.getByRole('region', { name: 'Tinetti' })).toBeVisible()
-  await expect(reperes.getByRole('region', { name: 'Timed Up and Go' })).toHaveCount(0)
+  await expect(reperes.getByRole('button', { name: /Revenir à tous les repères/ })).toBeVisible()
   await reperes.getByRole('radiogroup', { name: /Équilibre en position assise/ }).getByRole('radio').last().click()
-  // TUG par étapes lancé depuis le Tinetti : 5 touches, la barre reste en haut du volet.
+  // Un toucher lance tout de suite ; ✕ annule sans rien enregistrer.
   await reperes.getByRole('button', { name: '⏱ TUG par étapes' }).click()
-  const bar = reperes.getByRole('group', { name: 'Chronomètre du TUG' })
+  const bar = reperes.getByRole('group', { name: 'Chronomètre : TUG par étapes' })
+  await bar.getByRole('button', { name: 'Étape suivante' }).click()
+  await bar.getByRole('button', { name: 'Annuler le chronomètre' }).click()
+  await expect(bar).toHaveCount(0)
+  await reperes.getByRole('button', { name: '⏱ TUG par étapes' }).click()
   for (let step = 0; step < 4; step++) await bar.getByRole('button', { name: 'Étape suivante' }).click()
   await bar.getByRole('button', { name: 'Fin' }).click()
-  await expect(bar.getByText('Total')).toBeVisible()
-  await bar.getByRole('button', { name: 'Enregistrer le TUG' }).click()
-  await reperes.getByRole('group', { name: /Détail des cotations/ }).getByRole('checkbox').click()
-  await reperes.getByRole('button', { name: /Ajouter au texte/ }).click()
-  const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Martin Alice' })
-  await expect.poll(() => bilan.innerText()).toMatch(/Tinetti : 1\/28/)
-  await expect.poll(() => bilan.innerText()).toMatch(/Cotations : 1 – – – – · /)
-  await expect.poll(() => bilan.innerText()).toMatch(/Timed Up and Go : 0sec/)
-  await expect.poll(() => bilan.innerText()).not.toMatch(/risque/)
+  await expect(bar).toHaveCount(0)
+  await reperes.getByRole('textbox', { name: /Commentaire des tests NS/ }).first().fill('Aide du déambulateur.')
   await page.getByRole('link', { name: 'Retour à la journée' }).click()
-  // Onglet Bilans : valeurs à recopier dans NetSoin.
+  // Onglet Bilans : « NS », gros chiffres, commentaire, ✓ par test.
   await page.goto('/#/bilans?date=2026-09-22')
   await page.getByRole('button', { name: 'Valeurs à recopier dans NetSoin pour Martin Alice' }).click()
   await expect(page.getByLabel('Cotations du Tinetti')).toContainText('1 – – – –')
-  await expect(page.getByLabel('Étapes du TUG')).toContainText('Demi-tour 0 s')
-  // Fiche : ★ près du nom, puis test rapide du jour sur le TUG.
+  await expect(page.getByLabel('Étapes du TUG')).toContainText('0 0 0 0 0')
+  await expect(page.getByLabel('À recopier dans NetSoin', { exact: true })).toContainText('Aide du déambulateur.')
+  await page.getByRole('button', { name: 'Valider : Tinetti recopié dans NetSoin' }).click()
+  await page.getByRole('button', { name: 'Valider : TUG recopié dans NetSoin' }).click()
+  await expect(page.getByLabel('À recopier dans NetSoin', { exact: true })).toHaveCount(0)
+  // Fiche : dernier test NS et Éval cochée ; liste filtrée sur les tests NS en retard.
   await page.goto('/#/patients')
-  await page.getByRole('link', { name: /Martin Alice/ }).first().click()
+  await page.getByLabel('Dernier test NS').selectOption('retard')
+  await expect(page.getByRole('link', { name: /Martin Alice/ })).toHaveCount(0)
+  await page.getByLabel('Dernier test NS').selectOption('ajour')
+  await page.getByRole('link', { name: /Martin Alice/ }).click()
+  await expect(page.getByText('Dernier test NS : 22/09')).toBeVisible()
+  // ★ près du nom : un test ouvre le bilan libre du jour, sur ce test seul.
   await page.getByRole('button', { name: 'Dernières mesures des tests' }).click()
-  await expect(page.getByRole('list', { name: 'Dernières mesures' })).toContainText('TUG')
-})
-
-test('test rapide : TUG par étapes, à la seconde, puis récapitulatif NetSoin', async ({ page }) => {
-  await page.goto('/#/?date=2026-09-22')
-  await openBilan(page, 'Bernard Louis', 'Tests rapides')
-  await page.getByRole('button', { name: '⏱ TUG par étapes' }).click()
-  const bar = page.getByRole('group', { name: 'Chronomètre du TUG' })
-  for (let step = 0; step < 4; step++) await bar.getByRole('button', { name: 'Étape suivante' }).click()
-  await bar.getByRole('button', { name: 'Fin' }).click()
-  await bar.getByRole('button', { name: 'Enregistrer le TUG' }).click()
-  await expect(page.getByLabel('Étapes du TUG')).toContainText('Total 0 s')
-  await page.getByRole('button', { name: 'Valider' }).click()
-  await page.goto('/#/bilans?date=2026-09-22')
-  await page.getByRole('button', { name: 'Valeurs à recopier dans NetSoin pour Bernard Louis' }).click()
-  await expect(page.getByLabel('Étapes du TUG')).toContainText('Assis → debout 0 s')
+  await page.getByRole('button', { name: 'Faire le test TUG' }).click()
+  await expect(page).toHaveURL(/#\/bilan\/2026-09-22\/.*test=tug/)
+  await expect(page.getByRole('tabpanel', { name: 'Repères' }).getByRole('region', { name: 'Timed Up and Go' })).toBeVisible()
 })

@@ -2,12 +2,12 @@ import { hasTestContent, type TestRecord, type TestType } from '../domain/tinett
 import { hasFlexContent, type FlexInput } from '../domain/marcheEquilibre'
 import { hasFormContent, type BilanForm } from '../domain/catalog'
 import { db, PRIVATE_SETTINGS, type OrderTemplate, type Setting, type TourDatabase } from './database'
-import { applyOrder, careDefaults, doctorKey, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, plannedOn, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Doctor, type Entry, type Identity, type Mood, type Patient, type PatientCare } from '../domain/model'
+import { applyOrder, careDefaults, doctorKey, DURATION_UNITS, effectivePrescriptionEnd, hasTrace, identityKey, identityOf, localDate, parseDate, plannedOn, SEPARATORS, toggleDate, toggleSession, validDate, type Day, type Doctor, type Entry, type Identity, type Mood, type Patient, type NsTest, type PatientCare } from '../domain/model'
 export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bilanCopied' | 'bilanEditedAt' | 'bilanMeasures' | 'bilanForm'>
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[]; doctors: Doctor[] }
 // GRP, sexe, attente, pause, antécédents et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
-const NOT_IMPORTED = ['group', 'sex', 'waiting', 'paused', 'pauseReason', 'atcdKine', 'atcdOther', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
+const NOT_IMPORTED = ['nsDates', 'group', 'sex', 'waiting', 'paused', 'pauseReason', 'atcdKine', 'atcdOther', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
 type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'atcdKine' | 'atcdOther'
 // Jours prévus retenus dans la journée (aujourd’hui et après) : une fiche modifiée plus tard ne change pas le passé.
@@ -194,6 +194,23 @@ export class TourRepository {
         if (snapshot[key] === undefined) delete entry[key]
         else (entry as unknown as Record<string, unknown>)[key] = snapshot[key]
       }
+    })
+  }
+  // Test NS recopié dans NetSoin (✓ du bouton NS) : coche « Éval » le jour de la recopie et note la date du test
+  // (dernier test NS du résident) ; l’empreinte des valeurs recopiées permet de signaler une modification ultérieure.
+  async validateNs(date: string, id: string, test: NsTest, fingerprint: string): Promise<void> {
+    if (!validDate(date)) throw new Error('Choisissez une date valide.')
+    await this.database.transaction('rw', this.database.days, this.database.patients, async () => {
+      const day = await this.database.days.get(date)
+      const entry = day?.entries[id]
+      if (!day || !entry) throw new Error('Ce bilan n’existe plus.')
+      entry.ns = { ...entry.ns, [test]: fingerprint }
+      await this.database.days.put(day)
+      const patient = await this.database.patients.get(id)
+      if (!patient) return
+      const today = this.today()
+      const add = (list: string[] | undefined, value: string) => (list ?? []).includes(value) ? (list ?? []) : [...(list ?? []), value].sort()
+      await this.database.patients.put({ ...patient, evalDates: add(patient.evalDates, today), nsDates: add(patient.nsDates, date) })
     })
   }
   // Copier un bilan vaut transmission faite le jour de la copie (cochée dans la fiche si le patient existe encore).

@@ -48,6 +48,10 @@ export class TourDatabase extends Dexie {
       if (patient.atcdKine === undefined) patient.atcdKine = ''
       if (patient.atcdOther === undefined) patient.atcdOther = ''
     }))
+    // v10 : dates des tests NS recopiés dans NetSoin (suivi et filtre de la liste), vides par défaut.
+    this.version(10).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key', doctors: 'id' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.nsDates === undefined) patient.nsDates = []
+    }))
   }
 }
 export const db = new TourDatabase()

@@ -1,17 +1,23 @@
-import type { NetsoinRecap } from '../../domain/netsoin'
-import { TUG_STEPS } from '../../domain/tug'
+import { nsDone, type NetsoinRecap } from '../../domain/netsoin'
+import type { NsTest, NsValidations } from '../../domain/model'
 
-// Récapitulatif à recopier dans NetSoin : cotations du Tinetti en gros chiffres, par groupes de 5 dans l’ordre de NetSoin
-// (item 9 à la fin), et durées du TUG par étapes à la seconde.
-export function NetsoinPanel({ recap }: { recap: NetsoinRecap }) {
+// Valeurs à recopier dans NetSoin (bouton « NS ») : en gros chiffres, dans l’ordre de NetSoin. Tinetti : 20 cotations par
+// groupes de 5 (item 9 à la fin) ; TUG : 5 durées puis le total. Le commentaire commun des tests NS suit.
+// ✓ vert par test, une fois recopié : replie, coche « Éval » et note le dernier test NS du résident.
+export function NetsoinPanel({ recap, ns, onDone }: { recap: NetsoinRecap; ns?: NsValidations; onDone: (test: NsTest, fingerprint: string) => void }) {
+  const done = (test: NsTest) => nsDone(recap, test, ns)
+  const validate = (test: NsTest) => <button type="button" className={`ns-validate${done(test) ? ' done' : ''}`} aria-label={done(test) ? `${test === 'tug' ? 'TUG' : 'Tinetti'} recopié dans NetSoin` : `Valider : ${test === 'tug' ? 'TUG' : 'Tinetti'} recopié dans NetSoin`} onClick={() => onDone(test, recap[test]!.fingerprint)}>✓</button>
   return <div className="netsoin" aria-label="À recopier dans NetSoin">
     {recap.tinetti && <section aria-label="Cotations du Tinetti">
-      <h3>Tinetti · {recap.tinetti.total}/28</h3>
+      <h3>Tinetti · {recap.tinetti.total}/28{done('tinetti') && <span className="ns-done"> · recopié</span>}</h3>
       <ol className="netsoin-groups">{recap.tinetti.groups.map(group => <li key={group.from}><span className="netsoin-items">{group.from}–{group.to}</span><span className="netsoin-values">{group.values.join(' ')}</span></li>)}</ol>
+      {validate('tinetti')}
     </section>}
     {recap.tug && <section aria-label="Étapes du TUG">
-      <h3>TUG · {recap.tug.total} s</h3>
-      <ol className="tug-steps">{TUG_STEPS.map((step, index) => <li key={step.key}>{step.label} <b>{recap.tug!.steps[index]} s</b></li>)}<li className="tug-total">Total <b>{recap.tug.total} s</b></li></ol>
+      <h3>TUG · total {recap.tug.total} s{done('tug') && <span className="ns-done"> · recopié</span>}</h3>
+      <p className="netsoin-values netsoin-tug">{recap.tug.steps.join(' ')}</p>
+      {validate('tug')}
     </section>}
+    {recap.comment && <p className="netsoin-comment"><span>Commentaire</span> {recap.comment}</p>}
   </div>
 }

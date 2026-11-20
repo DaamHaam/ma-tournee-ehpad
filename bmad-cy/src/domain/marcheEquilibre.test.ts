@@ -57,7 +57,7 @@ describe('bilan marche / équilibre', () => {
     expect(marcheEquilibreHtml(input).split('<br>').slice(1)).toEqual([
       '<b><u>Antécédents</u></b> : PTH droite',
       'Nombre de passages assis-debout en 30s : 0, sans accoudoirs',
-      'Timed Up and Go : 18sec',
+      'Timed Up and Go : 17sec',
       '<i>Aide technique</i> : avec une canne simple',
       'Périmètre de marche : supérieur à 100m, avec rollator, limité par la fatigabilité, lui permettant de marcher jusqu’au rez-de-chaussée, pauses',
       'Temps trajet chambre-RDC : 2 min 30 s, avec canne simple',

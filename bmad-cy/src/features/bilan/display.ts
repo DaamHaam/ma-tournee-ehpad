@@ -34,7 +34,8 @@ export function clipboardContent(kind: BilanKind, html: string): { html: string;
   if (kind !== 'marcheEquilibre') return { html, text }
   return { html: `<div style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;white-space:pre-wrap;">${html}</div>`, text: text.replace(/\n/g, '\r\n') }
 }
-export function editPath(kind: BilanKind, date: string, id: string): string { return `/${kind === 'bilan' ? 'bilan' : kind}/${date}/${id}` }
+// Tout se modifie dans le bilan libre du jour (les anciens écrans de tests n’existent plus ; leurs bilans restent lisibles).
+export function editPath(_kind: BilanKind, date: string, id: string): string { return `/bilan/${date}/${id}` }
 // Patients ayant au moins deux bilans ou tests ce jour-là, dans l’ordre d’affichage (première apparition), chacun avec ses bilans dans ce même ordre.
 // Générique : tout nouveau type de bilan listé par dayBilans y entre sans changement.
 export interface BilanGroup { id: string; patient: Identity; items: DayBilan[] }

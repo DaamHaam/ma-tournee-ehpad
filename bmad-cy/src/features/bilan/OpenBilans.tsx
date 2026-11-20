@@ -19,7 +19,8 @@ export function OpenBilansStrip({ date, id, kind, beforeLeave }: { date: string;
   const [leaving, setLeaving] = useState(false)
   const today = useToday()
   if (!day || date !== today) return null
-  const items = openBilans(day)
+  // Seuls les bilans libres (les anciens tests ne se rouvrent plus).
+  const items = openBilans(day).filter(item => item.kind === 'bilan')
   const current = (item: { id: string; kind: BilanKind }) => item.id === id && item.kind === kind
   if (!items.some(item => !current(item))) return null
   const go = async (target: { id: string; kind: BilanKind }) => {
