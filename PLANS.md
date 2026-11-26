@@ -43,6 +43,10 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
 13. **Suivi des tests NS à revoir** : un Tinetti recopié à la main dans NetSoin n'est pas compté (« Dernier test NS : jamais »), car seul le ✓ vert du panneau NS (onglet Bilans → bouton « NS ») l'enregistre ; copier le bilan ne suffit pas.
    - Damien réfléchit à un meilleur suivi des bilans NS. À reprendre avec lui : rendre le ✓ plus visible, ou proposer « Recopié dans NetSoin ? » au moment de la copie, ou permettre de saisir la date d'un test NS déjà fait.
 14. **Journée : « !!! » = fond orange seul**, sans les trois points d'exclamation devant le nom (le motif reste affiché ?). « ! » et « !! » inchangés.
+15. **TUG par étapes — retour visuel** : numéro d'étape en grand (3/5, 4/5…) et petit signal à chaque toucher de « Étape suivante » ; chaque durée remplit sa case dès la fin de l'étape (on voit le test avancer).
+16. **TUG par étapes — ★ par étape** : à côté de chaque case, en petit, la ★ avec la durée précédente de cette étape et sa date.
+17. **Chronomètre du TUG (simple et par étapes) — bouton Pause** : arrête le temps là où il en est (patient qui s'arrête, ne comprend pas), puis reprise.
+   - À préciser : la pause s'étend-elle aux autres chronomètres (10 m, 6 min…) ?
 
 ## Plan 3 — pour plus tard
 
