@@ -12,13 +12,21 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
 
 SPPB dans les repères (points et total calculés depuis le catalogue), couleurs de fin d’ordonnance revues, pointage définitif corrigeable après coup, niveaux d’alerte « ! » « !! » « !!! », favori Chrome « Remplir le TUG » pour NetSoin. Tests à faire : voir « Tests à valider ».
 
-## Plan 2 — pour plus tard
+## Plan 2 — en préparation
 
 1. **Suivi des retraits du pointage définitif** — pour équilibrer les patients vus mais non pointés (remplace le post-it à bâtons).
    - Idée (2026-11-26) : une **date de début de la session de pointage** (ex. 1er novembre pour un pointage octobre-novembre) ; à côté de chaque patient du pointage, un petit chiffre = nombre de fois où il est passé d'orange (B) à « Non pointés » depuis cette date ; le chiffre monte au fil des jours, on voit qui a déjà souvent sauté.
    - Décidé : le chiffre seulement sur les boutons des patients ; pas de récapitulatif en tête de la vue (s'il en faut un un jour, en dehors de la liste, pour pouvoir copier la liste seule) ; on ne compte que les oranges retirés, pas les bleus.
    - Décidé : la période d'export du pointage reprend par défaut la date de début de session, et sa fin par défaut = début + 2 mois ronds (ex. 1er octobre → fin novembre) ; les deux restent modifiables (1 ou 3 mois).
    - Les retraits sont déjà enregistrés jour par jour (`entry.unpointed`) : le compte se calcule sans rien stocker de plus que la date de début.
+2. **Ordre des « ★ Dernières mesures »** (bilan libre) : d'abord les tests faits le plus de fois ; à nombre égal, le plus récent en haut.
+   - À préciser : même ordre pour la ★ de la fiche patient (aujourd'hui : plus fréquents d'abord, sans départager par la date).
+3. **Historique du patient depuis le haut de la fiche** : une petite icône en haut à droite de la fiche ouvre l'historique complet du patient, dans l'ordre : notes du jour, séances, bilans et transmissions (copiés ou non, signalés comme tels).
+   - À préciser : plus récent en haut ? remplace-t-il le bouton « Séances (n) » du bas de la fiche, ou s'y ajoute-t-il ? les tests NS (✓ recopié) y figurent-ils aussi ?
+
+## Plan 3 — pour plus tard
+
+(rien pour l'instant)
 
 ## À faire sur le Mac
 
