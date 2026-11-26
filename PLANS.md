@@ -34,8 +34,6 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
 
 - **Mode express** (à porter dans la charte) : pendant les visites, Damien lance des idées sans répondre aux détails ; l'agent note, répond « OK » et garde ses questions pour plus tard.
 
-(rien pour l'instant)
-
 ## À faire sur le Mac
 
 - Production Convex (même contenu que le développement, site et applications branchés dessus) et suppression de la branche `dev` de l'organisateur : `organisateur-bilans/docs/A_FAIRE_MAC.md`.
