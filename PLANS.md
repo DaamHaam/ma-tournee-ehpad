@@ -21,7 +21,13 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
    - Les retraits sont déjà enregistrés jour par jour (`entry.unpointed`) : le compte se calcule sans rien stocker de plus que la date de début.
 2. **Ordre des « ★ Dernières mesures »** (bilan libre) : d'abord les tests faits le plus de fois ; à nombre égal, le plus récent en haut.
    - À préciser : même ordre pour la ★ de la fiche patient (aujourd'hui : plus fréquents d'abord, sans départager par la date).
-3. **Historique du patient depuis le haut de la fiche** : une petite icône en haut à droite de la fiche ouvre l'historique complet du patient, dans l'ordre : notes du jour, séances, bilans et transmissions (copiés ou non, signalés comme tels).
+   - Demandé (2026-11-26) : **même liste** dans le bilan et dans la ★ de la fiche, avec l'historique d'**au moins les 3 derniers mois** par test (pas seulement la dernière valeur).
+   - Pourquoi elles diffèrent aujourd'hui : le bilan ne montre que la dernière mesure **avant le jour du bilan** (celles du jour sont exclues), une par test, dans l'ordre du catalogue ; la fiche compte aussi les mesures du jour et trie par nombre de fois (son « Suivi des tests » garde 6 valeurs au plus).
+   - À préciser : inclure dans le bilan les mesures déjà faites le jour même ? affichage des 3 mois : valeurs à la suite sur la ligne du test, ou ligne qui se déplie au toucher ?
+4. **Bug — position de la liste de la journée** : en revenant d'un bilan (glissement sur le côté), la liste repart en haut ; depuis la fiche patient, elle revient au bon endroit. Elle doit rester là où elle était (souvent pour repartir sur le même patient).
+   - Cause probable : la page du bilan bloque le défilement de la page entière, ce qui remet la position à zéro ; correction prévue : mémoriser la position de la journée en la quittant et la rétablir au retour.
+   - À vérifier : le même souci avec la flèche ‹ de retour du bilan ?
+5. **Historique du patient depuis le haut de la fiche** : une petite icône en haut à droite de la fiche ouvre l'historique complet du patient, dans l'ordre : notes du jour, séances, bilans et transmissions (copiés ou non, signalés comme tels).
    - À préciser : plus récent en haut ? remplace-t-il le bouton « Séances (n) » du bas de la fiche, ou s'y ajoute-t-il ? les tests NS (✓ recopié) y figurent-ils aussi ?
 
 ## Plan 3 — pour plus tard
