@@ -42,6 +42,7 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
 12. **Historique des séances : texte sur toute la largeur** ; les boutons Copier et Supprimer passent au-dessus du texte.
 13. **Suivi des tests NS à revoir** : un Tinetti recopié à la main dans NetSoin n'est pas compté (« Dernier test NS : jamais »), car seul le ✓ vert du panneau NS (onglet Bilans → bouton « NS ») l'enregistre ; copier le bilan ne suffit pas.
    - Damien réfléchit à un meilleur suivi des bilans NS. À reprendre avec lui : rendre le ✓ plus visible, ou proposer « Recopié dans NetSoin ? » au moment de la copie, ou permettre de saisir la date d'un test NS déjà fait.
+14. **Journée : « !!! » = fond orange seul**, sans les trois points d'exclamation devant le nom (le motif reste affiché ?). « ! » et « !! » inchangés.
 
 ## Plan 3 — pour plus tard
 
