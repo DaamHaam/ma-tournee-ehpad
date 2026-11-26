@@ -41,12 +41,15 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
 11. **Nouvelle prescription** : saisir la date suffit, la durée vaut 1 an d'office sans rien cocher ; elle reste modifiable ensuite.
 12. **Historique des séances : texte sur toute la largeur** ; les boutons Copier et Supprimer passent au-dessus du texte.
 13. **Suivi des tests NS à revoir** : un Tinetti recopié à la main dans NetSoin n'est pas compté (« Dernier test NS : jamais »), car seul le ✓ vert du panneau NS (onglet Bilans → bouton « NS ») l'enregistre ; copier le bilan ne suffit pas.
+   - Besoin précisé (2026-11-26) : suivre les tests NS **à part** des Éval / Trans. Objectif double : une éval ou une trans pour tout le monde, et en parallèle une mesure NS pour le plus de patients possible, pas forcément le même jour que la transmission.
    - Damien réfléchit à un meilleur suivi des bilans NS. À reprendre avec lui : rendre le ✓ plus visible, ou proposer « Recopié dans NetSoin ? » au moment de la copie, ou permettre de saisir la date d'un test NS déjà fait.
 14. **Journée : « !!! » = fond orange seul**, sans les trois points d'exclamation devant le nom (le motif reste affiché ?). « ! » et « !! » inchangés.
 15. **TUG par étapes — retour visuel** : numéro d'étape en grand (3/5, 4/5…) et petit signal à chaque toucher de « Étape suivante » ; chaque durée remplit sa case dès la fin de l'étape (on voit le test avancer).
 16. **TUG par étapes — ★ par étape** : à côté de chaque case, en petit, la ★ avec la durée précédente de cette étape et sa date.
 17. **Chronomètre du TUG (simple et par étapes) — bouton Pause** : arrête le temps là où il en est (patient qui s'arrête, ne comprend pas), puis reprise.
    - À préciser : la pause s'étend-elle aux autres chronomètres (10 m, 6 min…) ?
+18. **Test des 10 m — aide technique facultative** sous le test (rollator, déambulateur à roues, canne…) ; le compte rendu devient par ex. « Test des 10 mètres : 18 s, 33 pas, avec rollator ».
+   - Se règle d'abord dans le catalogue de l'organisateur (module « Aides techniques » ajouté à la rubrique 10 m, ligne du compte rendu) ; vérifier ensuite dans l'application (repères, ✨, ★).
 
 ## Plan 3 — pour plus tard
 
