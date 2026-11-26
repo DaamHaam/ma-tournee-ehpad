@@ -27,13 +27,15 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
    - À préciser : fonctionnement à montrer et à essayer ensemble (installation du favori, test sur la vraie page NetSoin). Tinetti (cases à cocher) : plus tard.
 
 3. **Tableau des patients : couleur de la fin d'ordonnance** — la case « Fin d'ordo » prend une couleur selon l'échéance, pour la voir d'un coup d'œil (aujourd'hui : orange à 15 jours, rouge dépassée, sinon rien).
-   - À préciser : couleurs et seuils de votre ancien tableau (ex. vert au loin, jaune, orange, rouge ? à combien de jours ?).
+   - Décidé : **jaune** quand il reste moins de 3 mois, **orange** moins d'1 mois, **rouge** une fois dépassée (remplace « orange à 15 jours »). Proposé : mêmes seuils partout où l'échéance est surveillée (fiche, liste, journée), pas seulement dans le tableau.
 4. **Pointage définitif : tout corriger après coup** — toucher un patient rouge (prévu non vu) le descend dans « Non pointés » ; dans « Non pointés », toucher n'importe quel résident (même jamais pointé ce jour-là) propose de le remonter en bleu (A), orange (B) ou rouge (prévu non vu).
-   - À préciser : le remonter en bleu ou orange modifie-t-il aussi la séance A / B de la journée (et donc l'export de la journée), ou seulement le pointage définitif ?
+   - Décidé : seulement le pointage définitif (et son export) ; la journée et son export gardent ce qui avait été noté sur le moment.
 
 ## Plan 2 — pour plus tard
 
-1. **Suivi des retraits du pointage définitif** — sur une période choisie (ex. 2 mois), compter pour chaque patient combien de fois il a été retiré de la liste définitive (passé de bleu ou orange à « Non pointés »), pour équilibrer les retraits (remplace le post-it à bâtons).
+1. **Suivi des retraits du pointage définitif** — pour équilibrer les patients vus mais non pointés (remplace le post-it à bâtons).
+   - Idée (2026-11-26) : une **date de début de la session de pointage** (ex. 1er novembre pour un pointage octobre-novembre) ; à côté de chaque patient du pointage, un petit chiffre = nombre de fois où il est passé d'orange (B) à « Non pointés » depuis cette date ; le chiffre monte au fil des jours, on voit qui a déjà souvent sauté.
+   - Proposé en plus : compter aussi les bleus (A) retirés, en chiffre distinct ou cumulé ; un petit récapitulatif en tête de la vue Pointage (« Retirés depuis le 01/11 : Epinoux 3, Blot 2… ») ; la date de début reprise par défaut pour l'export de la période. Les retraits sont déjà enregistrés jour par jour (`entry.unpointed`) : le compte se calcule sans rien stocker de plus que la date de début.
 
 ## À faire sur le Mac
 
