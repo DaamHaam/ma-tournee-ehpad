@@ -27,9 +27,16 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
    - À préciser : fonctionnement à montrer et à essayer ensemble (installation du favori, test sur la vraie page NetSoin). Tinetti (cases à cocher) : plus tard.
 
 3. **Tableau des patients : couleur de la fin d'ordonnance** — la case « Fin d'ordo » prend une couleur selon l'échéance, pour la voir d'un coup d'œil (aujourd'hui : orange à 15 jours, rouge dépassée, sinon rien).
-   - Décidé : **jaune** quand il reste moins de 3 mois, **orange** moins d'1 mois, **rouge** une fois dépassée (remplace « orange à 15 jours »). Décidé aussi : mêmes seuils et mêmes couleurs partout (tableau, fiche, liste des résidents, journée), avec la mention « ordonnance » en toutes lettres (aujourd'hui « ordo ») dans la fiche et la journée.
+   - Décidé (2026-11-26) : **tableau des patients** : jaune à moins de 3 mois, orange à moins d'1 mois, rouge une fois dépassée. **Ailleurs** (liste des résidents, fiche, journée) : pas de jaune, seulement orange à moins d'1 mois (au lieu de 15 jours) et rouge dépassée, pour ne pas surcharger la liste. Mention « ordonnance » en toutes lettres là où c'est aujourd'hui « ordo », sauf si le point 5 la réduit à un petit sigle (à trancher avec lui).
 4. **Pointage définitif : tout corriger après coup** — toucher un patient rouge (prévu non vu) le descend dans « Non pointés » ; dans « Non pointés », toucher n'importe quel résident (même jamais pointé ce jour-là) propose de le remonter en bleu (A), orange (B) ou rouge (prévu non vu).
    - Décidé : seulement le pointage définitif (et son export) ; la journée et son export gardent ce qui avait été noté sur le moment.
+
+5. **Niveaux d'alerte « ! » à la place de « Attend une séance »** — un réglage en haut à droite de la fiche : aucun, « ! », « !! » ou « !!! ».
+   - « ! » : attend une séance (l'actuel « Attend une séance », repris tel quel pour les patients qui l'ont déjà).
+   - « !! » : demande de l'équipe, aller le voir pour cette raison.
+   - « !!! » : urgence médicale connue, patient prioritaire ; carte du patient sur fond orange dans la liste, et mise en évidence orange dans la fiche.
+   - Pour éviter le doublon de couleur avec l'ordonnance : l'échéance d'ordonnance devient un petit sigle « ordo » coloré (orange, rouge), et seul le niveau « !!! » colore le fond de la carte.
+   - À préciser : où s'affiche le fond orange du « !!! » (liste des résidents seulement, ou aussi la journée et le tableau) ; un niveau d'alerte retombe-t-il de lui-même quand le patient est vu (A ou B ce jour-là), ou seulement à la main ; un motif court facultatif pour « !! » et « !!! » (comme pour la pause) ?
 
 ## Plan 2 — pour plus tard
 
