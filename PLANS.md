@@ -11,13 +11,19 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
 ## Plan 1 — en préparation
 
 1. **SPPB** (Short Physical Performance Battery), comme test normal suivi dans le temps.
-   - Dans l'organisateur : rubrique « SPPB » (domaine Équilibre, étiquette « test ») : 3 temps d'équilibre (pieds joints, semi-tandem, tandem), vitesse de marche sur 4 m, 5 levers de chaise ; points 0 à 4 par épreuve selon le barème, score total /12 calculé ; compte rendu au score seul, comme le Tinetti.
-   - Dans Ma tournée : chronomètre unique sur chaque épreuve ; le chronométrage des 5 levers remplit aussi le test « 5 levers de chaise » ; relier le SPPB à l'historique des ★ (`MEASURE_FIELDS`).
-   - Test NS plus tard, peut-être (il n'est pas encore dans NetSoin) : à décider quand il y sera.
-   - À préciser : barème exact retenu (seuils des points), ordre des épreuves, ce qui s'écrit dans le compte rendu en plus du score.
+   - Barème (fiche fournie le 2026-11-26), score total /12 :
+     - **Équilibre** (/4), dans l'ordre, chacun 10 s : pieds joints (10 s → 1 pt ; moins → 0 et on passe à la marche) ; semi-tandem (10 s → +1 ; moins → 0 et on passe à la marche) ; tandem (10 s → +2 ; 3 à 9 s → +1 ; moins de 3 s → 0).
+     - **Vitesse de marche sur 4 m** (/4), rythme normal, meilleur de deux essais : moins de 4,82 s → 4 ; 4,82 à 6,20 s → 3 ; 6,21 à 8,70 s → 2 ; plus de 8,70 s → 1 ; incapable → 0.
+     - **Lever de chaise** (/4) : pré-test (se lever une fois bras croisés ; incapable → 0 et arrêt), puis 5 levers bras croisés le plus vite possible : moins de 11,19 s → 4 ; 11,20 à 13,69 s → 3 ; 13,70 à 16,69 s → 2 ; plus de 16,7 s → 1 ; plus de 60 s ou incapable → 0.
+   - Dans l'organisateur : rubrique « SPPB » (domaine Équilibre, étiquette « test »), questions de chaque épreuve, points et total calculés par l'application, compte rendu au score seul (comme le Tinetti).
+   - Dans Ma tournée : chronomètre unique sur chaque épreuve (10 s pour l'équilibre, chronomètre pour la marche et les levers) ; le chronométrage des 5 levers remplit aussi le test « 5 levers de chaise » ; lien avec l'historique des ★ (`MEASURE_FIELDS`).
+   - Test NS plus tard peut-être (pas encore dans NetSoin).
+   - À préciser :
+     - le barème utilise des centièmes (4,82 s ; 11,19 s…) alors que la règle actuelle est « secondes entières, sans dixièmes » : garder les centièmes pour la marche et les levers du SPPB, ou appliquer le barème sur les secondes entières (un 4,9 s compterait 4 s) ;
+     - les 5 levers du SPPB se font bras croisés : est-ce aussi la façon dont vous faites le test « 5 levers de chaise » habituel (sinon, ne pas remplir l'un avec l'autre) ;
+     - marche sur 4 m : noter les deux essais, ou seulement le meilleur.
 2. **Favori Chrome « Remplir le TUG » pour NetSoin** : sur l'iPhone, un bouton « Copier pour NetSoin » met les 5 durées dans le presse-papiers ; sur le Mac (Chrome, presse-papiers partagé avec l'iPhone), un favori cliqué sur la page de NetSoin répartit les 5 chiffres dans les 5 cases du TUG.
    - À préciser : fonctionnement à montrer et à essayer ensemble (installation du favori, test sur la vraie page NetSoin). Tinetti (cases à cocher) : plus tard.
-3. **« Changer le sens du compte rendu des notes »** : sujet oublié, à retrouver ou à abandonner.
 
 ## Plan 2 — pour plus tard
 
