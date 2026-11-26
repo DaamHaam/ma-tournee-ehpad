@@ -7,6 +7,7 @@ import { DoctorsPanel } from '../patients/Doctors'
 import { BackupPanel } from './BackupPanel'
 import { DictationPanel } from '../bilan/DictationPanel'
 import { AssistantPanel } from '../bilan/AssistantPanel'
+import { NetsoinBookmarkletPanel } from '../netsoin/NetsoinPanel'
 import { downloadFile } from './saveFile'
 import { copyText } from './clipboard'
 
@@ -70,5 +71,6 @@ export function ExportPage() {
     <DoctorsPanel />
     <DictationPanel />
     <AssistantPanel />
+    <NetsoinBookmarkletPanel />
   </>
 }

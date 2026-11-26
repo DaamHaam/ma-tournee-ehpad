@@ -27,9 +27,12 @@ export function Pointage() {
   const days = useMemo(() => pointageDays(allDays ?? []), [allDays])
   const months = useMemo(() => pointageMonths(days), [days])
   const { run } = useSave()
+  // Patient de « non pointés » touché : choix de la couleur pour le remonter (une ligne de trois boutons sous la journée).
+  const [choosing, setChoosing] = useState('')
   if (!allDays || !patients) return null
   const jump = (month: string) => document.getElementById(`pointage-${month}`)?.scrollIntoView({ block: 'start' })
-  const toggle = (date: string, id: string) => void run(() => repository.toggleUnpointed(date, id))
+  const unpoint = (date: string, id: string) => void run(() => repository.unpoint(date, id))
+  const repoint = (date: string, id: string, kind: ChipKind) => { setChoosing(''); void run(() => repository.repoint(date, id, kind)) }
   return <>
     <PointageExport days={allDays} />
     {!days.length ? <div className="empty-state"><h2>Aucune séance pointée</h2></div> : <>
@@ -45,15 +48,19 @@ export function Pointage() {
               <span className={`pointage-count${view.warning ? ' warning' : ''}`}>{view.a} A · {view.b} B{view.warning && <span className="pointage-warning" title={`Capacité ${view.capacity} ± 1`}> ⚠ {view.a + view.b} pour {view.capacity} ± 1</span>}</span>
             </header>
             {!!view.top.length && <ul className="pointage-chips">{view.top.map(({ id, entry, kind }) => <li key={id}>
-              <button type="button" className={`pointage-chip ${chipClass[kind]}`} aria-label={`${shortName(entry.patient)}, ${CHIP_LABEL[kind]}`} onClick={() => toggle(day.date, id)}>
+              <button type="button" className={`pointage-chip ${chipClass[kind]}`} aria-label={`${shortName(entry.patient)}, ${CHIP_LABEL[kind]}`} onClick={() => unpoint(day.date, id)}>
                 <span className="pointage-name">{shortName(entry.patient)}</span>
                 {(entry.note.trim() || entry.pause !== undefined) && <span className="pointage-note">{[entry.pause !== undefined && `Pause${entry.pause ? ` : ${entry.pause}` : ''}`, entry.note.trim()].filter(Boolean).join(' · ')}</span>}
               </button>
             </li>)}</ul>}
             {!!view.below.length && <div className="pointage-below"><span className="pointage-below-title">Non pointés</span>
               <ul>{view.below.map(({ id, entry, kind }) => <li key={id} className={kind}>
-                {kind === 'unplanned' ? <span>{shortName(entry.patient)}</span> : <button type="button" aria-label={`${shortName(entry.patient)}, ${BELOW_LABEL[kind]}, remonter`} onClick={() => toggle(day.date, id)}>{shortName(entry.patient)}{kind === 'removed' && <span className="pointage-was"> ({entry.session})</span>}{kind === 'done' && <span className="pointage-was"> ✓</span>}</button>}
+                <button type="button" aria-expanded={choosing === `${day.date}:${id}`} aria-label={`${shortName(entry.patient)}, ${BELOW_LABEL[kind]}, remonter`} onClick={() => setChoosing(choosing === `${day.date}:${id}` ? '' : `${day.date}:${id}`)}>{shortName(entry.patient)}{kind === 'removed' && <span className="pointage-was"> ({entry.session})</span>}{kind === 'done' && <span className="pointage-was"> ✓</span>}</button>
               </li>)}</ul>
+              {view.below.filter(({ id }) => choosing === `${day.date}:${id}`).map(({ id, entry }) => <div key={id} className="pointage-choice" role="group" aria-label={`Remonter ${shortName(entry.patient)}`}>
+                <span>{shortName(entry.patient)} :</span>
+                {(['A', 'B', 'red'] as const).map(choice => <button key={choice} type="button" className={`pointage-chip ${chipClass[choice]}`} onClick={() => repoint(day.date, id, choice)}>{choice === 'A' ? 'Bleu (A)' : choice === 'B' ? 'Orange (B)' : 'Rouge'}</button>)}
+              </div>)}
             </div>}
           </article>
         })}

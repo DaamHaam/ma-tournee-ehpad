@@ -3,7 +3,9 @@ import { plannedOn, type Day, type Entry, type Mood, type Patient } from './mode
 // Vue « Pointage » (pointage définitif) : relire jour par jour le pré-pointage fait d’après les jours L, J, V des fiches.
 // En haut, les patients vus (A bleu, B orange) et, en rouge, ceux prévus mais pas vus, à dépointer.
 // Toucher un patient le fait descendre dans la liste « non pointés » (entry.unpointed) : séance retirée du pointage définitif,
-// ou prévu non vu déjà dépointé. Un second toucher le remonte. Rien d’autre ne change (journée, export habituel, fiche).
+// ou prévu non vu déjà dépointé. Dans « non pointés », toucher n’importe quel patient (même jamais pointé ce jour-là) propose de
+// le remonter en bleu (A), orange (B) ou rouge (prévu non vu) : entry.pointage. Rien d’autre ne change (journée, export
+// habituel, fiche) : seul le pointage définitif et son export suivent ces corrections.
 
 export function hasSession(day: Pick<Day, 'entries'>): boolean { return Object.values(day.entries).some(entry => entry.session !== null) }
 
@@ -36,6 +38,8 @@ export function pointageView(day: Pick<Day, 'date' | 'entries' | 'order' | 'mood
   const top: PointageRow<ChipKind>[] = []
   const below: PointageRow<BelowKind>[] = []
   for (const { id, entry } of ordered(day)) {
+    // Couleur choisie à la main : elle l’emporte sur la séance de la journée et sur le prévu.
+    if (entry.pointage && !entry.unpointed) { top.push({ id, entry, kind: entry.pointage }); continue }
     if (entry.session !== null) {
       if (entry.unpointed) below.push({ id, entry, kind: 'removed' }); else top.push({ id, entry, kind: entry.session })
     } else if (isPlanned(entry, day.date, patients.get(id))) {
@@ -53,9 +57,16 @@ export function pointageMonths(days: Pick<Day, 'date'>[]): string[] {
   return [...new Set(days.map(day => day.date.slice(0, 7)))].sort().reverse()
 }
 
-// Journée telle que l’export définitif la voit : une séance retirée redevient « non vue » (sa note passe dans « Pas vus », sa pause dans « Pause »).
+// Séance retenue par le pointage définitif : retirée → aucune ; couleur choisie à la main → A, B ou aucune (rouge) ; sinon la journée.
+export function definitiveSession(entry: Pick<Entry, 'session' | 'unpointed' | 'pointage'>): Entry['session'] {
+  if (entry.unpointed) return null
+  if (entry.pointage) return entry.pointage === 'red' ? null : entry.pointage
+  return entry.session
+}
+// Journée telle que l’export définitif la voit : une séance retirée redevient « non vue » (sa note passe dans « Pas vus », sa pause
+// dans « Pause ») ; une couleur remontée à la main donne sa séance.
 export function withoutUnpointed(day: Day): Day {
-  const entries = Object.fromEntries(Object.entries(day.entries).map(([id, entry]) => [id, entry.unpointed && entry.session !== null ? { ...entry, session: null } : entry]))
+  const entries = Object.fromEntries(Object.entries(day.entries).map(([id, entry]) => [id, { ...entry, session: definitiveSession(entry) }]))
   return { ...day, entries }
 }
 

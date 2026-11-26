@@ -18,12 +18,15 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString)
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
-const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating', 'pauseReason', 'atcdKine', 'atcdOther'] as const
-const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group', 'waiting', 'paused'] as const
+const PATIENT_TEXT = ['sex', 'firstName', 'room', 'priority', 'createdAt', 'coverage', 'days', 'ifd', 'prescriptionLabel', 'prescriptionDate', 'prescriptionEnd', 'doctor', 'rating', 'pauseReason', 'atcdKine', 'atcdOther', 'alertReason'] as const
+const PATIENT_FLAGS = ['demo', 'archived', 'pointed', 'billed', 'group', 'paused'] as const
 
 function checkPatient(value: unknown): Patient {
   if (!isObject(value) || !isString(value.id) || !isString(value.lastName)) throw new Error(INVALID)
-  const patient = { ...careDefaults(), firstName: '', room: '', priority: '', demo: false, archived: false, createdAt: '', ...value } as Patient
+  // Niveau d’alerte (après la v0.42) : une ancienne sauvegarde porte « Attend une séance » (waiting), repris en « ! ».
+  const { waiting, ...rest } = value as Record<string, unknown> & { waiting?: unknown }
+  const patient = { ...careDefaults(), firstName: '', room: '', priority: '', demo: false, archived: false, createdAt: '', alert: waiting === true ? 1 : 0, ...rest } as Patient
+  if (![0, 1, 2, 3].includes(patient.alert)) throw new Error(INVALID)
   if (!isStringList(patient.evalDates) || !isStringList(patient.transDates) || !isStringList(patient.nsDates)) throw new Error(INVALID)
   if (PATIENT_TEXT.some(key => !isString(patient[key])) || PATIENT_FLAGS.some(key => !isBoolean(patient[key]))) throw new Error(INVALID)
   // Prescription (ajoutée après la v0.18) : absente des anciennes sauvegardes, complétée par les valeurs vides.
@@ -59,6 +62,7 @@ function checkDay(value: unknown): Day {
     if (entry.bilanMeasures !== undefined && !(isObject(entry.bilanMeasures) && (entry.bilanMeasures.choices === undefined || isStringList(entry.bilanMeasures.choices)) && (entry.bilanMeasures.values === undefined || (isObject(entry.bilanMeasures.values) && Object.values(entry.bilanMeasures.values).every(isString))))) throw new Error(INVALID)
     // Repères cochés du bilan (après la v0.37) : absents des anciennes sauvegardes.
     if (entry.bilanForm !== undefined && !(isObject(entry.bilanForm) && typeof entry.bilanForm.version === 'number' && isStringList(entry.bilanForm.choices) && isObject(entry.bilanForm.values) && Object.values(entry.bilanForm.values).every(isString) && (entry.bilanForm.preset === undefined || isString(entry.bilanForm.preset)))) throw new Error(INVALID)
+    if (entry.pointage !== undefined && !['A', 'B', 'red'].includes(entry.pointage as string)) throw new Error(INVALID)
     // Tests NS recopiés (après la v0.42) : empreintes en texte.
     if (entry.ns !== undefined && !(isObject(entry.ns) && Object.values(entry.ns).every(isString))) throw new Error(INVALID)
     entries[id] = { ...entry, patient: checkSnapshot(entry.patient, id) } as Day['entries'][string]

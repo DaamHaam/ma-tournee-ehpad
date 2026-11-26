@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plannedOn, weekdayLetter, type Day, type Entry } from './model'
-import { capacity, pointageDays, pointageMonths, pointageView, previousMonthStart, withoutUnpointed } from './pointage'
+import { capacity, definitiveSession, pointageDays, pointageMonths, pointageView, previousMonthStart, withoutUnpointed } from './pointage'
 import { exportPointage, exportTxt } from '../features/exports/exportTxt'
 
 const entry = (id: string, session: Entry['session'], note = '', patch: Partial<Entry> = {}): Entry => ({ patient: { id, lastName: id, firstName: '', room: '', priority: '', demo: true }, session, note, ...patch })
@@ -64,5 +64,17 @@ describe('pointage définitif', () => {
   it('propose le premier jour du mois précédent comme début d’export', () => {
     expect(previousMonthStart('2026-11-13')).toBe('2026-10-01')
     expect(previousMonthStart('2027-01-05')).toBe('2026-12-01')
+  })
+})
+
+describe('pointage corrigé à la main', () => {
+  it('une couleur choisie remonte le patient et décide de l’export définitif, sans toucher la journée', () => {
+    const entry = (patch: Partial<Entry>): Entry => ({ patient: { id: 'p', lastName: 'Fictif', firstName: 'Paul', room: '', priority: '', demo: true }, session: null, note: '', ...patch })
+    const day = { date: '2026-11-23', mood: null, comment: '', order: ['p1', 'p2', 'p3'], entries: { p1: entry({ session: 'A', pointage: 'B' }), p2: entry({ pointage: 'A' }), p3: entry({ session: 'B', pointage: 'red' }) } }
+    const view = pointageView(day, new Map())
+    expect(view.top.map(row => [row.id, row.kind])).toEqual([['p1', 'B'], ['p2', 'A'], ['p3', 'red']])
+    expect([view.a, view.b]).toEqual([1, 1])
+    expect(Object.values(withoutUnpointed(day).entries).map(item => item.session)).toEqual(['B', 'A', null])
+    expect(definitiveSession({ session: 'A', unpointed: true, pointage: 'B' })).toBeNull()
   })
 })

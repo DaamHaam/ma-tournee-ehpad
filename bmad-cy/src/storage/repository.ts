@@ -7,9 +7,9 @@ export type BilanSnapshot = Pick<Entry, 'bilan' | 'bilanHtml' | 'bilanAt' | 'bil
 export interface BackupData { patients: Patient[]; days: Day[]; orders: OrderTemplate[]; settings: Setting[]; doctors: Doctor[] }
 // GRP, sexe, attente, pause, antécédents et détail de la prescription ne sont pas importés : un patient déjà connu garde ses réglages, un nouveau part sans.
 // La fin d’ordonnance importée ne vaut que si la prescription du patient n’est pas datée (sinon la fin calculée l’emporte).
-const NOT_IMPORTED = ['nsDates', 'group', 'sex', 'waiting', 'paused', 'pauseReason', 'atcdKine', 'atcdOther', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
+const NOT_IMPORTED = ['nsDates', 'group', 'sex', 'alert', 'alertReason', 'paused', 'pauseReason', 'atcdKine', 'atcdOther', 'prescriptionLabel', 'prescriptionDate', 'prescriptionDuration', 'prescriptionUnit'] as const
 export type ImportedPatient = Pick<Identity, 'lastName' | 'firstName'> & Omit<PatientCare, typeof NOT_IMPORTED[number]>
-type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'waiting' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'atcdKine' | 'atcdOther'
+type EditableField = 'lastName' | 'firstName' | 'room' | 'priority' | 'coverage' | 'days' | 'ifd' | 'pointed' | 'billed' | 'prescriptionEnd' | 'doctor' | 'rating' | 'group' | 'sex' | 'alert' | 'alertReason' | 'paused' | 'pauseReason' | 'prescriptionLabel' | 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'atcdKine' | 'atcdOther'
 // Jours prévus retenus dans la journée (aujourd’hui et après) : une fiche modifiée plus tard ne change pas le passé.
 function syncPlanned(entry: Entry, patient: Pick<Patient, 'days'>, date: string): boolean {
   const planned = plannedOn(patient.days ?? '', date)
@@ -340,13 +340,20 @@ export class TourRepository {
   }
   async setSetting(key: string, value: string): Promise<void> { await this.database.settings.put({ key, value }) }
   async deleteSetting(key: string): Promise<void> { await this.database.settings.delete(key) }
-  // Vue Pointage : descend ou remonte un patient (séance retirée du pointage définitif, ou prévu non vu déjà dépointé), sans toucher à A ou B.
-  async toggleUnpointed(date: string, id: string): Promise<void> {
+  // Vue Pointage (pointage définitif seulement, jamais la séance A / B de la journée) : descendre un patient dans « non pointés »,
+  // ou l’en remonter avec la couleur choisie (A bleu, B orange, rouge prévu non vu).
+  async unpoint(date: string, id: string): Promise<void> {
+    await this.changePointage(date, id, entry => { entry.unpointed = true; delete entry.pointage })
+  }
+  async repoint(date: string, id: string, kind: 'A' | 'B' | 'red'): Promise<void> {
+    await this.changePointage(date, id, entry => { delete entry.unpointed; if (kind === entry.session) delete entry.pointage; else entry.pointage = kind })
+  }
+  private async changePointage(date: string, id: string, change: (entry: Entry) => void): Promise<void> {
     await this.database.transaction('rw', this.database.days, async () => {
       const day = await this.database.days.get(date)
       const entry = day?.entries[id]
       if (!day || !entry) throw new Error('Ce patient ne figure pas dans cette journée.')
-      if (entry.unpointed) delete entry.unpointed; else entry.unpointed = true
+      change(entry)
       await this.database.days.put(day)
     })
   }

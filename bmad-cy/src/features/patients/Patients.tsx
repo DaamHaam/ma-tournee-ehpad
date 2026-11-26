@@ -7,7 +7,7 @@ import { lastNs, matchesNs, NS_FILTER_LABEL, nsLate, type NsFilter } from '../..
 import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { dateLabel, fullName, hasTrace, parseDate, validDate, type Patient } from '../../domain/model'
+import { ALERT_LABEL, dateLabel, fullName, hasTrace, parseDate, validDate, type Patient } from '../../domain/model'
 import { useSave } from '../../app/SaveContext'
 import { db } from '../../storage/database'
 import { repository } from '../../storage/repository'
@@ -87,7 +87,7 @@ export function Patients() {
     </div>
     {!patients ? null : visible.length === 0 ? <div className="empty-state"><h2>Aucun patient</h2></div> : <ul className="patient-list">
       {visible.map(patient => <li key={patient.id} className={[patient.group && 'group', patient.paused && 'paused'].filter(Boolean).join(' ') || undefined}><Link to={`/patients/${patient.id}`}>
-        <span><strong><WaitingMark waiting={patient.waiting} />{fullName(patient)}</strong><WaitingLabel waiting={patient.waiting} /><PrescriptionMark patient={patient} today={today} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.paused && <span className="tag muted">{patient.pauseReason ? `Pause · ${patient.pauseReason}` : 'Pause'}</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
+        <span><strong><WaitingMark level={patient.alert} reason={patient.alertReason} />{fullName(patient)}</strong><WaitingLabel level={patient.alert} reason={patient.alertReason} /><PrescriptionMark patient={patient} today={today} />{patient.group && <span className="sr-only"> (groupe)</span>}{patient.paused && <span className="tag muted">{patient.pauseReason ? `Pause · ${patient.pauseReason}` : 'Pause'}</span>}{patient.archived && <span className="tag muted">Archivé</span>}</span>
         {(patient.room || patient.priority || nsFilter !== 'tous') && <span className="patient-meta">{[patient.room && `Chambre ${patient.room}`, patient.priority].filter(Boolean).join(' · ')}{nsFilter !== 'tous' && <span className={nsLate(patient, today) ? 'ns-late' : undefined}>{(patient.room || patient.priority) ? ' · ' : ''}NS {lastNs(patient) ? shortDate(lastNs(patient)!) : 'jamais'}</span>}</span>}
       </Link></li>)}
     </ul>}
@@ -139,7 +139,8 @@ export function PatientDetail() {
   if (!patient) return <div className="empty-state"><h1>Fiche introuvable</h1><Link className="button" to="/patients">Patients</Link></div>
   return <>
     <Link className="back-link" to={back.to}>← {back.label}</Link>
-    <div className="page-heading patient-title"><div><h1><WaitingMark waiting={patient.waiting} />{fullName(patient)}{history && <TestsStar days={history} id={id} today={today} />}</h1><p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}{(patient.room || patient.archived) ? ' · ' : ''}<span className={nsLate(patient, today) ? 'ns-late' : undefined}>Dernier test NS : {lastNs(patient) ? shortDate(lastNs(patient)!) : 'jamais'}</span></p></div></div>
+    <AlertField patient={patient} />
+    <div className={`page-heading patient-title${patient.alert === 3 ? ' urgent' : ''}`}><div><h1><WaitingMark level={patient.alert} reason={patient.alertReason} />{fullName(patient)}{history && <TestsStar days={history} id={id} today={today} />}</h1><p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}{(patient.room || patient.archived) ? ' · ' : ''}<span className={nsLate(patient, today) ? 'ns-late' : undefined}>Dernier test NS : {lastNs(patient) ? shortDate(lastNs(patient)!) : 'jamais'}</span></p></div></div>
     <FollowUps patient={patient} />
     <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />
@@ -160,6 +161,17 @@ export function PatientDetail() {
     </section>}
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>
   </>
+}
+
+// Niveau d’alerte, en haut à droite de la fiche : aucun, « ! » (attend une séance), « !! » (demande de l’équipe),
+// « !!! » (urgence médicale connue), avec un motif court facultatif. Il reste réglé tant qu’on ne le change pas ici.
+function AlertField({ patient }: { patient: Patient }) {
+  const { run } = useSave()
+  const set = (patch: Partial<Pick<Patient, 'alert' | 'alertReason'>>) => void run(() => repository.updatePatient(patient.id, patch))
+  return <div className="alert-field">
+    <div className="alert-levels" role="radiogroup" aria-label="Niveau d’alerte">{([0, 1, 2, 3] as const).map(level => <button key={level} type="button" role="radio" aria-checked={patient.alert === level} aria-label={ALERT_LABEL[level]} title={ALERT_LABEL[level]} onClick={() => set(level ? { alert: level } : { alert: 0, alertReason: '' })}>{level ? '!'.repeat(level) : '–'}</button>)}</div>
+    {patient.alert > 0 && <input key={`${patient.id}-${patient.alertReason}`} className="alert-reason-input" aria-label="Motif de l’alerte" placeholder="Motif (facultatif)" maxLength={60} defaultValue={patient.alertReason} onBlur={event => { const value = event.target.value.trim(); if (value !== patient.alertReason) set({ alertReason: value }) }} />}
+  </div>
 }
 
 // ★ près du nom : les tests déjà faits pour ce patient, les plus fréquents en premier, avec leur dernière mesure ;

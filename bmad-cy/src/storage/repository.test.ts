@@ -187,39 +187,40 @@ describe('stockage local', () => {
     migrated.close(); await migrated.delete()
   })
 
-  it('migre une base v4 : « attend une séance » désactivé pour les patients existants', async () => {
+  it('migre une base v4 : aucune alerte pour les patients existants', async () => {
     const name = `test-migration-v5-${crypto.randomUUID()}`
     const legacy = new Dexie(name)
     legacy.version(4).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
-    const { waiting: _ignored, ...v4Care } = careDefaults()
-    void _ignored
+    const { alert: _alert, alertReason: _reason, ...v4Care } = careDefaults()
+    void _alert; void _reason
     await legacy.table('patients').add({ ...v4Care, id: 'p1', lastName: 'Fictif', firstName: 'Gamma', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', group: true })
     legacy.close()
     const migrated = new TourDatabase(name)
-    expect(await migrated.patients.get('p1')).toMatchObject({ lastName: 'Fictif', group: true, waiting: false })
+    expect(await migrated.patients.get('p1')).toMatchObject({ lastName: 'Fictif', group: true, alert: 0, alertReason: '' })
     migrated.close(); await migrated.delete()
   })
 
-  it('l’import garde l’attente d’un patient reconnu, un nouveau patient n’attend pas', async () => {
+  it('l’import garde l’alerte d’un patient reconnu, un nouveau patient n’en a pas', async () => {
     await repository.initialize()
     const martin = (await database.patients.toArray()).find(patient => patient.lastName === 'Martin')!
-    await repository.updatePatient(martin.id, { waiting: true })
-    await repository.replacePatients([{ ...careDefaults(), lastName: 'Martin', firstName: 'Alice' }, { ...careDefaults(), waiting: true, lastName: 'Fictif', firstName: 'Zoé' } as never])
+    await repository.updatePatient(martin.id, { alert: 2, alertReason: 'demande équipe' })
+    await repository.replacePatients([{ ...careDefaults(), lastName: 'Martin', firstName: 'Alice' }, { ...careDefaults(), alert: 3, lastName: 'Fictif', firstName: 'Zoé' } as never])
     const patients = await database.patients.toArray()
-    expect(patients.find(patient => patient.id === martin.id)?.waiting).toBe(true)
-    expect(patients.find(patient => patient.lastName === 'Fictif')?.waiting).toBe(false)
+    expect(patients.find(patient => patient.id === martin.id)).toMatchObject({ alert: 2, alertReason: 'demande équipe' })
+    expect(patients.find(patient => patient.lastName === 'Fictif')?.alert).toBe(0)
   })
 
   it('migre une base v5 : prescription vide, fin d’ordonnance existante conservée', async () => {
     const name = `test-migration-v6-${crypto.randomUUID()}`
     const legacy = new Dexie(name)
     legacy.version(5).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
-    const { prescriptionLabel: _a, prescriptionDate: _b, prescriptionDuration: _c, prescriptionUnit: _d, ...v5Care } = careDefaults()
+    const { prescriptionLabel: _a, prescriptionDate: _b, prescriptionDuration: _c, prescriptionUnit: _d, alert: _e, alertReason: _f, ...v5Care } = careDefaults()
+    void _e; void _f
     void [_a, _b, _c, _d]
     await legacy.table('patients').add({ ...v5Care, id: 'p1', lastName: 'Fictif', firstName: 'Delta', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', prescriptionEnd: '2026-12-15', waiting: true })
     legacy.close()
     const migrated = new TourDatabase(name)
-    expect(await migrated.patients.get('p1')).toMatchObject({ waiting: true, prescriptionEnd: '2026-12-15', prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months' })
+    expect(await migrated.patients.get('p1')).toMatchObject({ alert: 1, prescriptionEnd: '2026-12-15', prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months' })
     migrated.close(); await migrated.delete()
   })
 
@@ -435,12 +436,13 @@ describe('stockage local', () => {
     const name = `test-migration-v8-${crypto.randomUUID()}`
     const legacy = new Dexie(name)
     legacy.version(7).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key' })
-    const { paused: _a, pauseReason: _b, ...v7Care } = careDefaults()
+    const { paused: _a, pauseReason: _b, alert: _e, alertReason: _f, ...v7Care } = careDefaults()
+    void _e; void _f
     void [_a, _b]
     await legacy.table('patients').add({ ...v7Care, id: 'p1', lastName: 'Fictif', firstName: 'Zeta', room: '', priority: '', demo: false, archived: false, createdAt: '2026-09-01', waiting: true })
     legacy.close()
     const migrated = new TourDatabase(name)
-    expect(await migrated.patients.get('p1')).toMatchObject({ waiting: true, paused: false, pauseReason: '' })
+    expect(await migrated.patients.get('p1')).toMatchObject({ alert: 1, paused: false, pauseReason: '' })
     migrated.close(); await migrated.delete()
   })
 
@@ -498,17 +500,22 @@ describe('stockage local', () => {
     expect(await database.patients.get(active)).toMatchObject({ pointed: false, billed: false })
   })
 
-  it('retire puis remet une séance du pointage sans toucher à A ou B, et marque les jours exportés', async () => {
+  it('retire puis remonte une séance du pointage (couleur au choix) sans toucher à A ou B de la journée, et marque les jours exportés', async () => {
     await repository.initialize()
     const patient = (await database.patients.toArray())[0]
     await repository.setSession(TODAY, patient.id, 'A')
-    await repository.toggleUnpointed(TODAY, patient.id)
+    await repository.unpoint(TODAY, patient.id)
     expect((await database.days.get(TODAY))?.entries[patient.id]).toMatchObject({ session: 'A', unpointed: true })
-    await repository.toggleUnpointed(TODAY, patient.id)
+    await repository.repoint(TODAY, patient.id, 'A')
     expect((await database.days.get(TODAY))?.entries[patient.id].unpointed).toBeUndefined()
+    expect((await database.days.get(TODAY))?.entries[patient.id].pointage).toBeUndefined()
+    // Remonté dans une autre couleur : seul le pointage définitif change, la séance de la journée reste A.
+    await repository.unpoint(TODAY, patient.id)
+    await repository.repoint(TODAY, patient.id, 'B')
+    expect((await database.days.get(TODAY))?.entries[patient.id]).toMatchObject({ session: 'A', pointage: 'B' })
     await repository.markPointageExported([TODAY], '2026-09-02')
     expect((await database.days.get(TODAY))?.pointageExportedAt).toBe('2026-09-02')
-    await expect(repository.toggleUnpointed('2026-08-01', patient.id)).rejects.toThrow()
+    await expect(repository.unpoint('2026-08-01', patient.id)).rejects.toThrow()
   })
 
   it('retient dans la journée les patients prévus d’après leurs jours L, J, V, sans changer le passé', async () => {

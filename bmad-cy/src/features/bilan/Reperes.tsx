@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import {
-  activePresets, behaviour, calcText, choiceKey, CHECKED, formValues, NS_COMMENT, NS_TAG, orderedRubrics, otherOf, resolve, rubricFields, rubricFilled, TEST_OF_RUBRIC, TEST_TAG, visibleOptions,
+  activePresets, behaviour, calcText, copyTargets, preciseFields, secondsText, tenthsText, choiceKey, CHECKED, formValues, NS_COMMENT, NS_TAG, orderedRubrics, otherOf, resolve, rubricFields, rubricFilled, TEST_OF_RUBRIC, TEST_TAG, visibleOptions,
   type BilanForm, type CatField, type CatRubric, type Catalog, type Values,
 } from '../../domain/catalog'
 import type { Measure } from '../../domain/mesures'
@@ -64,9 +64,13 @@ export function ReperesPane({ catalog, form, measures, previous, initialFocus = 
     const id = choiceKey(field, option)
     set({ choices: form.choices.includes(id) ? form.choices.filter(item => item !== id) : [...form.choices, id] })
   }
+  // Recopie vers un autre test (comportement `copie_vers`, ex. 5 levers du SPPB → test « 5 levers de chaise »), en secondes entières.
+  const copies = useMemo(() => copyTargets(catalog), [catalog])
   const setValues = (patch: Record<string, string>) => {
     const next = { ...form.values }
-    for (const [key, value] of Object.entries(patch)) { if (value.trim()) next[key] = value; else delete next[key] }
+    const all = { ...patch }
+    for (const [key, value] of Object.entries(patch)) if (copies[key]) all[copies[key]] = value.trim() ? secondsText(value) : ''
+    for (const [key, value] of Object.entries(all)) { if (value.trim()) next[key] = value; else delete next[key] }
     set({ values: next })
   }
   const setValue = (key: string, value: string) => setValues({ [key]: value })
@@ -127,9 +131,12 @@ function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied,
   onToggle: (field: string, option: string) => void; onValue: (key: string, value: string) => void
 }) {
   const fields = rubricFields(catalog, rubric.key)
-  const stopwatch = behaviour(rubric, 'chronometre')
   const countdown = behaviour(rubric, 'compte_a_rebours')
-  const timed = fields.find(field => field.key === `${rubric.key}.${stopwatch}`)
+  // Questions chronométrées : un bouton par question (SPPB : 3 positions, 2 essais de marche, lever) ; au centième pour
+  // `chronometre_centiemes` (affiché au dixième), sinon en secondes entières.
+  const precise = preciseFields(rubric)
+  const timedFields = rubric.behaviours.filter(item => item.consigne === 'chronometre' || item.consigne === 'chronometre_centiemes')
+    .map(item => fields.find(field => field.key === `${rubric.key}.${item.settings}`)).filter((field): field is CatField => !!field)
   const filled = rubricFilled(rubric, catalog, values)
   const isTug = rubric.key === TUG
   const inTinetti = behaviour(rubric, 'tug_dans_tinetti') !== undefined
@@ -141,7 +148,7 @@ function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied,
     {(isTug ? behaviour(rubric, 'chronometre_etapes') !== undefined : true) && <ChronoStart chrono={chrono} spec={{ mode: 'steps', label: 'TUG par étapes' }}>TUG par étapes</ChronoStart>}
   </div>
   const starts = isTug ? tugButtons
-    : timed ? <div className="chrono-starts"><ChronoStart chrono={chrono} spec={{ mode: 'stopwatch', label: rubric.title, key: timed.key, text: resolve(timed, catalog).type === 'text' }}>Chronomètre</ChronoStart></div>
+    : timedFields.length ? <div className="chrono-starts">{timedFields.map(timed => <ChronoStart key={timed.key} chrono={chrono} spec={{ mode: 'stopwatch', label: timedFields.length > 1 ? `${rubric.title} – ${timed.label}` : rubric.title, key: timed.key, text: resolve(timed, catalog).type === 'text', centi: precise.has(timed.key) }}>{timedFields.length > 1 ? timed.label : 'Chronomètre'}</ChronoStart>)}</div>
     : countdown && Number(countdown) > 0 ? <div className="chrono-starts"><ChronoStart chrono={chrono} spec={{ mode: 'countdown', label: rubric.title, seconds: Number(countdown) }}>{`Compte à rebours ${Number(countdown) >= 60 ? `${Number(countdown) / 60} min` : `${countdown} s`}`}</ChronoStart></div>
     : null
   // Dans le Tinetti, le TUG se lance en tête de l’épreuve de marche (première ligne « m… »), avec sa ★.
@@ -156,15 +163,16 @@ function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied,
     {rubric.key === ATCD && atcdKine && <button type="button" className="rubric-action" disabled={(form.values[`${ATCD}.atcd`] ?? '').includes(atcdKine)} onClick={() => { const atcd = form.values[`${ATCD}.atcd`] ?? ''; onValue(`${ATCD}.atcd`, atcd.trim() ? `${atcd.trimEnd()}\n${atcdKine}` : atcdKine) }}>Reprendre de la fiche</button>}
     {fields.map(field => <div key={field.key} className="field-wrap">
       {field.key === walkStart && <><p className="row-sub">Épreuve de marche</p>{tugButtons}{tugMeasure && <p className={`previous-measure${tugMeasure.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> TUG {tugMeasure.text} · {shortDate(tugMeasure.date)}</p>}</>}
-      <Field field={field} rubric={rubric} catalog={catalog} form={form} values={values} onToggle={onToggle} onValue={onValue} />
+      <Field field={field} rubric={rubric} catalog={catalog} form={form} values={values} precise={precise.has(field.key)} onToggle={onToggle} onValue={onValue} />
     </div>)}
     {ns && <label className="flex-field ns-comment"><span>Commentaire des tests NS (commun au Tinetti et au TUG)</span><textarea rows={2} aria-label={`Commentaire des tests NS (${rubric.title})`} value={form.values[NS_COMMENT] ?? ''} onChange={event => onValue(NS_COMMENT, event.target.value)} /></label>}
   </section>
 }
 
-function Field({ field, rubric, catalog, form, values, onToggle, onValue }: {
+function Field({ field, rubric, catalog, form, values, precise = false, onToggle, onValue }: {
   field: CatField; rubric: CatRubric; catalog: Catalog; form: BilanForm; values: Values
-  onToggle: (field: string, option: string) => void; onValue: (key: string, value: string) => void
+  onToggle: (field: string, option: string) => void; precise?: boolean
+  onValue: (key: string, value: string) => void
 }) {
   const { type, unit, other, options } = resolve(field, catalog)
   const label = field.label && field.label !== rubric.title ? field.label : ''
@@ -192,7 +200,8 @@ function Field({ field, rubric, catalog, form, values, onToggle, onValue }: {
       const result = calcText(field, catalog, values)
       return <p className="flex-field calc-field"><span>{field.label}</span> <b>{result === '' ? '—' : `${result}${unit ? ` ${unit}` : ''}`}</b></p>
     }
-    case 'number': return <label className="flex-field">{label && <span>{label}</span>}<span className="flex-number"><input type="text" inputMode="decimal" aria-label={name} value={raw} onChange={event => onValue(field.key, event.target.value)} /><span>{unit}</span></span>{otherInput}</label>
+    // Au centième (SPPB) : mesuré au centième, affiché au dixième (une saisie à la main garde ce qu’on tape).
+    case 'number': return <label className="flex-field">{label && <span>{label}</span>}<span className="flex-number"><input type="text" inputMode="decimal" aria-label={name} value={precise ? tenthsText(raw) : raw} onChange={event => onValue(field.key, event.target.value)} /><span>{unit}</span></span>{otherInput}</label>
     case 'list': return <label className="flex-field">{label && <span>{label}</span>}<textarea rows={3} aria-label={name} placeholder="Une ligne par élément" value={raw} onChange={event => onValue(field.key, event.target.value)} /></label>
     case 'text': return <label className="flex-field">{label && <span>{label}</span>}<textarea rows={2} aria-label={name} value={raw} onChange={event => onValue(field.key, event.target.value)} />{otherInput}</label>
   }

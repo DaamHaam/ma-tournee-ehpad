@@ -1,5 +1,5 @@
 import { TUG_STEPS } from '../../domain/tug'
-import { chronoDisplay, countdownDisplay } from './chronoFormat'
+import { chronoDisplay, countdownDisplay, tenthsDisplay } from './chronoFormat'
 import type { Chrono, ChronoSpec } from './useChrono'
 
 // Bouton de départ, le même partout : un toucher lance tout de suite (gros bouton, libellé du test).
@@ -15,7 +15,7 @@ export function ChronoBar({ chrono }: { chrono: Chrono }) {
   const { spec } = state
   const elapsed = Math.max(0, now - state.start)
   const step = spec.mode === 'steps' ? TUG_STEPS[state.marks.length] : undefined
-  const time = spec.mode === 'countdown' ? (state.finished ? 'Terminé' : countdownDisplay(spec.seconds * 1000 - elapsed)) : chronoDisplay(elapsed)
+  const time = spec.mode === 'countdown' ? (state.finished ? 'Terminé' : countdownDisplay(spec.seconds * 1000 - elapsed)) : spec.mode === 'stopwatch' && spec.centi ? tenthsDisplay(elapsed) : chronoDisplay(elapsed)
   return <div className={`chrono-bar${state.finished ? ' finished' : ''}`} role="group" aria-label={`Chronomètre : ${spec.label}`}>
     <span className="chrono-bar-label">{spec.label}{step && ` · ${state.marks.length + 1}/${TUG_STEPS.length} ${step.label}`}</span>
     <output className="chrono-bar-time" aria-live={state.finished ? 'assertive' : 'off'}>{time}</output>

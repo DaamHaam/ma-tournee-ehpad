@@ -87,6 +87,8 @@ export const MARCHE_EQUILIBRE: FlexModule[] = [
       { kind: 'number', key: 'tinetti.equilibre', label: 'Équilibre', unit: '/16' },
       { kind: 'number', key: 'tinetti.marche', label: 'Marche', unit: '/12' },
     ] },
+    // SPPB : score total seulement (le détail se fait dans les repères du bilan libre) ; ajouté en fin de liste.
+    { id: 'sppb', title: 'SPPB', test: true, controls: [{ kind: 'number', key: 'sppb', label: 'Score total', unit: '/12' }] },
   ] },
   { id: 'objectifs', title: 'Objectifs', rubrics: [
     group('objectifs', 'Objectifs kiné', ['lutter contre la douleur', 'entretenir les capacités fonctionnelles des membres supérieurs en lien avec les AVQ (repas, toilette, habillage...)', 'récupérer les capacités fonctionnelles des membres supérieurs en lien avec les AVQ (repas, toilette, habillage...)', 'entretenir les amplitudes articulaires', 'récupérer les amplitudes articulaires', 'lutter contre le ralentissement psychomoteur', 'ralentir le déclin cognitif', 'entretenir la marche autonome', 'entretenir les capacités de déplacement', 'récupérer la marche autonome', 'récupérer les capacités de déplacement', 'lutter contre la rétropulsion', 'entretenir le périmètre de marche', 'augmenter le périmètre de marche', 'entretenir les capacités de marche avec accompagnement', 'entretenir la participation active aux transferts', 'entretenir l’autonomie des transferts', 'récupérer la participation active aux transferts', 'récupérer le tonus musculaire des membres inférieurs', 'lutter contre l’apathie', 'lutter contre la camptocormie', 'éviter le syndrome post-chute', 'réduire le risque de chute', 'prévenir le syndrome de glissement', 'retrouver la confiance en soi', 'sécuriser les déplacements', 'entretien des capacités cardio-respiratoires', 'amélioration de la condition physique générale', 'réadaptation à la marche', 'réentraînement à l’effort individualisé', 'éviter la majoration des rétractions musculaires et articulaires', 'maintien à son domicile', 'éviter l’entrée en institution médicalisée', 'faciliter les soins et la toilette', 'améliorer le transit']),
@@ -195,6 +197,7 @@ function rubricLine(id: string, input: FlexInput): Line | null {
     case 'test6min': { const distance = read.number(id); return line('Évaluation endurance, test des 6min', 'plain', distance === null ? '' : `${distance}m`) }
     case 'doubleTache': return line('Test de double tâche', 'i', read.list(id))
     case 'equilibre': return line('Équilibre', 'i', read.list(id))
+    case 'sppb': { const score = read.number(id); return score === null ? null : line('SPPB', 'plain', `${score}/12`) }
     case 'tinetti': {
       // Total saisi, sinon somme des deux parties quand elles sont connues.
       const balance = read.number('tinetti.equilibre'), walk = read.number('tinetti.marche')

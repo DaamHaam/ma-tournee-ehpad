@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { nsDone, type NetsoinRecap } from '../../domain/netsoin'
+import { copyText } from '../exports/clipboard'
+import { netsoinTugText } from '../netsoin/bookmarklet'
 import type { NsTest, NsValidations } from '../../domain/model'
 
 // Valeurs à recopier dans NetSoin (bouton « NS ») : en gros chiffres, dans l’ordre de NetSoin. Tinetti : 20 cotations par
@@ -6,6 +9,8 @@ import type { NsTest, NsValidations } from '../../domain/model'
 // ✓ vert par test, une fois recopié : replie, coche « Éval » et note le dernier test NS du résident.
 export function NetsoinPanel({ recap, ns, onDone }: { recap: NetsoinRecap; ns?: NsValidations; onDone: (test: NsTest, fingerprint: string) => void }) {
   const done = (test: NsTest) => nsDone(recap, test, ns)
+  // Les 5 durées du TUG pour le favori « Remplir TUG » de Chrome sur le Mac (presse-papiers partagé avec l’iPhone).
+  const [tugCopied, setTugCopied] = useState<boolean | null>(null)
   const validate = (test: NsTest) => <button type="button" className={`ns-validate${done(test) ? ' done' : ''}`} aria-label={done(test) ? `${test === 'tug' ? 'TUG' : 'Tinetti'} recopié dans NetSoin` : `Valider : ${test === 'tug' ? 'TUG' : 'Tinetti'} recopié dans NetSoin`} onClick={() => onDone(test, recap[test]!.fingerprint)}>✓</button>
   return <div className="netsoin" aria-label="À recopier dans NetSoin">
     {recap.tinetti && <section aria-label="Cotations du Tinetti">
@@ -16,7 +21,7 @@ export function NetsoinPanel({ recap, ns, onDone }: { recap: NetsoinRecap; ns?: 
     {recap.tug && <section aria-label="Étapes du TUG">
       <h3>TUG · total {recap.tug.total} s{done('tug') && <span className="ns-done"> · recopié</span>}</h3>
       <p className="netsoin-values netsoin-tug">{recap.tug.steps.join(' ')}</p>
-      {validate('tug')}
+      <div className="netsoin-actions">{validate('tug')}<button type="button" className={tugCopied ? 'copied' : ''} onClick={async () => setTugCopied(await copyText(netsoinTugText(recap.tug!.steps)))}>{tugCopied === null ? 'Copier pour NetSoin' : tugCopied ? 'Copié ✓' : 'Copie impossible'}</button></div>
     </section>}
     {recap.comment && <p className="netsoin-comment"><span>Commentaire</span> {recap.comment}</p>}
   </div>

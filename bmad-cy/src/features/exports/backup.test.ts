@@ -73,14 +73,16 @@ describe('sauvegarde complète', () => {
     expect(() => parseBackup(JSON.stringify(withDay))).toThrow('pas une sauvegarde')
   })
 
-  it('restaure une ancienne sauvegarde sans « attend une séance » avec la valeur fausse', () => {
+  it('restaure une ancienne sauvegarde : « attend une séance » devient « ! », sinon aucune alerte', () => {
     const legacy = JSON.parse(buildBackup(data, ''))
-    delete legacy.patients[0].waiting
-    expect(parseBackup(JSON.stringify(legacy)).patients[0].waiting).toBe(false)
+    delete legacy.patients[0].alert
+    delete legacy.patients[0].alertReason
+    expect(parseBackup(JSON.stringify(legacy)).patients[0]).toMatchObject({ alert: 0, alertReason: '' })
     legacy.patients[0].waiting = true
-    expect(parseBackup(JSON.stringify(legacy)).patients[0].waiting).toBe(true)
-    legacy.patients[0].waiting = 'oui'
-    expect(() => parseBackup(JSON.stringify(legacy))).toThrow('pas une sauvegarde')
+    expect(parseBackup(JSON.stringify(legacy)).patients[0].alert).toBe(1)
+    expect('waiting' in parseBackup(JSON.stringify(legacy)).patients[0]).toBe(false)
+    legacy.patients[0].alert = 5
+    expect(() => parseBackup(JSON.stringify(legacy))).toThrow()
   })
 
   it('restaure une sauvegarde antérieure à la prescription détaillée, puis relit la nouvelle', () => {

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { TUG_STEPS, tugStepsFromMarks } from '../../domain/tug'
-import { durationText, secondsValue } from './chronoFormat'
+import { centiValue, durationText, secondsValue } from './chronoFormat'
 
 // Chronomètre unique des repères (TUG, TUG par étapes, Tinetti, assis-debout 30 s, 5 levers, station debout, 10 m, 6 min…) :
 // un toucher le lance tout de suite ; « Arrêter » (ou « Étape suivante ») met la valeur directement dans le champ du test,
 // ✕ annule et remet à zéro sans rien enregistrer. Secondes entières, tronquées. Un seul chronomètre à la fois.
 export type ChronoSpec =
-  | { mode: 'stopwatch'; label: string; key: string; text?: boolean }
+  | { mode: 'stopwatch'; label: string; key: string; text?: boolean; centi?: boolean }
   | { mode: 'countdown'; label: string; seconds: number }
   | { mode: 'tug'; label: string }
   | { mode: 'steps'; label: string }
@@ -54,7 +54,7 @@ export function useChrono(onResult: (result: ChronoResult) => void) {
   const stop = () => {
     if (!state) return
     const { spec } = state
-    if (spec.mode === 'stopwatch') onResult({ key: spec.key, value: spec.text ? durationText(elapsed()) : secondsValue(elapsed()) })
+    if (spec.mode === 'stopwatch') onResult({ key: spec.key, value: spec.text ? durationText(elapsed()) : spec.centi ? centiValue(elapsed()) : secondsValue(elapsed()) })
     if (spec.mode === 'tug') onResult({ tug: secondsValue(elapsed()) })
     setState(null)
   }

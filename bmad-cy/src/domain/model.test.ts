@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOrder, dayBilans, openBilans, effectivePrescriptionEnd, prescriptionEndDate, prescriptionStatus, prescriptionText, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
+import { applyOrder, dayAlert, dayBilans, openBilans, effectivePrescriptionEnd, prescriptionEndDate, prescriptionStatus, prescriptionText, daysSinceLastA, entryVisible, identityKey, followUpLevel, shortName, lastFollowUp, localDate, moodSigns, toggleDate, toggleLetter, toggleSession, validDate, weekDate, weeksSince, type Day } from './model'
 
 describe('règles du domaine', () => {
   it('liste les bilans dans l’ordre où ils ont été commencés, les anciens selon la tournée', () => {
@@ -140,13 +140,23 @@ describe('règles du domaine', () => {
 
   it('surveille la fin de prescription : orange sous 15 jours, rouge une fois dépassée', () => {
     expect(prescriptionStatus('', '2026-10-07')).toEqual({ level: 'none', days: null })
-    expect(prescriptionStatus('2026-10-23', '2026-10-07')).toEqual({ level: 'ok', days: 16 })
-    expect(prescriptionStatus('2026-10-22', '2026-10-07')).toEqual({ level: 'soon', days: 15 })
+    expect(prescriptionStatus('2027-01-07', '2026-10-07')).toEqual({ level: 'ok', days: 92 })
+    expect(prescriptionStatus('2027-01-06', '2026-10-07')).toEqual({ level: 'later', days: 91 })
+    expect(prescriptionStatus('2026-11-07', '2026-10-07')).toEqual({ level: 'later', days: 31 })
+    expect(prescriptionStatus('2026-11-06', '2026-10-07')).toEqual({ level: 'soon', days: 30 })
     expect(prescriptionStatus('2026-10-07', '2026-10-07')).toEqual({ level: 'soon', days: 0 })
     expect(prescriptionStatus('2026-10-04', '2026-10-07')).toEqual({ level: 'over', days: -3 })
     expect(prescriptionText(prescriptionStatus('2026-10-22', '2026-10-07'))).toBe('Fin dans 15 j')
     expect(prescriptionText(prescriptionStatus('2026-10-07', '2026-10-07'))).toBe('Fin aujourd’hui')
     expect(prescriptionText(prescriptionStatus('2026-10-04', '2026-10-07'))).toBe('Terminée depuis 3 j')
     expect(prescriptionText(prescriptionStatus('', '2026-10-07'))).toBe('')
+  })
+})
+
+describe('niveaux d’alerte', () => {
+  it('visible dans la journée tant que le patient n’a pas été vu ce jour-là', () => {
+    expect(dayAlert(3, null)).toBe(3)
+    expect(dayAlert(3, 'A')).toBe(0)
+    expect(dayAlert(undefined, null)).toBe(0)
   })
 })

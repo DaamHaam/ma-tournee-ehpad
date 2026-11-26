@@ -12,7 +12,7 @@ const pick = (key: string, option: string) => {
 
 describe('mesures des tests standardisés', () => {
   it('reprend les tests du bilan marche / équilibre, avec les 5 levers de chaise et l’EVA', () => {
-    expect(MEASURE_RUBRICS.map(rubric => rubric.id)).toEqual(['eva', 'assisDebout30s', 'cinqLevers', 'tug', 'stationDebout', 'perimetre', 'trajet', 'test10m', 'test6min', 'tinetti'])
+    expect(MEASURE_RUBRICS.map(rubric => rubric.id)).toEqual(['eva', 'assisDebout30s', 'cinqLevers', 'tug', 'stationDebout', 'perimetre', 'trajet', 'test10m', 'test6min', 'tinetti', 'sppb'])
   })
   it('met en ligne les tests rapides du jour, dans l’ordre du catalogue', () => {
     const input = { values: { tug: '18,4', assisDebout30s: '8', 'assisDebout30s.accoudoirs': 'avec accoudoirs', eva: '3', cinqLevers: '14' } }

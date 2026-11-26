@@ -6,14 +6,20 @@ export type Mood = -3 | -2 | -1 | 0 | 1 | 2 | 3 | null
 export interface Identity { id: string; lastName: string; firstName: string; room: string; priority: string; demo: boolean }
 // sex : F, H ou vide ; sert seulement aux accords du texte rédigé par l’IA (envoyé sans nom).
 export type Sex = '' | 'F' | 'H'
-// waiting : patient en attente d’une séance, signalé par un « ! » rouge devant son nom.
+// alert : niveau d’alerte choisi dans la fiche (0 aucun, 1 « ! » attend une séance, 2 « !! » demande de l’équipe, 3 « !!! » urgence
+// médicale connue), avec un motif court facultatif (alertReason) ; « ! » rouges devant le nom ; dans la journée, masqué une fois
+// le patient vu ce jour-là (A ou B), et fond orange pour « !!! ». Remplace « Attend une séance » (waiting → 1).
 // paused / pauseReason : séance en pause (hospitalisation…) avec un motif court facultatif ; patient grisé dans la tournée, sans A, B, note ni bilan.
 // Prescription en cours : intitulé, durée et fin facultatifs. Dès que la date est connue, prescriptionEnd en découle (durée absente = 1 an) ;
 // sans date, la fin se saisit à la main.
 export type DurationUnit = 'weeks' | 'months' | 'years'
 export const DURATION_UNITS: DurationUnit[] = ['weeks', 'months', 'years']
 export const DEFAULT_PRESCRIPTION = { amount: 1, unit: 'years' as DurationUnit }
-export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; nsDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; waiting: boolean; paused: boolean; pauseReason: string; atcdKine: string; atcdOther: string }
+export type AlertLevel = 0 | 1 | 2 | 3
+export const ALERT_LABEL: Record<AlertLevel, string> = { 0: 'Aucune alerte', 1: 'Attend une séance', 2: 'Demande de l’équipe', 3: 'Urgent' }
+// Alerte visible dans la journée : pas une fois le patient vu ce jour-là (elle reste réglée pour les jours suivants).
+export function dayAlert(level: AlertLevel | undefined, session: SessionType): AlertLevel { return session ? 0 : level ?? 0 }
+export interface PatientCare { sex: Sex; coverage: string; days: string; ifd: string; pointed: boolean; billed: boolean; evalDates: string[]; transDates: string[]; nsDates: string[]; prescriptionLabel: string; prescriptionDate: string; prescriptionDuration: number | null; prescriptionUnit: DurationUnit; prescriptionEnd: string; doctor: string; rating: string; group: boolean; alert: AlertLevel; alertReason: string; paused: boolean; pauseReason: string; atcdKine: string; atcdOther: string }
 export interface Patient extends Identity, PatientCare { archived: boolean; createdAt: string }
 // Carnet des médecins : spécialité vide = médecin généraliste (valeur par défaut, non affichée).
 export interface Doctor { id: string; name: string; specialty: string; phone: string; email: string; notes: string }
@@ -26,15 +32,16 @@ export const WEEKDAY_LETTERS = ['L', 'J', 'V'] as const
 export function weekdayLetter(date: string): string | null { return ({ 1: 'L', 4: 'J', 5: 'V' } as Record<number, string>)[parseDate(date).getDay()] ?? null }
 // Patient prévu ce jour-là d’après ses jours de séance (L, J, V de la fiche).
 export function plannedOn(days: string, date: string): boolean { const letter = weekdayLetter(date); return letter !== null && days.toUpperCase().includes(letter) }
-export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], nsDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, waiting: false, paused: false, pauseReason: '', atcdKine: '', atcdOther: '' } }
+export function careDefaults(): PatientCare { return { sex: '', coverage: '', days: '', ifd: '', pointed: false, billed: false, evalDates: [], transDates: [], nsDates: [], prescriptionLabel: '', prescriptionDate: '', prescriptionDuration: null, prescriptionUnit: 'months', prescriptionEnd: '', doctor: '', rating: '', group: false, alert: 0, alertReason: '', paused: false, pauseReason: '', atcdKine: '', atcdOther: '' } }
 // bilan : texte brut ; bilanHtml : même bilan mis en forme (gras, italique, souligné) ; bilanAt : heure de première saisie (ordre de l’onglet Bilans) ;
 // bilanCopied : copié depuis la dernière modification ; bilanEditedAt (et editedAt d’un test) : heure de la dernière modification.
 // bilanMeasures : tests standardisés reconnus dans le bilan libre par l’IA puis validés (mêmes clés que le bilan marche / équilibre).
+// pointage : couleur choisie à la main dans le pointage définitif (A bleu, B orange, rouge prévu non vu), sans toucher la journée.
 // ns : tests NS recopiés dans NetSoin (✓ du bouton NS de l’onglet Bilans), avec l’empreinte des valeurs recopiées.
 // bilanForm : repères cochés du bilan (catalogue de l’organisateur de bilans, version notée) ; voir domain/catalog.ts.
 // tests : tests standardisés du jour (un par type), avec cotations, texte dicté et état copié ; tests.mesures : tests rapides du jour.
 // pause : motif de la pause (éventuellement vide) figé pour ce jour-là ; absente, le patient n’était pas en pause.
-export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; bilanForm?: BilanForm; ns?: NsValidations; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean; planned?: boolean }
+export interface Entry { patient: Identity; session: SessionType; note: string; pause?: string; bilan?: string; bilanHtml?: string; bilanAt?: string; bilanCopied?: boolean; bilanEditedAt?: string; bilanMeasures?: FlexInput; bilanForm?: BilanForm; ns?: NsValidations; tests?: Partial<Record<TestType, TestRecord>>; unpointed?: boolean; pointage?: 'A' | 'B' | 'red'; planned?: boolean }
 // unpointed : séance retirée dans la vue Pointage seulement (la journée garde A ou B) ; pointageExportedAt : date locale du dernier export du pointage.
 export interface Day { date: string; entries: Record<string, Entry>; order: string[]; mood: Mood; comment: string; pointageExportedAt?: string }
 // Le quatrième repère, rouge, sépare les patients sans séance prévue ce jour-là.
@@ -153,14 +160,21 @@ export function prescriptionEndDate(start: string, amount: number | null, unit: 
 export function effectivePrescriptionEnd(care: Pick<PatientCare, 'prescriptionDate' | 'prescriptionDuration' | 'prescriptionUnit' | 'prescriptionEnd'>): string {
   return prescriptionEndDate(care.prescriptionDate, care.prescriptionDuration, care.prescriptionUnit) ?? care.prescriptionEnd
 }
-// Surveillance : orange dans les 15 jours (fin du jour comprise), rouge une fois la fin dépassée.
-export type PrescriptionLevel = 'none' | 'ok' | 'soon' | 'over'
+// Surveillance : rouge une fois la fin dépassée, orange quand il reste moins d’un mois, jaune (`later`, tableau des patients
+// seulement) quand il reste moins de 3 mois. Mois du calendrier (fin le jour même compris).
+export type PrescriptionLevel = 'none' | 'ok' | 'later' | 'soon' | 'over'
 export interface PrescriptionStatus { level: PrescriptionLevel; days: number | null }
-export const PRESCRIPTION_WARNING_DAYS = 15
+function monthsLater(date: string, months: number): string {
+  const day = parseDate(date)
+  const target = new Date(day.getFullYear(), day.getMonth() + months, 1, 12)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0, 12).getDate()
+  return localDate(new Date(target.getFullYear(), target.getMonth(), Math.min(day.getDate(), lastDay), 12))
+}
 export function prescriptionStatus(end: string, today: string): PrescriptionStatus {
   if (!validDate(end)) return { level: 'none', days: null }
   const days = daysBetween(today, end)
-  return { level: days < 0 ? 'over' : days <= PRESCRIPTION_WARNING_DAYS ? 'soon' : 'ok', days }
+  const level = days < 0 ? 'over' : end < monthsLater(today, 1) ? 'soon' : end < monthsLater(today, 3) ? 'later' : 'ok'
+  return { level, days }
 }
 export function prescriptionText({ level, days }: PrescriptionStatus): string {
   if (level === 'none' || days === null) return ''

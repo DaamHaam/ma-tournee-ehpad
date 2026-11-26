@@ -48,6 +48,12 @@ export class TourDatabase extends Dexie {
       if (patient.atcdKine === undefined) patient.atcdKine = ''
       if (patient.atcdOther === undefined) patient.atcdOther = ''
     }))
+    // v11 : niveau d’alerte (« ! », « !! », « !!! ») et son motif à la place de « Attend une séance » (attend → « ! »).
+    this.version(11).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key', doctors: 'id' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
+      if (patient.alert === undefined) patient.alert = patient.waiting ? 1 : 0
+      if (patient.alertReason === undefined) patient.alertReason = ''
+      delete patient.waiting
+    }))
     // v10 : dates des tests NS recopiés dans NetSoin (suivi et filtre de la liste), vides par défaut.
     this.version(10).stores({ patients: 'id, lastName', days: 'date', orders: 'weekday', settings: 'key', doctors: 'id' }).upgrade(tx => tx.table('patients').toCollection().modify((patient: Record<string, unknown>) => {
       if (patient.nsDates === undefined) patient.nsDates = []

@@ -9,7 +9,7 @@ export const MEASURE_RUBRICS: FlexRubric[] = MARCHE_EQUILIBRE.flatMap(module => 
 // Le Tinetti est un test comme les autres (score saisi ou dicté) ; une grille complète du même jour donne aussi son score.
 export const TINETTI_MEASURE = 'tinetti'
 // Nom court (onglets, listes) ; le titre complet reste celui de la rubrique.
-const SHORT: Record<string, string> = { assisDebout30s: 'Assis-debout 30 s', tug: 'TUG', stationDebout: 'Station debout', trajet: 'Trajet chambre-RDC', test10m: '10 m', test6min: '6 min', [TINETTI_MEASURE]: 'Tinetti' }
+const SHORT: Record<string, string> = { assisDebout30s: 'Assis-debout 30 s', tug: 'TUG', stationDebout: 'Station debout', trajet: 'Trajet chambre-RDC', test10m: '10 m', test6min: '6 min', [TINETTI_MEASURE]: 'Tinetti', sppb: 'SPPB' }
 export function measureTitle(id: string): string { return SHORT[id] ?? MEASURE_RUBRICS.find(rubric => rubric.id === id)?.title ?? id }
 
 interface MeasureEntry { tests?: Partial<Record<string, TestRecord>>; bilanMeasures?: FlexInput; bilanForm?: BilanForm; bilanCopied?: boolean; ns?: Partial<Record<string, string>> }

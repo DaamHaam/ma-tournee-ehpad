@@ -10,7 +10,8 @@ import { netsoinDetailText } from './tinetti'
 export type FieldType = 'multi' | 'single' | 'number' | 'text' | 'check' | 'score' | 'list' | 'calc'
 export type ReportStyle = 'titre' | 'italique' | 'observation' | 'normal' | 'sans_libelle'
 export interface CatOption { key: string; label: string; score?: number; tags: string[]; archived: boolean }
-export interface CatCalc { kind: 'ecart_pct' | 'division' | 'somme'; inputs: string[]; constant?: number }
+// seuils : points selon la plus petite valeur des questions (premier palier dont la valeur est sous `below`, sinon `constant`).
+export interface CatCalc { kind: 'ecart_pct' | 'division' | 'somme' | 'seuils'; inputs: string[]; constant?: number; steps?: { below: number; points: number }[] }
 export interface CatField { key: string; rubricKey: string; label: string; type: FieldType; unit?: string; min?: number; max?: number; other: boolean; example?: string; moduleKey?: string; calc?: CatCalc; prefix?: string; order: number; options: CatOption[]; archived: boolean }
 export interface CatModule { key: string; title: string; type: FieldType; unit?: string; other: boolean; options: CatOption[]; archived: boolean }
 export interface CatReportPart { field: string; before: string; after: string; sep: string }
@@ -144,6 +145,11 @@ export function calcText(field: CatField, catalog: Pick<Catalog, 'fields' | 'mod
   if (rule.kind === 'ecart_pct') { const [a, b] = nums; return a === null || b === null || a === 0 ? '' : String(Math.round(((a - b) / a) * 100)) }
   if (rule.kind === 'division') { const [a] = nums; return a === null || a === 0 ? '' : String(Math.round((rule.constant ?? 1) / a)) }
   const present = nums.filter((n): n is number => n !== null)
+  if (rule.kind === 'seuils') {
+    if (!present.length) return ''
+    const value = Math.min(...present)
+    return String(rule.steps?.find(step => value < step.below)?.points ?? rule.constant ?? 0)
+  }
   return present.length ? String(present.reduce((sum, n) => sum + n, 0)) : ''
 }
 // Texte d’une question remplie (vide si rien n’est rempli).
@@ -248,6 +254,30 @@ export function formHash(form: Pick<BilanForm, 'preset' | 'choices' | 'values'>)
   return hash.toString(36)
 }
 export function behaviour(rubric: CatRubric, consigne: string): string | undefined { return rubric.behaviours.find(item => item.consigne === consigne)?.settings }
+// Questions chronométrées au centième (comportement `chronometre_centiemes`, ex. SPPB) : mesurées au centième, affichées au dixième.
+export function preciseFields(rubric: CatRubric): Set<string> {
+  return new Set(rubric.behaviours.filter(item => item.consigne === 'chronometre_centiemes').map(item => `${rubric.key}.${item.settings}`))
+}
+// Recopies `copie_vers` (« question>autre question ») de tout le catalogue : question source → question recopiée.
+export function copyTargets(catalog: Pick<Catalog, 'rubrics'>): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const rubric of catalog.rubrics) for (const item of rubric.behaviours) {
+    if (item.consigne !== 'copie_vers') continue
+    const [source, target] = item.settings.split('>').map(part => part.trim())
+    if (source && target) map[`${rubric.key}.${source}`] = target
+  }
+  return map
+}
+// Durées : secondes entières tronquées ; au centième (SPPB), affichées au dixième tronqué.
+export function secondsText(value: string): string {
+  const n = Number(value.replace(',', '.'))
+  return Number.isFinite(n) && value.trim() ? String(Math.trunc(n)) : value
+}
+export function tenthsText(value: string): string {
+  if (!/^\d+[.,]\d{2,}$/.test(value.trim())) return value
+  return (Math.trunc(Number(value.replace(',', '.')) * 10) / 10).toFixed(1).replace('.', ',')
+}
+
 // Cotations des lignes cotées d’une rubrique (grille), par clé locale de question (ex. Tinetti : e1, e8a, m11c…).
 export function rubricScores(rubric: CatRubric, catalog: Pick<Catalog, 'fields' | 'modules'>, values: Values): Record<string, number> {
   const scores: Record<string, number> = {}
@@ -287,6 +317,7 @@ export const MEASURE_FIELDS: Record<string, string> = {
   'test10m.temps': 'marche.test_10m.temps', 'test10m.pas': 'marche.test_10m.pas',
   test6min: 'endurance.test_6min.distance',
   tinetti: 'equilibre.tinetti.score', 'tinetti.equilibre': 'equilibre.tinetti.score_equilibre', 'tinetti.marche': 'equilibre.tinetti.score_marche',
+  sppb: 'equilibre.sppb.score',
 }
 const APP_TESTS = MARCHE_EQUILIBRE.flatMap(module => module.rubrics).filter(rubric => rubric.test)
 // Rubrique du catalogue → test de l’application, pour afficher sa ★ dans les repères.

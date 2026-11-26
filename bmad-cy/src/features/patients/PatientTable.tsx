@@ -35,7 +35,7 @@ export function PatientTable({ patients }: { patients: Patient[] }) {
         <tbody>{rows.map(patient => {
           const end = tableEnd(patient, today)
           return <tr key={patient.id} className={patient.paused ? 'paused' : undefined}>
-            <th scope="row" className="table-name"><Link to={`/patients/${patient.id}`} state={{ from: TABLE_PATH }}><WaitingMark waiting={patient.waiting} /><span className="table-last">{patient.lastName}</span> <span className="table-first">{patient.firstName}</span><WaitingLabel waiting={patient.waiting} /></Link></th>
+            <th scope="row" className="table-name"><Link to={`/patients/${patient.id}`} state={{ from: TABLE_PATH }}><WaitingMark level={patient.alert} reason={patient.alertReason} /><span className="table-last">{patient.lastName}</span> <span className="table-first">{patient.firstName}</span><WaitingLabel level={patient.alert} reason={patient.alertReason} /></Link></th>
             {menu(patient, 'coverage', 'Couverture', '—', coverageOptions(patient.coverage))}
             {menu(patient, 'days', 'Séances', '—', letterOptions(patient.days))}
             {flag(patient, 'pointed')}

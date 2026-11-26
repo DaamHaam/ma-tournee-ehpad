@@ -17,3 +17,6 @@ export function durationText(ms: number): string {
   const minutes = Math.floor(total / 60), seconds = total % 60
   return minutes ? `${minutes} min${seconds ? ` ${seconds} s` : ''}` : `${seconds} s`
 }
+// Au centième (SPPB : le barème en dépend) : valeur enregistrée au centième ; l’affichage s’en tient au dixième.
+export function centiValue(ms: number): string { return (Math.floor(Math.max(0, ms) / 10) / 100).toFixed(2).replace('.', ',') }
+export function tenthsDisplay(ms: number): string { return `${(Math.floor(Math.max(0, ms) / 100) / 10).toFixed(1).replace('.', ',')} s` }

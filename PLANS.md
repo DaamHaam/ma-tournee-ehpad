@@ -4,39 +4,13 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
 
 ## État
 
-- **Plan en préparation** : Plan 1
-- **Plan à tester** : livraisons v0.39.0 à v0.42.0 (avant l'adoption des plans), voir « Tests à valider »
-- **Revue de code** : pas à jour — `revue-ok` est resté avant la v0.39.0 (commits v0.39.0 → v0.42.0 non revus)
+- **Plan en préparation** : Plan 2
+- **Plan à tester** : Plan 1 (v0.43.0), et les livraisons v0.39.0 à v0.42.0, voir « Tests à valider »
+- **Revue de code** : pas à jour — `revue-ok` est resté avant la v0.39.0 (commits v0.39.0 → v0.43.0 non revus)
 
-## Plan 1 — en préparation
+## Plan 1 — à tester (livré en v0.43.0, organisateur v0.8.0)
 
-1. **SPPB** (Short Physical Performance Battery), comme test normal suivi dans le temps.
-   - Barème (fiche fournie le 2026-11-26), score total /12 :
-     - **Équilibre** (/4), dans l'ordre, chacun 10 s : pieds joints (10 s → 1 pt ; moins → 0 et on passe à la marche) ; semi-tandem (10 s → +1 ; moins → 0 et on passe à la marche) ; tandem (10 s → +2 ; 3 à 9 s → +1 ; moins de 3 s → 0).
-     - **Vitesse de marche sur 4 m** (/4), rythme normal, meilleur de deux essais : moins de 4,82 s → 4 ; 4,82 à 6,20 s → 3 ; 6,21 à 8,70 s → 2 ; plus de 8,70 s → 1 ; incapable → 0.
-     - **Lever de chaise** (/4) : pré-test (se lever une fois bras croisés ; incapable → 0 et arrêt), puis 5 levers bras croisés le plus vite possible : moins de 11,19 s → 4 ; 11,20 à 13,69 s → 3 ; 13,70 à 16,69 s → 2 ; plus de 16,7 s → 1 ; plus de 60 s ou incapable → 0.
-   - Dans l'organisateur : rubrique « SPPB » (domaine Équilibre, étiquette « test »), questions de chaque épreuve, compte rendu au score seul (comme le Tinetti). Les points se calculent par seuils : nouveau calcul « barème par seuils » dans l'organisateur (à côté d'écart en %, division, somme), pour que Ma tournée et DATALS calculent pareil à partir du catalogue.
-   - Dans Ma tournée : chronomètre unique sur chaque épreuve (10 s pour l'équilibre, chronomètre pour la marche et les levers) ; le chronométrage des 5 levers remplit aussi le test « 5 levers de chaise » ; lien avec l'historique des ★ (`MEASURE_FIELDS`).
-   - Test NS plus tard peut-être (pas encore dans NetSoin).
-   - Décidé (2026-11-26) :
-     - marche 4 m et 5 levers mesurés au centième (barème appliqué au centième), affichés au dixième ; exception à la règle « secondes entières » pour ces deux épreuves du SPPB ;
-     - les 5 levers du SPPB (bras croisés) sont le même test que « 5 levers de chaise » : un chronométrage remplit les deux ;
-     - marche 4 m : un ou deux essais notés ; un seul → c'est le meilleur ; deux → l'application retient le meilleur ;
-     - si le lever bras croisés sans accoudoirs est impossible : lever = 0 point, et on fait à la place le test « assis-debout 30 s avec accoudoirs » (test existant).
-2. **Favori Chrome « Remplir le TUG » pour NetSoin** : sur l'iPhone, un bouton « Copier pour NetSoin » met les 5 durées dans le presse-papiers ; sur le Mac (Chrome, presse-papiers partagé avec l'iPhone), un favori cliqué sur la page de NetSoin répartit les 5 chiffres dans les 5 cases du TUG.
-   - À préciser : fonctionnement à montrer et à essayer ensemble (installation du favori, test sur la vraie page NetSoin). Tinetti (cases à cocher) : plus tard.
-
-3. **Tableau des patients : couleur de la fin d'ordonnance** — la case « Fin d'ordo » prend une couleur selon l'échéance, pour la voir d'un coup d'œil (aujourd'hui : orange à 15 jours, rouge dépassée, sinon rien).
-   - Décidé (2026-11-26) : **tableau des patients** : jaune à moins de 3 mois, orange à moins d'1 mois, rouge une fois dépassée. **Ailleurs** (liste des résidents, fiche, journée) : pas de jaune, seulement orange à moins d'1 mois (au lieu de 15 jours) et rouge dépassée, pour ne pas surcharger la liste. Mention « ordonnance » en toutes lettres là où c'est aujourd'hui « ordo », sauf si le point 5 la réduit à un petit sigle (à trancher avec lui).
-4. **Pointage définitif : tout corriger après coup** — toucher un patient rouge (prévu non vu) le descend dans « Non pointés » ; dans « Non pointés », toucher n'importe quel résident (même jamais pointé ce jour-là) propose de le remonter en bleu (A), orange (B) ou rouge (prévu non vu).
-   - Décidé : seulement le pointage définitif (et son export) ; la journée et son export gardent ce qui avait été noté sur le moment.
-
-5. **Niveaux d'alerte « ! » à la place de « Attend une séance »** — un réglage en haut à droite de la fiche : aucun, « ! », « !! » ou « !!! ».
-   - « ! » : attend une séance (l'actuel « Attend une séance », repris tel quel pour les patients qui l'ont déjà).
-   - « !! » : demande de l'équipe, aller le voir pour cette raison.
-   - « !!! » : urgence médicale connue, patient prioritaire ; carte du patient sur fond orange dans la liste, et mise en évidence orange dans la fiche.
-   - Pour éviter le doublon de couleur avec l'ordonnance : l'échéance d'ordonnance devient un petit sigle « ordo » coloré (orange, rouge), et seul le niveau « !!! » colore le fond de la carte.
-   - À préciser : où s'affiche le fond orange du « !!! » (liste des résidents seulement, ou aussi la journée et le tableau) ; un niveau d'alerte retombe-t-il de lui-même quand le patient est vu (A ou B ce jour-là), ou seulement à la main ; un motif court facultatif pour « !! » et « !!! » (comme pour la pause) ?
+SPPB dans les repères (points et total calculés depuis le catalogue), couleurs de fin d’ordonnance revues, pointage définitif corrigeable après coup, niveaux d’alerte « ! » « !! » « !!! », favori Chrome « Remplir le TUG » pour NetSoin. Tests à faire : voir « Tests à valider ».
 
 ## Plan 2 — pour plus tard
 
@@ -51,6 +25,15 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
 - Production Convex (même contenu que le développement, site et applications branchés dessus) et suppression de la branche `dev` de l'organisateur : `organisateur-bilans/docs/A_FAIRE_MAC.md`.
 
 ## Tests à valider
+
+Plan 1 (v0.43.0, iPhone et Mac) :
+- SPPB : « + » des repères → SPPB ; un chronomètre par épreuve (✕ annule) ; marche et levers affichés au dixième ; points et score /12 justes selon la fiche ; ✨ écrit « SPPB : x/12 » ; les 5 levers remplissent aussi « 5 levers de chaise » ; le SPPB apparaît dans les ★.
+- Fin d’ordonnance : tableau jaune (< 3 mois), orange (< 1 mois), rouge (dépassée) ; liste, fiche et journée : seulement orange et rouge (sigle « Ordo »).
+- Pointage définitif : un rouge touché descend dans « Non pointés » ; dans « Non pointés », n’importe quel patient se remonte en bleu, orange ou rouge ; la journée et son export ne changent pas ; l’export du pointage suit les corrections.
+- Alertes : en haut à droite de la fiche, –, !, !!, !!! et motif ; les anciens « Attend une séance » sont devenus « ! » ; dans la journée, l’alerte disparaît une fois le patient vu (A ou B) et revient les jours suivants ; « !!! » : ligne orange dans la journée, nom orange dans la fiche.
+- **Bloquant pour s’en servir** — favori « Remplir le TUG » : l’installer dans Chrome sur le Mac (Réglages → « NetSoin : remplir le TUG d’un clic »), puis sur la vraie page du TUG de NetSoin : « Copier pour NetSoin » sur l’iPhone, clic sur le favori sur le Mac, les 5 cases se remplissent.
+
+Livraisons v0.39.0 → v0.42.0 :
 
 Livraisons v0.39.0 → v0.42.0 (iPhone) :
 - Bilan libre seul écran de bilan : le « + » de la journée ouvre directement le bilan ; les anciens bilans (Tinetti, marche / équilibre, tests rapides) restent lisibles et copiables dans l'onglet Bilans.

@@ -26,9 +26,9 @@ test('première tournée, ajout patient et export', async ({ page }) => {
   const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
   await expect(page.getByLabel('Du', { exact: true })).toHaveValue(today)
   await expect(page.getByLabel('Au', { exact: true })).toHaveValue(today)
-  await page.getByRole('button', { name: 'Copier' }).click()
+  await page.getByRole('button', { name: 'Copier', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Copié ✓' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Copier' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copier', exact: true })).toBeVisible()
   expect((await page.getByRole('heading', { name: 'Réglages / Export' }).boundingBox())!.width).toBeLessThanOrEqual(1)
   const overflow = await page.evaluate(() => [...document.querySelectorAll('input[type=date]')].some(input => { const box = input.getBoundingClientRect(); const card = input.closest('.card')!.getBoundingClientRect(); return box.right > card.right }))
   expect(overflow).toBe(false)
@@ -554,17 +554,16 @@ test('copier le pointage du jour au format de l’export TXT', async ({ page }) 
   expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toBe('28/09/2026 ++\ncalme\nMartin petit')
 })
 
-test('patient en attente d’une séance : interrupteur dans la fiche, « ! » rouge dans la fiche, la liste et la journée', async ({ page }) => {
+test('niveaux d’alerte : « ! » « !! » « !!! » dans la fiche, la liste et la journée, masqués une fois vu, fond orange pour l’urgence', async ({ page }) => {
   await page.goto('/#/patients')
   await page.getByRole('link', { name: /Martin Alice/ }).click()
-  const toggle = page.getByRole('switch', { name: 'Attend une séance' })
-  await expect(toggle).not.toBeChecked()
+  const levels = page.getByRole('radiogroup', { name: 'Niveau d’alerte' })
+  await expect(levels.getByRole('radio', { name: 'Aucune alerte' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.locator('.waiting-mark')).toHaveCount(0)
-  await toggle.click()
-  await expect(toggle).toBeChecked()
+  await levels.getByRole('radio', { name: 'Attend une séance' }).click()
   await expect(page.getByRole('heading', { level: 1 }).locator('.waiting-mark')).toHaveText('!')
   await page.reload()
-  await expect(page.getByRole('switch', { name: 'Attend une séance' })).toBeChecked()
+  await expect(levels.getByRole('radio', { name: 'Attend une séance' })).toHaveAttribute('aria-checked', 'true')
   await page.getByRole('link', { name: '← Patients' }).click()
   await expect(page.getByRole('link', { name: /Martin Alice \(attend une séance\)/ })).toBeVisible()
   await expect(page.locator('.patient-list .waiting-mark')).toHaveCount(1)
@@ -573,11 +572,22 @@ test('patient en attente d’une séance : interrupteur dans la fiche, « ! » r
   await expect(row.locator('.waiting-mark')).toHaveText('!')
   expect(await row.locator('.waiting-mark').evaluate(element => getComputedStyle(element).color)).toBe('rgb(196, 59, 51)')
   expect((await row.locator('.waiting-mark').boundingBox())!.x).toBeLessThan((await row.getByText('Martin A.').boundingBox())!.x + 1)
-  await expect(page.locator('.tour-list .waiting-mark')).toHaveCount(1)
+  // « !!! » avec un motif : urgence en orange dans la fiche et dans la journée.
   await row.getByRole('link', { name: /Martin A\./ }).click()
-  await page.getByRole('switch', { name: 'Attend une séance' }).click()
+  await levels.getByRole('radio', { name: 'Urgent' }).click()
+  await page.getByLabel('Motif de l’alerte').fill('chute hier')
+  await page.getByLabel('Motif de l’alerte').blur()
+  await expect(page.locator('.patient-title.urgent')).toBeVisible()
   await page.getByRole('link', { name: '← jeudi 24 septembre' }).click()
-  await expect(page.locator('.tour-list .waiting-mark')).toHaveCount(0)
+  await expect(row.locator('.waiting-mark')).toHaveText('!!!')
+  await expect(row.locator('.patient-row')).toHaveClass(/urgent/)
+  await expect(row).toContainText('chute hier')
+  // Vu ce jour-là : plus d’alerte affichée dans la journée, mais toujours réglée dans la fiche.
+  await page.getByRole('button', { name: 'A pour Martin Alice' }).click()
+  await expect(row.locator('.waiting-mark')).toHaveCount(0)
+  await expect(row.locator('.patient-row')).not.toHaveClass(/urgent/)
+  await page.goto('/#/?date=2026-09-25')
+  await expect(page.locator('.sortable-row').filter({ hasText: 'Martin A.' }).locator('.waiting-mark')).toHaveText('!!!')
 })
 
 test('pause de séance : motif dans la fiche, patient grisé sans A, B, note ni bilan, trace gardée et exportée', async ({ page }) => {
@@ -822,7 +832,9 @@ test('pointage définitif : vus en bleu et orange, prévus non vus en rouge, non
   const removed = september.getByRole('button', { name: 'Bernard L., retiré du pointage, remonter' })
   await expect(removed).toContainText('Bernard L. (B)')
   await expect(september.locator('.pointage-count')).toContainText('1 A · 0 B')
+  // Remonter depuis « Non pointés » : choix de la couleur (ici orange) ; un patient non prévu se remonte aussi.
   await removed.click()
+  await september.getByRole('group', { name: 'Remonter Bernard L.' }).getByRole('button', { name: 'Orange (B)' }).click()
   await expect(september.getByRole('button', { name: 'Bernard L., séance B' })).toBeVisible()
   await september.getByRole('button', { name: 'Bernard L., séance B' }).click()
 
@@ -928,4 +940,44 @@ test('tests NS dans les repères : chronomètre unique avec ✕, TUG par étapes
   await page.getByRole('button', { name: 'Faire le test TUG' }).click()
   await expect(page).toHaveURL(/#\/bilan\/2026-09-22\/.*test=tug/)
   await expect(page.getByRole('tabpanel', { name: 'Repères' }).getByRole('region', { name: 'Timed Up and Go' })).toBeVisible()
+})
+
+test('favori « Remplir le TUG » : les 5 durées rangées dans les cases de NetSoin', async ({ page }) => {
+  const { TUG_BOOKMARKLET_SCRIPT } = await import('../src/features/netsoin/bookmarklet')
+  // Page imitant les lignes du TUG de NetSoin (libellés relevés sur une capture), presse-papiers simulé.
+  await page.setContent(['Le sujet se lève du fauteuil (résultat en secondes)', 'Le sujet marche 3 mètres (résultat en secondes)', 'Le sujet fait demi-tour (résultat en secondes)', 'Le sujet revient au fauteuil (résultat en secondes)', 'Le sujet se rassied sur le fauteuil (résultat en secondes)']
+    .map(label => `<div class="row"><span>${label}</span><input type="number"></div>`).join(''))
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { readText: async () => '4\t4\t5\t3\t2' } })
+    window.alert = (text?: unknown) => { (window as unknown as { message: string }).message = String(text) }
+  })
+  await page.evaluate(script => new Function(`return ${script}`)(), TUG_BOOKMARKLET_SCRIPT)
+  await expect.poll(() => page.locator('input').evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))).toEqual(['4', '4', '5', '3', '2'])
+  expect(await page.evaluate(() => (window as unknown as { message: string }).message)).toContain('TUG rempli')
+})
+
+test('SPPB dans les repères : chronomètre par épreuve, points par seuils, total /12, 5 levers recopiés', async ({ page }) => {
+  await page.goto('/#/?date=2026-09-22')
+  await openBilan(page, 'Petit Jeanne')
+  await page.getByRole('tab', { name: 'Repères' }).click()
+  const reperes = page.getByRole('tabpanel', { name: 'Repères' })
+  await reperes.getByRole('button', { name: 'Ouvrir un bilan ou un test' }).click()
+  await reperes.getByRole('menuitem', { name: 'SPPB' }).click()
+  const sppb = reperes.getByRole('region', { name: 'SPPB' })
+  // Un chronomètre par épreuve ; ✕ annule.
+  await sppb.getByRole('button', { name: '⏱ Pieds joints (10 s)' }).click()
+  await expect(reperes.getByRole('group', { name: 'Chronomètre : SPPB – Pieds joints (10 s)' })).toBeVisible()
+  await reperes.getByRole('button', { name: 'Annuler le chronomètre' }).click()
+  await sppb.getByRole('textbox', { name: 'SPPB – Pieds joints (10 s)' }).fill('10')
+  await sppb.getByRole('textbox', { name: 'SPPB – Pieds en semi-tandem (10 s)' }).fill('10')
+  await sppb.getByRole('textbox', { name: 'SPPB – Pieds en tandem (10 s)' }).fill('5')
+  await sppb.getByRole('textbox', { name: 'SPPB – Marche 4 m – essai 1' }).fill('6,3')
+  await sppb.getByRole('textbox', { name: 'SPPB – Marche 4 m – essai 2' }).fill('6,2')
+  await sppb.getByRole('textbox', { name: 'SPPB – 5 levers bras croisés' }).fill('11,1')
+  await expect(sppb.locator('.calc-field').filter({ hasText: 'Score total (/12)' })).toContainText('10')
+  // ✨ sans IA : la ligne du SPPB (score seul) et le test « 5 levers de chaise » recopié en secondes entières.
+  await page.getByRole('button', { name: 'Mettre en forme avec les repères cochés' }).click()
+  const bilan = page.getByRole('textbox', { name: 'Bilan du jour pour Petit Jeanne' })
+  await expect.poll(() => bilan.innerText()).toContain('SPPB : 10/12')
+  await expect.poll(() => bilan.innerText()).toContain('Test des 5 levers de chaise : 11sec')
 })

@@ -616,3 +616,24 @@ a.bilan-toggle { border:1px solid var(--line); border-radius:10px; background:va
 .reperes-nav { display:flex; align-items:flex-start; gap:.4rem; min-width:0; }
 .reperes-nav .domain-tabs { flex:1; min-width:0; padding-top:0; }
 .reperes-nav .reperes-head { flex:none; margin-left:auto; }
+
+/* Fin d'ordonnance dans le tableau : jaune à moins de 3 mois (orange à moins d'1 mois, rouge dépassée, déjà définis) */
+.table-end.later { background:#fff4c2; color:#7a5d00; font-weight:700; }
+.table-end.soon { background:#ffe2c2; }
+.table-end.over { background:#ffd6d2; }
+.pointage-choice { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin-top:.5rem; font-size:.85rem; }
+.pointage-choice .pointage-chip { min-height:40px; padding:.2rem .7rem; }
+
+/* Niveaux d'alerte « ! » : réglage en haut à droite de la fiche ; « !!! » en orange (fiche, journée tant que non vu) */
+.alert-field { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:.4rem; margin:-.2rem 0 .3rem; }
+.alert-levels { display:flex; gap:.25rem; }
+.alert-levels button { min-width:40px; min-height:36px; padding:0 .4rem; color:#b42318; font-weight:900; letter-spacing:-.05em; }
+.alert-levels button[aria-checked="true"] { border-color:#b42318; background:#fde2df; }
+.alert-levels button:first-child { color:var(--muted); }
+.alert-reason-input { flex:1 1 12rem; max-width:18rem; min-height:36px; padding:.3rem .5rem; font-size:.85rem; }
+.patient-title.urgent h1 { color:#c2410c; }
+.patient-row.urgent { background:#ffe2c2; border-color:#e08a1e; }
+.alert-reason { color:#b42318; }
+.waiting-mark.level-2, .waiting-mark.level-3 { letter-spacing:-.08em; }
+.netsoin-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.netsoin-help ol { display:grid; gap:.35rem; margin:.3rem 0; padding-left:1.2rem; font-size:.88rem; }
