@@ -32,6 +32,13 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
 7. **Journée : bouton « + » de la même taille que A et B.**
 8. **Journée : date mise en évidence quand c'est aujourd'hui** (couleur ou signe distinctif dans l'en-tête), pour ne pas pointer par erreur un autre jour consulté.
 9. **Bug — mise à jour de l'application** : fermer puis rouvrir sur l'iPhone ne montre pas la dernière version. Cause probable : iOS ne fait que remettre l'application au premier plan ; la nouvelle version se télécharge en arrière-plan mais la page n'est pas rechargée. Correction prévue : vérifier la mise à jour au retour au premier plan et recharger dès qu'elle est prête (sans perdre une saisie en cours).
+10. **Fiche patient — nouvelle mise en page** :
+   - En haut : flèche de retour seule (sans la date), plus grande, qui revient là où on en était.
+   - Puis le **nom** du patient, avec la ★ et une petite icône « Séances » (remplace le bouton « Séances » du bas, voir point 5) ; dessous, la **chambre** si elle est renseignée.
+   - Puis les niveaux d'alerte (– ! !! !!!) et, dessous, une case pas trop grande marquée seulement « Motif ».
+   - Puis Éval et Trans.
+   - Les champs rarement modifiés (nom, prénom, chambre, etc.) tout en bas de la fiche.
+11. **Nouvelle prescription** : saisir la date suffit, la durée vaut 1 an d'office sans rien cocher ; elle reste modifiable ensuite.
 
 ## Plan 3 — pour plus tard
 
