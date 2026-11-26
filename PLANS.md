@@ -18,16 +18,22 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
    - Dans l'organisateur : rubrique « SPPB » (domaine Équilibre, étiquette « test »), questions de chaque épreuve, points et total calculés par l'application, compte rendu au score seul (comme le Tinetti).
    - Dans Ma tournée : chronomètre unique sur chaque épreuve (10 s pour l'équilibre, chronomètre pour la marche et les levers) ; le chronométrage des 5 levers remplit aussi le test « 5 levers de chaise » ; lien avec l'historique des ★ (`MEASURE_FIELDS`).
    - Test NS plus tard peut-être (pas encore dans NetSoin).
-   - À préciser :
-     - le barème utilise des centièmes (4,82 s ; 11,19 s…) alors que la règle actuelle est « secondes entières, sans dixièmes » : garder les centièmes pour la marche et les levers du SPPB, ou appliquer le barème sur les secondes entières (un 4,9 s compterait 4 s) ;
-     - les 5 levers du SPPB se font bras croisés : est-ce aussi la façon dont vous faites le test « 5 levers de chaise » habituel (sinon, ne pas remplir l'un avec l'autre) ;
-     - marche sur 4 m : noter les deux essais, ou seulement le meilleur.
+   - Décidé (2026-11-26) :
+     - marche 4 m et 5 levers mesurés au centième (barème appliqué au centième), affichés au dixième ; exception à la règle « secondes entières » pour ces deux épreuves du SPPB ;
+     - les 5 levers du SPPB (bras croisés) sont le même test que « 5 levers de chaise » : un chronométrage remplit les deux ;
+     - marche 4 m : un ou deux essais notés ; un seul → c'est le meilleur ; deux → l'application retient le meilleur ;
+     - si le lever bras croisés sans accoudoirs est impossible : lever = 0 point, et on fait à la place le test « assis-debout 30 s avec accoudoirs » (test existant).
 2. **Favori Chrome « Remplir le TUG » pour NetSoin** : sur l'iPhone, un bouton « Copier pour NetSoin » met les 5 durées dans le presse-papiers ; sur le Mac (Chrome, presse-papiers partagé avec l'iPhone), un favori cliqué sur la page de NetSoin répartit les 5 chiffres dans les 5 cases du TUG.
    - À préciser : fonctionnement à montrer et à essayer ensemble (installation du favori, test sur la vraie page NetSoin). Tinetti (cases à cocher) : plus tard.
 
+3. **Tableau des patients : couleur de la fin d'ordonnance** — la case « Fin d'ordo » prend une couleur selon l'échéance, pour la voir d'un coup d'œil (aujourd'hui : orange à 15 jours, rouge dépassée, sinon rien).
+   - À préciser : couleurs et seuils de votre ancien tableau (ex. vert au loin, jaune, orange, rouge ? à combien de jours ?).
+4. **Pointage définitif : tout corriger après coup** — toucher un patient rouge (prévu non vu) le descend dans « Non pointés » ; dans « Non pointés », toucher n'importe quel résident (même jamais pointé ce jour-là) propose de le remonter en bleu (A), orange (B) ou rouge (prévu non vu).
+   - À préciser : le remonter en bleu ou orange modifie-t-il aussi la séance A / B de la journée (et donc l'export de la journée), ou seulement le pointage définitif ?
+
 ## Plan 2 — pour plus tard
 
-(rien pour l'instant)
+1. **Suivi des retraits du pointage définitif** — sur une période choisie (ex. 2 mois), compter pour chaque patient combien de fois il a été retiré de la liste définitive (passé de bleu ou orange à « Non pointés »), pour équilibrer les retraits (remplace le post-it à bâtons).
 
 ## À faire sur le Mac
 
