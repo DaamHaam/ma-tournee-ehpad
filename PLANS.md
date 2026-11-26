@@ -29,6 +29,9 @@ SPPB dans les repères (points et total calculés depuis le catalogue), couleurs
    - À préciser plus tard : où (journée, liste, fiche), éval et transmission séparées ou non.
 5. **Historique du patient depuis le haut de la fiche** : une petite icône en haut à droite de la fiche ouvre l'historique complet du patient, dans l'ordre : notes du jour, séances, bilans et transmissions (copiés ou non, signalés comme tels).
    - À préciser : plus récent en haut ? remplace-t-il le bouton « Séances (n) » du bas de la fiche, ou s'y ajoute-t-il ? les tests NS (✓ recopié) y figurent-ils aussi ?
+7. **Journée : bouton « + » de la même taille que A et B.**
+8. **Journée : date mise en évidence quand c'est aujourd'hui** (couleur ou signe distinctif dans l'en-tête), pour ne pas pointer par erreur un autre jour consulté.
+9. **Bug — mise à jour de l'application** : fermer puis rouvrir sur l'iPhone ne montre pas la dernière version. Cause probable : iOS ne fait que remettre l'application au premier plan ; la nouvelle version se télécharge en arrière-plan mais la page n'est pas rechargée. Correction prévue : vérifier la mise à jour au retour au premier plan et recharger dès qu'elle est prête (sans perdre une saisie en cours).
 
 ## Plan 3 — pour plus tard
 
