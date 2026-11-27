@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { choiceId, MARCHE_EQUILIBRE, pickRubric, withoutRubric } from './marcheEquilibre'
-import { filledMeasures, latestMeasures, MEASURE_RUBRICS, measureHistory, mesuresHtml } from './mesures'
+import { filledMeasures, latestMeasures, MEASURE_RUBRICS, measureHistory, mesuresHtml, previousTugSteps, starList } from './mesures'
 import { TINETTI } from './tinetti'
 import { chronoDisplay, countdownDisplay, durationText, secondsValue } from '../features/bilan/chronoFormat'
 
@@ -66,5 +66,26 @@ describe('mesures des tests standardisés', () => {
   it('le TUG chronométré pendant le Tinetti entre dans l’historique, transmis avec le Tinetti', () => {
     const days = [{ date: '2026-11-10', entries: { p1: { tests: { tinetti: { scores: {}, notes: '', at: '', values: { tug: '19' }, copied: true } } } } }]
     expect(latestMeasures(days, 'p1', '2026-11-19').tug).toEqual({ date: '2026-11-10', text: '19sec', copied: true })
+  })
+})
+
+describe('★ des tests (fiche et bilan)', () => {
+  const quick = (values: Record<string, string>, copied = true) => ({ tests: { mesures: { ...record(values), copied } } })
+  const days = [
+    { date: '2026-10-01', entries: { p: quick({ tug: '20', eva: '3' }) } },
+    { date: '2026-10-08', entries: { p: quick({ tug: '18', 'tug.etapes': '3;4;5;4;2' }, false) } },
+    { date: '2026-10-09', entries: { p: quick({ cinqLevers: '12' }) } },
+  ]
+  it('donne la dernière valeur, sa date et le nombre de fois, les plus fréquents puis les plus récents en haut', () => {
+    const stars = starList(measureHistory(days, 'p'))
+    expect(stars.map(item => [item.test, item.count, item.last.date])).toEqual([['tug', 2, '2026-10-08'], ['cinqLevers', 1, '2026-10-09'], ['eva', 1, '2026-10-01']])
+    expect(stars[0].last.copied).toBe(false)
+  })
+  it('exclut les mesures du jour dans le bilan', () => {
+    expect(starList(measureHistory(days, 'p', '2026-10-09')).map(item => item.test)).toEqual(['tug', 'eva'])
+  })
+  it('retrouve les étapes du dernier TUG par étapes antérieur', () => {
+    expect(previousTugSteps(days, 'p', '2026-10-09')).toEqual({ date: '2026-10-08', steps: [3, 4, 5, 4, 2], copied: false })
+    expect(previousTugSteps(days, 'p', '2026-10-08')).toBeNull()
   })
 })

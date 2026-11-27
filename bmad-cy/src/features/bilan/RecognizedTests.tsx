@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { rubricById, rubricFilled, rubricText, type FlexInput } from '../../domain/marcheEquilibre'
-import { measureTitle, type Measure } from '../../domain/mesures'
+import { measureTitle, type Measure, type StarItem } from '../../domain/mesures'
 import { shortDate } from './display'
 import { Rubric } from './FlexFields'
 
@@ -41,10 +41,14 @@ export function RecognizedTests({ found, previous, onSave, onDismiss }: {
 }
 
 // ★ Dernières mesures du patient, repliées sous l’en-tête du bilan libre ; toucher un test l’ouvre pour le refaire.
-export function LastMeasures({ measures, onOpen }: { measures: [string, Measure][]; onOpen: (test: string) => void }) {
-  if (!measures.length) return null
+export function LastMeasures({ stars, onOpen }: { stars: StarItem[]; onOpen: (test: string) => void }) {
+  if (!stars.length) return null
   return <details className="last-measures">
     <summary>★ Dernières mesures</summary>
-    <ul>{measures.map(([test, measure]) => <li key={test} className={measure.copied ? undefined : 'pending'}><button type="button" aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => onOpen(test)}><span className="previous-mark" aria-hidden="true">★</span> <strong>{measureTitle(test)}</strong> : {measure.text} <span>· {shortDate(measure.date)}</span></button></li>)}</ul>
+    <StarItems stars={stars} onOpen={onOpen} />
   </details>
+}
+// Même liste que la ★ de la fiche : dernière valeur, date, nombre de fois en tout.
+export function StarItems({ stars, onOpen, className }: { stars: StarItem[]; onOpen: (test: string) => void; className?: string }) {
+  return <ul className={className}>{stars.map(({ test, last, count }) => <li key={test} className={last.copied ? undefined : 'pending'}><button type="button" aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => onOpen(test)}><span className="previous-mark" aria-hidden="true">★</span> <strong>{measureTitle(test)}</strong> : {last.text} <span>· {shortDate(last.date)} · {count} fois</span></button></li>)}</ul>
 }

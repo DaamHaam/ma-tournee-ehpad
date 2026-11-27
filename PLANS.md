@@ -4,15 +4,14 @@ Règles : `charte-agents/CHARTE.md` (plans numérotés, rien n'est codé sans or
 
 ## État
 
-- **Plan en cours** : Plan 2
-- **Plan à tester** : Plan 1 (v0.43.0), et les livraisons v0.39.0 à v0.42.0, voir « Tests à valider »
+- **Plan à tester** : Plan 2 (v0.44.0, organisateur v0.9.0), Plan 1 (v0.43.0), et les livraisons v0.39.0 à v0.42.0, voir « Tests à valider »
 - **Revue de code** : pas à jour — `revue-ok` est resté avant la v0.39.0 (commits v0.39.0 → v0.43.0 non revus)
 
 ## Plan 1 — à tester (livré en v0.43.0, organisateur v0.8.0)
 
 SPPB dans les repères (points et total calculés depuis le catalogue), couleurs de fin d’ordonnance revues, pointage définitif corrigeable après coup, niveaux d’alerte « ! » « !! » « !!! », favori Chrome « Remplir le TUG » pour NetSoin. Tests à faire : voir « Tests à valider ».
 
-## Plan 2 — en cours (lancé le 2026-11-27)
+## Plan 2 — à tester (livré en v0.44.0, organisateur v0.9.0)
 
 Décisions du 2026-11-27 : « ok pour tout » sur les propositions ci-dessous.
 
@@ -43,6 +42,25 @@ Décisions du 2026-11-27 : « ok pour tout » sur les propositions ci-dessous.
 - Production Convex (même contenu que le développement, site et applications branchés dessus) et suppression de la branche `dev` de l'organisateur : `organisateur-bilans/docs/A_FAIRE_MAC.md`.
 
 ## Tests à valider
+
+Plan 2 (v0.44.0) :
+- Mise à jour : après une publication, revenir dans l'application (sans la tuer) suffit à passer à la nouvelle version (vérifier le numéro en bas à droite) ; jamais de rechargement pendant un bilan ou une saisie.
+- Journée : date verte « Aujourd'hui » ; un autre jour en orange avec « Revenir à aujourd'hui » ; « + » de la même taille que A et B.
+- Journée : descendre dans la liste, ouvrir un bilan, revenir (flèche ‹ ou glissement) : la liste est au même endroit.
+- Journée : triangle rouge sans chiffre pour un patient sans aucune éval ni trans ; sigle « NS » vert (moins de 3 mois) ou orange.
+- Journée : « !!! » = fond orange seul, motif affiché, sans points d'exclamation.
+- Fiche : grande flèche de retour ; nom avec ★, icône Historique et « + » ; chambre dessous ; « ! » puis « Motif » ; Éval, Trans, NS ; nom, prénom, chambre, priorité tout en bas.
+- Fiche : « + » ouvre le bilan du jour (retour à la fiche) ; Historique sur toute la largeur, Copier / Supprimer au-dessus du texte, ✓ NS des tests validés.
+- Fiche : NS — case du jour, et toucher la date sous NS pour ajouter la date d'un test NS déjà fait (ex. le Tinetti du 20/11).
+- ★ : même liste dans la fiche et dans le bilan (dernière valeur, date, « n fois ») ; plus fréquents en haut, puis plus récents.
+- Prescription : saisir seulement la date → durée 1 an affichée, fin calculée ; durée et unité modifiables.
+- Copier un bilan libre avec Tinetti ou TUG pas encore validé : question « recopié dans NetSoin ? » ; Oui = ✓ NS (date NS, Éval).
+- TUG par étapes : « 1/5 », « 2/5 »… en grand, signal à chaque toucher, chaque case remplie au fur et à mesure ; ★ de chaque étape (durée et date du dernier TUG par étapes).
+- Chronomètres : bouton Pause (Ⅱ) puis Reprendre (▶) ; le temps repart d'où il était (TUG, 10 m, 6 min…).
+- Pointage : « Début de session » en haut ; un B descendu dans « Non pointés » affiche un petit chiffre sur le bouton (nombre de retraits depuis le début) ; export proposé du début à deux mois ronds.
+- Test des 10 m (repères) : case « Aide technique » ; compte rendu « Test des 10m : 18sec et 33 pas, avec rollator ».
+
+Plan 1 et livraisons précédentes :
 
 Plan 1 (v0.43.0, iPhone et Mac) :
 - SPPB : « + » des repères → SPPB ; un chronomètre par épreuve (✕ annule) ; marche et levers affichés au dixième ; points et score /12 justes selon la fiche ; ✨ écrit « SPPB : x/12 » ; les 5 levers remplissent aussi « 5 levers de chaise » ; le SPPB apparaît dans les ★.

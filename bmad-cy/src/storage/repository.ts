@@ -272,7 +272,7 @@ export class TourRepository {
   async resetPatientFlag(field: 'pointed' | 'billed'): Promise<number> {
     return this.database.transaction('rw', this.database.patients, () => this.database.patients.filter(patient => !patient.archived && patient[field]).modify(patient => { patient[field] = false }))
   }
-  async toggleFollowUp(id: string, kind: 'evalDates' | 'transDates', date: string): Promise<void> {
+  async toggleFollowUp(id: string, kind: 'evalDates' | 'transDates' | 'nsDates', date: string): Promise<void> {
     await this.database.transaction('rw', this.database.patients, async () => {
       const patient = await this.database.patients.get(id)
       if (!patient) throw new Error('Ce patient n’existe plus.')

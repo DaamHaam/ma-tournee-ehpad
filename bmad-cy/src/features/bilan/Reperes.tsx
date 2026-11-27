@@ -3,7 +3,7 @@ import {
   activePresets, behaviour, calcText, copyTargets, preciseFields, secondsText, tenthsText, choiceKey, CHECKED, formValues, NS_COMMENT, NS_TAG, orderedRubrics, otherOf, resolve, rubricFields, rubricFilled, TEST_OF_RUBRIC, TEST_TAG, visibleOptions,
   type BilanForm, type CatField, type CatRubric, type Catalog, type Values,
 } from '../../domain/catalog'
-import type { Measure } from '../../domain/mesures'
+import type { Measure, PreviousTugSteps } from '../../domain/mesures'
 import { TUG_STEPS } from '../../domain/tug'
 import { shortDate } from './display'
 import { ChronoBar, ChronoStart } from './ChronoBar'
@@ -19,8 +19,8 @@ const ATCD = 'contexte.atcd'
 
 // initialFocus : test ouvert seul d’emblée (★ de la fiche ou des dernières mesures).
 // atcdKine : antécédents utiles en séance de la fiche, repris dans « Antécédents » sur le bouton « Reprendre de la fiche ».
-export function ReperesPane({ catalog, form, measures, previous, initialFocus = '', atcdKine = '', onChange }: {
-  catalog: Catalog; form: BilanForm; measures: Record<string, Measure>; previous: PreviousLines | null; initialFocus?: string; atcdKine?: string
+export function ReperesPane({ catalog, form, measures, tugSteps = null, previous, initialFocus = '', atcdKine = '', onChange }: {
+  catalog: Catalog; form: BilanForm; measures: Record<string, Measure>; tugSteps?: PreviousTugSteps | null; previous: PreviousLines | null; initialFocus?: string; atcdKine?: string
   onChange: (form: BilanForm) => void
 }) {
   const box = useRef<HTMLDivElement>(null)
@@ -76,7 +76,11 @@ export function ReperesPane({ catalog, form, measures, previous, initialFocus = 
   const setValue = (key: string, value: string) => setValues({ [key]: value })
   // Chronomètre unique, en haut du volet (visible pendant que l’on cote) ; à l’arrêt, la valeur va directement dans le champ.
   // TUG (simple ou par étapes, lancé du TUG ou du Tinetti) : questions du TUG du catalogue ; un TUG simple efface les étapes.
-  const chrono = useChrono((result: ChronoResult) => setValues('key' in result ? { [result.key]: result.value } : {
+  // TUG par étapes : chaque étape terminée remplit aussitôt sa case (les suivantes et le total sont vidés jusqu’à la fin).
+  const chrono = useChrono((result: ChronoResult) => setValues('key' in result ? { [result.key]: result.value } : 'partialSteps' in result ? {
+    [`${TUG}.temps`]: '',
+    ...Object.fromEntries(TUG_STEPS.map((step, index) => [`${TUG}.${step.key}`, index < result.partialSteps.length ? String(result.partialSteps[index]) : ''])),
+  } : {
     [`${TUG}.temps`]: result.tug,
     ...Object.fromEntries(TUG_STEPS.map((step, index) => [`${TUG}.${step.key}`, result.steps ? String(result.steps[index]) : ''])),
   }))
@@ -116,7 +120,7 @@ export function ReperesPane({ catalog, form, measures, previous, initialFocus = 
       <h2 className="module-title">{domainTitle(group.domain)}</h2>
       {group.rubrics.map(rubric => <RubricBlock key={rubric.key} rubric={rubric} catalog={catalog} form={form} values={values}
         measure={measures[TEST_OF_RUBRIC[rubric.key] ?? '']} last={previous?.lines[rubric.key]} lastCopied={!!previous?.copied} lastDate={previous?.date}
-        chrono={chrono} tugMeasure={measures.tug} atcdKine={atcdKine} onToggle={toggleChoice} onValue={setValue} />)}
+        chrono={chrono} tugMeasure={measures.tug} tugSteps={tugSteps} atcdKine={atcdKine} onToggle={toggleChoice} onValue={setValue} />)}
     </section>)}
     {groups.length === 0 && <p className="pane-instructions">{onlyFilled ? 'Rien n’est encore rempli.' : 'Aucune rubrique dans ce bilan.'}</p>}
     {!focus && <div className="reperes-actions">
@@ -125,9 +129,9 @@ export function ReperesPane({ catalog, form, measures, previous, initialFocus = 
   </div>
 }
 
-function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied, lastDate, chrono, tugMeasure, atcdKine, onToggle, onValue }: {
+function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied, lastDate, chrono, tugMeasure, tugSteps, atcdKine, onToggle, onValue }: {
   rubric: CatRubric; catalog: Catalog; form: BilanForm; values: Values; measure?: Measure; last?: string; lastCopied: boolean; lastDate?: string
-  chrono: Chrono; tugMeasure?: Measure; atcdKine: string
+  chrono: Chrono; tugMeasure?: Measure; tugSteps: PreviousTugSteps | null; atcdKine: string
   onToggle: (field: string, option: string) => void; onValue: (key: string, value: string) => void
 }) {
   const fields = rubricFields(catalog, rubric.key)
@@ -163,14 +167,20 @@ function RubricBlock({ rubric, catalog, form, values, measure, last, lastCopied,
     {rubric.key === ATCD && atcdKine && <button type="button" className="rubric-action" disabled={(form.values[`${ATCD}.atcd`] ?? '').includes(atcdKine)} onClick={() => { const atcd = form.values[`${ATCD}.atcd`] ?? ''; onValue(`${ATCD}.atcd`, atcd.trim() ? `${atcd.trimEnd()}\n${atcdKine}` : atcdKine) }}>Reprendre de la fiche</button>}
     {fields.map(field => <div key={field.key} className="field-wrap">
       {field.key === walkStart && <><p className="row-sub">Épreuve de marche</p>{tugButtons}{tugMeasure && <p className={`previous-measure${tugMeasure.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> TUG {tugMeasure.text} · {shortDate(tugMeasure.date)}</p>}</>}
-      <Field field={field} rubric={rubric} catalog={catalog} form={form} values={values} precise={precise.has(field.key)} onToggle={onToggle} onValue={onValue} />
+      <Field field={field} rubric={rubric} catalog={catalog} form={form} values={values} precise={precise.has(field.key)} star={isTug && tugSteps ? stepStar(field.key, tugSteps) : undefined} onToggle={onToggle} onValue={onValue} />
     </div>)}
     {ns && <label className="flex-field ns-comment"><span>Commentaire des tests NS (commun au Tinetti et au TUG)</span><textarea rows={2} aria-label={`Commentaire des tests NS (${rubric.title})`} value={form.values[NS_COMMENT] ?? ''} onChange={event => onValue(NS_COMMENT, event.target.value)} /></label>}
   </section>
 }
 
-function Field({ field, rubric, catalog, form, values, precise = false, onToggle, onValue }: {
-  field: CatField; rubric: CatRubric; catalog: Catalog; form: BilanForm; values: Values
+// ★ d’une étape du TUG : durée de cette étape au dernier TUG par étapes.
+function stepStar(key: string, previous: PreviousTugSteps) {
+  const index = TUG_STEPS.findIndex(step => key === `${TUG}.${step.key}`)
+  return index < 0 ? undefined : { text: `${previous.steps[index]} s`, date: previous.date, copied: previous.copied }
+}
+
+function Field({ field, rubric, catalog, form, values, precise = false, star, onToggle, onValue }: {
+  field: CatField; rubric: CatRubric; catalog: Catalog; form: BilanForm; values: Values; star?: { text: string; date: string; copied: boolean }
   onToggle: (field: string, option: string) => void; precise?: boolean
   onValue: (key: string, value: string) => void
 }) {
@@ -201,7 +211,7 @@ function Field({ field, rubric, catalog, form, values, precise = false, onToggle
       return <p className="flex-field calc-field"><span>{field.label}</span> <b>{result === '' ? '—' : `${result}${unit ? ` ${unit}` : ''}`}</b></p>
     }
     // Au centième (SPPB) : mesuré au centième, affiché au dixième (une saisie à la main garde ce qu’on tape).
-    case 'number': return <label className="flex-field">{label && <span>{label}</span>}<span className="flex-number"><input type="text" inputMode="decimal" aria-label={name} value={precise ? tenthsText(raw) : raw} onChange={event => onValue(field.key, event.target.value)} /><span>{unit}</span></span>{otherInput}</label>
+    case 'number': return <label className="flex-field">{label && <span>{label}</span>}<span className="flex-number"><input type="text" inputMode="decimal" aria-label={name} value={precise ? tenthsText(raw) : raw} onChange={event => onValue(field.key, event.target.value)} /><span>{unit}</span>{star && <span className={`step-star${star.copied ? '' : ' pending'}`}><span className="previous-mark" aria-hidden="true">★</span> {star.text} · {shortDate(star.date)}</span>}</span>{otherInput}</label>
     case 'list': return <label className="flex-field">{label && <span>{label}</span>}<textarea rows={3} aria-label={name} placeholder="Une ligne par élément" value={raw} onChange={event => onValue(field.key, event.target.value)} /></label>
     case 'text': return <label className="flex-field">{label && <span>{label}</span>}<textarea rows={2} aria-label={name} value={raw} onChange={event => onValue(field.key, event.target.value)} />{otherInput}</label>
   }

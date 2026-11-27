@@ -76,3 +76,22 @@ export function previousMonthStart(today: string): string {
   const previous = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
   return `${previous.year}-${String(previous.month).padStart(2, '0')}-01`
 }
+
+// Suivi des retraits (remplace le post-it à bâtons) : depuis le début de la session de pointage, nombre de jours où chaque
+// patient vu en B (orange) a été descendu dans « Non pointés ». Les A retirés ne comptent pas.
+export const SESSION_START_SETTING = 'pointage.sessionStart'
+export function removedCounts(days: Pick<Day, 'date' | 'entries'>[], start: string): Map<string, number> {
+  const counts = new Map<string, number>()
+  if (!start) return counts
+  for (const day of days) {
+    if (day.date < start) continue
+    for (const [id, entry] of Object.entries(day.entries)) if (entry.unpointed && entry.session === 'B') counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return counts
+}
+// Fin proposée pour l’export : deux mois ronds après le début (1er octobre → 30 novembre).
+export function twoMonthsEnd(start: string): string {
+  const [year, month, day] = start.split('-').map(Number)
+  const end = new Date(year, month + 1, day - 1)
+  return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+}

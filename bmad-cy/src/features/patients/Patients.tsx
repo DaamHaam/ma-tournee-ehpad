@@ -2,7 +2,8 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { BilanActions } from '../bilan/BilanActions'
 import { bilanHtml } from '../bilan/richText'
 import { itemHtml, shortDate } from '../bilan/display'
-import { MEASURE_RUBRICS, measureHistory, measureTitle } from '../../domain/mesures'
+import { MEASURE_RUBRICS, measureHistory, measureTitle, starList } from '../../domain/mesures'
+import { StarItems } from '../bilan/RecognizedTests'
 import { lastNs, matchesNs, NS_FILTER_LABEL, nsLate, type NsFilter } from '../../domain/suiviNs'
 import { hasTestContent, TEST_TYPES } from '../../domain/tinetti'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -137,57 +138,62 @@ export function PatientDetail() {
   }
   if (patient === undefined) return null
   if (!patient) return <div className="empty-state"><h1>Fiche introuvable</h1><Link className="button" to="/patients">Patients</Link></div>
+  const historyPanel = !!history?.length && historyOpen && <section id="patient-history" className="card history" aria-label="Historique">
+    <ol>{history.map(day => {
+      const entry = day.entries[id]
+      const ns = Object.keys(entry.ns ?? {})
+      return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}{ns.length ? ` · ✓ NS ${ns.map(measureTitle).join(', ')}` : ''}</span></Link>{entry.bilan?.trim() && <div className="history-bilan-row"><BilanActions date={day.date} id={id} name={fullName(patient)} html={bilanHtml(entry)} /><p className="history-bilan" dangerouslySetInnerHTML={{ __html: bilanHtml(entry) }} /></div>}
+        {TEST_TYPES.map(kind => {
+          const record = entry.tests?.[kind]
+          if (!record || !hasTestContent(record)) return null
+          const html = itemHtml({ kind, text: record.notes, record })
+          return <div key={kind} className="history-bilan-row"><BilanActions date={day.date} id={id} name={fullName(patient)} html={html} kind={kind} /><p className="history-bilan" dangerouslySetInnerHTML={{ __html: html }} /></div>
+        })}</li>
+    })}</ol>
+  </section>
   return <>
-    <Link className="back-link" to={back.to}>← {back.label}</Link>
+    <Link className="back-link back-arrow" to={back.to} aria-label={`Retour : ${back.label}`}><span aria-hidden="true">←</span></Link>
+    <div className={`page-heading patient-title${patient.alert === 3 ? ' urgent' : ''}`}><div>
+      <div className="patient-name-row"><h1><WaitingMark level={patient.alert} reason={patient.alertReason} />{fullName(patient)}</h1>
+      <div className="patient-tools">
+        {history && <TestsStar days={history} id={id} today={today} />}
+        {!!history?.length && <button type="button" className="history-toggle" aria-expanded={historyOpen} aria-controls="patient-history" aria-label={`Historique (${history.length})`} title="Historique" onClick={() => setHistoryOpen(open => !open)}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 7v5l3 2M3.5 12a8.5 8.5 0 1 0 2.5-6M3 4v4h4" /></svg></button>}
+        {patient.paused || patient.archived ? <button type="button" className="fiche-add" aria-label={`Bilan pour ${fullName(patient)}`} disabled>+</button> : <Link className="fiche-add" aria-label={`Bilan pour ${fullName(patient)}`} to={`/bilan/${today}/${id}`} state={{ from: `/patients/${id}` }}>+</Link>}
+      </div></div>
+      {(patient.room || patient.archived) && <p className="patient-room">{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}</p>}
+    </div></div>
+    {historyPanel}
     <AlertField patient={patient} />
-    <div className={`page-heading patient-title${patient.alert === 3 ? ' urgent' : ''}`}><div><h1><WaitingMark level={patient.alert} reason={patient.alertReason} />{fullName(patient)}{history && <TestsStar days={history} id={id} today={today} />}</h1><p>{[patient.room && `Chambre ${patient.room}`, patient.archived && 'Archivé'].filter(Boolean).join(' · ')}{(patient.room || patient.archived) ? ' · ' : ''}<span className={nsLate(patient, today) ? 'ns-late' : undefined}>Dernier test NS : {lastNs(patient) ? shortDate(lastNs(patient)!) : 'jamais'}</span></p></div></div>
     <FollowUps patient={patient} />
-    <EditableIdentity patient={patient} />
     <PatientCare patient={patient} />
     <Antecedents patient={patient} />
     {history && <MeasuresHistory days={history} id={id} />}
-    {!!history?.length && <button type="button" className="history-toggle" aria-expanded={historyOpen} aria-controls="patient-history" onClick={() => setHistoryOpen(open => !open)}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 7v5l3 2M3.5 12a8.5 8.5 0 1 0 2.5-6M3 4v4h4" /></svg>Séances ({history.length})</button>}
-    {!!history?.length && historyOpen && <section id="patient-history" className="card history" aria-label="Séances et notes">
-      <ol>{history.map(day => {
-        const entry = day.entries[id]
-        return <li key={day.date}><Link to={`/?date=${day.date}`}><time dateTime={day.date}>{dateLabel(day.date)}</time><span>{entry.session ? `Séance ${entry.session}` : 'Pas de séance'}{entry.note.trim() ? ` · ${entry.note}` : ''}</span></Link>{entry.bilan?.trim() && <div className="history-bilan-row"><p className="history-bilan" dangerouslySetInnerHTML={{ __html: bilanHtml(entry) }} /><BilanActions date={day.date} id={id} name={fullName(patient)} html={bilanHtml(entry)} /></div>}
-          {TEST_TYPES.map(kind => {
-            const record = entry.tests?.[kind]
-            if (!record || !hasTestContent(record)) return null
-            const html = itemHtml({ kind, text: record.notes, record })
-            return <div key={kind} className="history-bilan-row"><p className="history-bilan" dangerouslySetInnerHTML={{ __html: html }} /><BilanActions date={day.date} id={id} name={fullName(patient)} html={html} kind={kind} /></div>
-          })}</li>
-      })}</ol>
-    </section>}
+    <EditableIdentity patient={patient} />
     <section className="danger-zone"><div className="action-row"><button onClick={() => void run(() => repository.archivePatient(patient.id, !patient.archived))}>{patient.archived ? 'Réactiver' : 'Archiver'}</button><button className="danger" onClick={() => void remove()}>Supprimer</button></div></section>
   </>
 }
 
-// Niveau d’alerte, en haut à droite de la fiche : aucun, « ! » (attend une séance), « !! » (demande de l’équipe),
+// Niveau d’alerte, sous le nom : aucun, « ! » (attend une séance), « !! » (demande de l’équipe),
 // « !!! » (urgence médicale connue), avec un motif court facultatif. Il reste réglé tant qu’on ne le change pas ici.
 function AlertField({ patient }: { patient: Patient }) {
   const { run } = useSave()
   const set = (patch: Partial<Pick<Patient, 'alert' | 'alertReason'>>) => void run(() => repository.updatePatient(patient.id, patch))
   return <div className="alert-field">
     <div className="alert-levels" role="radiogroup" aria-label="Niveau d’alerte">{([0, 1, 2, 3] as const).map(level => <button key={level} type="button" role="radio" aria-checked={patient.alert === level} aria-label={ALERT_LABEL[level]} title={ALERT_LABEL[level]} onClick={() => set(level ? { alert: level } : { alert: 0, alertReason: '' })}>{level ? '!'.repeat(level) : '–'}</button>)}</div>
-    {patient.alert > 0 && <input key={`${patient.id}-${patient.alertReason}`} className="alert-reason-input" aria-label="Motif de l’alerte" placeholder="Motif (facultatif)" maxLength={60} defaultValue={patient.alertReason} onBlur={event => { const value = event.target.value.trim(); if (value !== patient.alertReason) set({ alertReason: value }) }} />}
+    {patient.alert > 0 && <input key={`${patient.id}-${patient.alertReason}`} className="alert-reason-input" aria-label="Motif de l’alerte" placeholder="Motif" maxLength={60} defaultValue={patient.alertReason} onBlur={event => { const value = event.target.value.trim(); if (value !== patient.alertReason) set({ alertReason: value }) }} />}
   </div>
 }
 
-// ★ près du nom : les tests déjà faits pour ce patient, les plus fréquents en premier, avec leur dernière mesure ;
-// toucher un test l’ouvre seul dans les repères du bilan du jour (retour à la fiche).
+// ★ près du nom : même liste que les « ★ Dernières mesures » du bilan (dernière valeur, date, nombre de fois ;
+// plus fréquents en haut, puis plus récents) ; toucher un test l’ouvre seul dans les repères du bilan du jour (retour à la fiche).
 function TestsStar({ days, id, today }: { days: Parameters<typeof measureHistory>[0]; id: string; today: string }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
-  const history = measureHistory(days, id)
-  const tests = MEASURE_ORDER.filter(test => history[test]?.length).sort((a, b) => history[b].length - history[a].length)
-  if (!tests.length) return null
+  const stars = starList(measureHistory(days, id))
+  if (!stars.length) return null
   return <span className="tests-star">
     <button type="button" className="tests-star-button" aria-expanded={open} aria-label="Dernières mesures des tests" onClick={() => setOpen(value => !value)}>★</button>
-    {open && <ul className="tests-star-list" aria-label="Dernières mesures">{tests.map(test => {
-      const last = history[test][0]
-      return <li key={test}><button type="button" className={last.copied ? undefined : 'pending'} aria-label={`Faire le test ${measureTitle(test)}`} onClick={() => navigate(`/bilan/${today}/${id}?test=${test}`, { state: { from: `/patients/${id}` } })}><strong>{measureTitle(test)}</strong> {last.text} <span>· {shortDate(last.date)}{history[test].length > 1 ? ` · ${history[test].length} fois` : ''}</span></button></li>
-    })}</ul>}
+    {open && <StarItems className="tests-star-list" stars={stars} onOpen={test => navigate(`/bilan/${today}/${id}?test=${test}`, { state: { from: `/patients/${id}` } })} />}
   </span>
 }
 

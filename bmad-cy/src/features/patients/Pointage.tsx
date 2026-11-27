@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { moodSigns, parseDate, shortName, type Day } from '../../domain/model'
-import { pointageDays, pointageMonths, pointageView, previousMonthStart, type BelowKind, type ChipKind } from '../../domain/pointage'
+import { moodSigns, parseDate, shortName, validDate, type Day } from '../../domain/model'
+import { pointageDays, pointageMonths, pointageView, previousMonthStart, removedCounts, SESSION_START_SETTING, twoMonthsEnd, type BelowKind, type ChipKind } from '../../domain/pointage'
 import { useSave } from '../../app/SaveContext'
 import { useToday } from '../../app/useToday'
 import { db } from '../../storage/database'
@@ -29,12 +29,18 @@ export function Pointage() {
   const { run } = useSave()
   // Patient de « non pointés » touché : choix de la couleur pour le remonter (une ligne de trois boutons sous la journée).
   const [choosing, setChoosing] = useState('')
-  if (!allDays || !patients) return null
+  // Début de la session de pointage (réglage) : compte des B retirés par patient depuis cette date, et période d’export par défaut.
+  const sessionStart = useLiveQuery(async () => (await db.settings.get(SESSION_START_SETTING))?.value ?? '', [])
+  const counts = useMemo(() => removedCounts(allDays ?? [], sessionStart ?? ''), [allDays, sessionStart])
+  if (!allDays || !patients || sessionStart === undefined) return null
+  const removed = (id: string) => counts.get(id) ? <span className="pointage-removed" title={`Retiré ${counts.get(id)} fois depuis le début de la session`} aria-hidden="true">{counts.get(id)}</span> : null
+  const removedLabel = (id: string) => counts.get(id) ? `, retiré ${counts.get(id)} fois depuis le début de la session` : ''
   const jump = (month: string) => document.getElementById(`pointage-${month}`)?.scrollIntoView({ block: 'start' })
   const unpoint = (date: string, id: string) => void run(() => repository.unpoint(date, id))
   const repoint = (date: string, id: string, kind: ChipKind) => { setChoosing(''); void run(() => repository.repoint(date, id, kind)) }
   return <>
-    <PointageExport days={allDays} />
+    <label className="pointage-session">Début de session <input type="date" value={sessionStart} onChange={event => { const value = event.target.value; if (!value || validDate(value)) void run(() => repository.setSetting(SESSION_START_SETTING, value)) }} /></label>
+    <PointageExport key={sessionStart} days={allDays} sessionStart={sessionStart} />
     {!days.length ? <div className="empty-state"><h2>Aucune séance pointée</h2></div> : <>
       <label className="pointage-month">Aller au mois <select value="" onChange={event => jump(event.target.value)}><option value="" disabled>Choisir…</option>{months.map(month => <option key={month} value={month}>{monthLabel(month)}</option>)}</select></label>
       {months.map(month => <section key={month} id={`pointage-${month}`} className="pointage-month-block" aria-label={monthLabel(month)}>
@@ -48,14 +54,14 @@ export function Pointage() {
               <span className={`pointage-count${view.warning ? ' warning' : ''}`}>{view.a} A · {view.b} B{view.warning && <span className="pointage-warning" title={`Capacité ${view.capacity} ± 1`}> ⚠ {view.a + view.b} pour {view.capacity} ± 1</span>}</span>
             </header>
             {!!view.top.length && <ul className="pointage-chips">{view.top.map(({ id, entry, kind }) => <li key={id}>
-              <button type="button" className={`pointage-chip ${chipClass[kind]}`} aria-label={`${shortName(entry.patient)}, ${CHIP_LABEL[kind]}`} onClick={() => unpoint(day.date, id)}>
-                <span className="pointage-name">{shortName(entry.patient)}</span>
+              <button type="button" className={`pointage-chip ${chipClass[kind]}`} aria-label={`${shortName(entry.patient)}, ${CHIP_LABEL[kind]}${removedLabel(id)}`} onClick={() => unpoint(day.date, id)}>
+                <span className="pointage-name">{shortName(entry.patient)}{removed(id)}</span>
                 {(entry.note.trim() || entry.pause !== undefined) && <span className="pointage-note">{[entry.pause !== undefined && `Pause${entry.pause ? ` : ${entry.pause}` : ''}`, entry.note.trim()].filter(Boolean).join(' · ')}</span>}
               </button>
             </li>)}</ul>}
             {!!view.below.length && <div className="pointage-below"><span className="pointage-below-title">Non pointés</span>
               <ul>{view.below.map(({ id, entry, kind }) => <li key={id} className={kind}>
-                <button type="button" aria-expanded={choosing === `${day.date}:${id}`} aria-label={`${shortName(entry.patient)}, ${BELOW_LABEL[kind]}, remonter`} onClick={() => setChoosing(choosing === `${day.date}:${id}` ? '' : `${day.date}:${id}`)}>{shortName(entry.patient)}{kind === 'removed' && <span className="pointage-was"> ({entry.session})</span>}{kind === 'done' && <span className="pointage-was"> ✓</span>}</button>
+                <button type="button" aria-expanded={choosing === `${day.date}:${id}`} aria-label={`${shortName(entry.patient)}, ${BELOW_LABEL[kind]}${removedLabel(id)}, remonter`} onClick={() => setChoosing(choosing === `${day.date}:${id}` ? '' : `${day.date}:${id}`)}>{shortName(entry.patient)}{removed(id)}{kind === 'removed' && <span className="pointage-was"> ({entry.session})</span>}{kind === 'done' && <span className="pointage-was"> ✓</span>}</button>
               </li>)}</ul>
               {view.below.filter(({ id }) => choosing === `${day.date}:${id}`).map(({ id, entry }) => <div key={id} className="pointage-choice" role="group" aria-label={`Remonter ${shortName(entry.patient)}`}>
                 <span>{shortName(entry.patient)} :</span>
@@ -71,11 +77,12 @@ export function Pointage() {
 
 // Export du pointage définitif sur une période : format de l’export de la journée sans les signes H ni les séances retirées.
 // Copier, télécharger ou partager marque les jours exportés (⇪), pour voir plus tard où l’on s’était arrêté.
-function PointageExport({ days }: { days: Day[] }) {
+// Période par défaut : depuis le début de session, sur deux mois ronds ; sans début de session, depuis le 1er du mois précédent.
+function PointageExport({ days, sessionStart }: { days: Day[]; sessionStart: string }) {
   const today = useToday()
   const { run } = useSave()
-  const [start, setStart] = useState(() => previousMonthStart(today))
-  const [end, setEnd] = useState(today)
+  const [start, setStart] = useState(() => sessionStart || previousMonthStart(today))
+  const [end, setEnd] = useState(() => sessionStart ? twoMonthsEnd(sessionStart) : today)
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
   const valid = !!start && !!end && start <= end

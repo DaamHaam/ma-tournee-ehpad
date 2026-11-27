@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plannedOn, weekdayLetter, type Day, type Entry } from './model'
-import { capacity, definitiveSession, pointageDays, pointageMonths, pointageView, previousMonthStart, withoutUnpointed } from './pointage'
+import { capacity, definitiveSession, pointageDays, pointageMonths, pointageView, previousMonthStart, removedCounts, twoMonthsEnd, withoutUnpointed } from './pointage'
 import { exportPointage, exportTxt } from '../features/exports/exportTxt'
 
 const entry = (id: string, session: Entry['session'], note = '', patch: Partial<Entry> = {}): Entry => ({ patient: { id, lastName: id, firstName: '', room: '', priority: '', demo: true }, session, note, ...patch })
@@ -76,5 +76,24 @@ describe('pointage corrigé à la main', () => {
     expect([view.a, view.b]).toEqual([1, 1])
     expect(Object.values(withoutUnpointed(day).entries).map(item => item.session)).toEqual(['B', 'A', null])
     expect(definitiveSession({ session: 'A', unpointed: true, pointage: 'B' })).toBeNull()
+  })
+})
+
+describe('suivi des retraits du pointage', () => {
+  const days = [
+    day('2026-09-28', [entry('fictifa', 'B', '', { unpointed: true })]),
+    day('2026-10-01', [entry('fictifa', 'B', '', { unpointed: true }), entry('fictifb', 'A', '', { unpointed: true })]),
+    day('2026-10-05', [entry('fictifa', 'B', '', { unpointed: true }), entry('fictifb', 'B')]),
+  ]
+  it('compte les B retirés depuis le début de session, pas les A', () => {
+    const counts = removedCounts(days, '2026-10-01')
+    expect(counts.get('fictifa')).toBe(2)
+    expect(counts.has('fictifb')).toBe(false)
+    expect(removedCounts(days, '').size).toBe(0)
+  })
+  it('propose une fin d’export à deux mois ronds', () => {
+    expect(twoMonthsEnd('2026-10-01')).toBe('2026-11-30')
+    expect(twoMonthsEnd('2026-12-01')).toBe('2027-01-31')
+    expect(twoMonthsEnd('2026-11-15')).toBe('2027-01-14')
   })
 })

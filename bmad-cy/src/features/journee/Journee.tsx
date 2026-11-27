@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { DndContext, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -13,6 +13,10 @@ import { exportTxt } from '../exports/exportTxt'
 import { copyText } from '../exports/clipboard'
 import { WaitingLabel, WaitingMark } from '../patients/WaitingMark'
 import { PrescriptionMark } from '../patients/PrescriptionMark'
+import { NsMark } from '../patients/NsMark'
+const SCROLL_KEY = 'ma-tournee.journee.scroll'
+function readScroll(date: string): number { try { const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) ?? 'null') as { date?: string; top?: number } | null; return saved?.date === date && typeof saved.top === 'number' ? saved.top : 0 } catch { return 0 } }
+function writeScroll(date: string, top: number) { try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ date, top })) } catch { /* stockage indisponible : la liste repart en haut */ } }
 // Toute la carte se déplace après un appui long (toucher ou souris) ; les appuis courts restent aux boutons.
 function SortableRow({ id, label, group, children }: { id: string; label: string; group?: boolean; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -20,7 +24,7 @@ function SortableRow({ id, label, group, children }: { id: string; label: string
 }
 function NoteToggle({ patient, name, open, today, disabled, onToggle }: { patient?: Patient; name: string; open: boolean; today: string; disabled?: boolean; onToggle: () => void }) {
   const last = patient ? lastFollowUp(patient) : null
-  const followUp = last ? `dernière éval ou trans le ${parseDate(last).toLocaleDateString('fr-FR')}` : 'éval ou trans : date inconnue'
+  const followUp = last ? `dernière éval ou trans le ${parseDate(last).toLocaleDateString('fr-FR')}` : 'jamais d’éval ni de trans'
   const weeks = weeksSince(last, today)
   // Le nombre de semaines depuis la dernière éval ou trans précède le triangle, dans sa couleur ; seul le triangle pivote à l’ouverture de la note.
   return <button type="button" className={`transmission ${followUpLevel(last, today)}${open ? ' open' : ''}`} aria-expanded={open} aria-label={`Note pour ${name}, ${followUp}`} title={followUp} disabled={disabled} onClick={onToggle}>{weeks !== null && <span className="weeks" aria-hidden="true">{weeks}</span>}<span className="triangle" aria-hidden="true" /></button>
@@ -57,8 +61,24 @@ export function Journee() {
   const active = new Map(patients?.map(p => [p.id, p]))
   const visibleEntries = day?.order.filter(id => day.entries[id] && entryVisible(day.entries[id], active.get(id), date, today)) ?? []
   const seen = visibleEntries.filter(id => day?.entries[id].session).length
+  // La position de la liste est retenue (par date) pendant le défilement et rétablie au retour d’un bilan ou d’une fiche :
+  // la page du bilan bloque le défilement de toute la page, ce qui la remettrait en haut.
+  const restored = useRef('')
+  useEffect(() => {
+    const save = () => { if (restored.current === date && !document.querySelector('.bilan-page')) writeScroll(date, window.scrollY) }
+    window.addEventListener('scroll', save, { passive: true })
+    return () => window.removeEventListener('scroll', save)
+  }, [date])
+  const ready = !!day
+  useLayoutEffect(() => {
+    if (!ready || restored.current === date) return
+    restored.current = date
+    const top = readScroll(date)
+    if (top) window.scrollTo(0, top)
+  }, [ready, date])
+  const isToday = date === today
   return <>
-    <div className="page-heading"><label className="date-heading"><h1 className="date-title">{dateLabel(date)}</h1><input type="date" aria-label="Date" value={date} onChange={e => changeDate(e.target.value)} /></label></div>
+    <div className={`page-heading day-heading${isToday ? ' is-today' : ' other-day'}`}><label className="date-heading"><h1 className="date-title">{dateLabel(date)}</h1><input type="date" aria-label="Date" value={date} onChange={e => changeDate(e.target.value)} /></label>{isToday ? <span className="today-badge">Aujourd’hui</span> : <button type="button" className="today-return" onClick={() => setParams({})}>Revenir à aujourd’hui</button>}</div>
     <section className="date-picker"><div className="weekday-tabs" aria-label="Jours de tournée">{[[1, 'Lundi'], [4, 'Jeudi'], [5, 'Vendredi']].map(([weekday, label]) => <button key={weekday} aria-pressed={parseDate(date).getDay() === weekday} onClick={() => changeDate(weekDate(date, Number(weekday)))}>{label}</button>)}</div></section>
     {day && <>
       <div className="section-heading"><h2>{seen} / {visibleEntries.length} patients vus</h2></div>
@@ -77,7 +97,7 @@ export function Journee() {
         const noteOpen = entry ? (paused ? entry.note.trim() !== '' : noteOverrides[noteKey] ?? entry.note.trim() !== '') : false
         const sinceA = !isSeparator && lastA ? daysSince(lastA.get(id), date) : null
         return <SortableRow key={id} id={id} label={label} group={!!active.get(id)?.group}>{isSeparator ? <div className={`separator${id === OFF_DAY_SEPARATOR ? ' off-day' : ''}`} role="separator" aria-label={label} /> : <article className={`patient-row${paused ? ' paused' : ''}${!paused && dayAlert(active.get(id)?.alert, entry.session) === 3 ? ' urgent' : ''}`}>
-          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} disabled={paused} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><span className="name-line"><strong><WaitingMark level={dayAlert(active.get(id)?.alert, entry.session)} reason={active.get(id)?.alertReason} />{shortName(patient!)}</strong><WaitingLabel level={dayAlert(active.get(id)?.alert, entry.session)} reason={active.get(id)?.alertReason} /><PrescriptionMark patient={active.get(id)} today={today} /></span>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{paused && <span className="patient-meta pause-reason">{pause ? `Pause · ${pause}` : 'Pause'}</span>}{!paused && dayAlert(active.get(id)?.alert, entry.session) > 0 && active.get(id)?.alertReason && <span className="patient-meta alert-reason">{active.get(id)?.alertReason}</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} disabled={paused} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}{paused ? <button type="button" className="bilan-toggle" aria-label={`Bilan pour ${fullName(patient!)}`} disabled>+</button> : <Link className={`bilan-toggle${hasBilanOrTest(entry) ? ' filled' : ''}`} draggable={false} aria-label={`Bilan pour ${fullName(patient!)}`} to={`/bilan/${date}/${id}`}>+</Link>}</div></div>
+          <div className="patient-top"><NoteToggle patient={active.get(id)} name={label} open={noteOpen} today={today} disabled={paused} onToggle={() => setNoteOverrides(current => ({ ...current, [noteKey]: !noteOpen }))} /><Link className="patient-name" draggable={false} to={`/patients/${id}`} state={{ from: `/?date=${date}` }}><span className="name-line"><strong><WaitingMark level={dayAlert(active.get(id)?.alert, entry.session) === 3 ? 0 : dayAlert(active.get(id)?.alert, entry.session)} reason={active.get(id)?.alertReason} />{shortName(patient!)}</strong><WaitingLabel level={dayAlert(active.get(id)?.alert, entry.session)} reason={active.get(id)?.alertReason} /><PrescriptionMark patient={active.get(id)} today={today} /><NsMark patient={active.get(id)} today={today} /></span>{active.get(id)?.group && <span className="sr-only"> (groupe)</span>}{paused && <span className="patient-meta pause-reason">{pause ? `Pause · ${pause}` : 'Pause'}</span>}{!paused && dayAlert(active.get(id)?.alert, entry.session) > 0 && active.get(id)?.alertReason && <span className="patient-meta alert-reason">{active.get(id)?.alertReason}</span>}{(!active.has(id) || active.get(id)?.archived) && <span className="patient-meta">{!active.has(id) ? 'Supprimé' : 'Archivé'}</span>}</Link><div className="session-buttons">{sinceA !== null && <span className="since-a" title={`Dernière séance A il y a ${sinceA} j`}><span aria-hidden="true">{sinceA}</span><span className="sr-only">Dernière séance A il y a {sinceA} jours</span></span>}{(['A', 'B'] as const).map(session => <button key={session} className={entry.session === session ? 'selected' : ''} aria-pressed={entry.session === session} aria-label={`${session} pour ${fullName(patient!)}`} disabled={paused} onClick={() => void run(() => repository.setSession(date, id, session))}>{session}</button>)}{paused ? <button type="button" className="bilan-toggle" aria-label={`Bilan pour ${fullName(patient!)}`} disabled>+</button> : <Link className={`bilan-toggle${hasBilanOrTest(entry) ? ' filled' : ''}`} draggable={false} aria-label={`Bilan pour ${fullName(patient!)}`} to={`/bilan/${date}/${id}`}>+</Link>}</div></div>
  {noteOpen && <input key={`${date}-${id}-note`} className="day-note" onMouseDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} autoFocus={!paused && noteOverrides[noteKey] === true} aria-label={`Note du jour pour ${fullName(patient!)}`} placeholder="Note" defaultValue={entry.note} readOnly={paused} onChange={e => { const value = e.target.value; void run(() => repository.setNote(date, id, value)) }} />}
         </article>}</SortableRow>
       })}</div></SortableContext></DndContext>

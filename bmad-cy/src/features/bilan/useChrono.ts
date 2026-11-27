@@ -10,8 +10,10 @@ export type ChronoSpec =
   | { mode: 'countdown'; label: string; seconds: number }
   | { mode: 'tug'; label: string }
   | { mode: 'steps'; label: string }
-export type ChronoState = { spec: ChronoSpec; start: number; marks: number[]; finished?: boolean } | null
-export type ChronoResult = { key: string; value: string } | { tug: string; steps?: number[] }
+// pausedAt : instant de la pause en cours ; paused : durée totale des pauses passées (retirée du temps mesuré).
+export type ChronoState = { spec: ChronoSpec; start: number; marks: number[]; finished?: boolean; pausedAt?: number; paused: number } | null
+// partialSteps : TUG par étapes en cours, durées des étapes déjà terminées (remplies tout de suite dans leurs cases).
+export type ChronoResult = { key: string; value: string } | { tug: string; steps?: number[] } | { partialSteps: number[] }
 
 // Bip de fin du compte à rebours. iOS n’autorise le son qu’après un geste : le contexte audio naît au toucher du départ.
 function beep(audio: AudioContext | null) {
@@ -30,14 +32,14 @@ export function useChrono(onResult: (result: ChronoResult) => void) {
   const [state, setState] = useState<ChronoState>(null)
   const [now, setNow] = useState(0)
   const audio = useRef<AudioContext | null>(null)
-  const running = !!state && !state.finished
+  const running = !!state && !state.finished && state.pausedAt === undefined
   useEffect(() => {
     if (!running) return
     const id = window.setInterval(() => setNow(performance.now()), 200)
     return () => window.clearInterval(id)
   }, [running])
   // Fin du compte à rebours : bip et vibration ; la mesure (passages, distance) reste à saisir.
-  const countdownEnd = state?.spec.mode === 'countdown' && !state.finished && now - state.start >= state.spec.seconds * 1000
+  const countdownEnd = state?.spec.mode === 'countdown' && !state.finished && running && now - state.start - state.paused >= state.spec.seconds * 1000
   useEffect(() => {
     if (!countdownEnd) return
     setState(current => current && { ...current, finished: true })
@@ -48,9 +50,9 @@ export function useChrono(onResult: (result: ChronoResult) => void) {
   const start = (spec: ChronoSpec) => {
     if (spec.mode === 'countdown') { try { audio.current ??= new AudioContext(); void audio.current.resume() } catch { audio.current = null } }
     const time = performance.now()
-    setNow(time); setState({ spec, start: time, marks: [] })
+    setNow(time); setState({ spec, start: time, marks: [], paused: 0 })
   }
-  const elapsed = () => state ? performance.now() - state.start : 0
+  const elapsed = () => state ? (state.pausedAt ?? performance.now()) - state.start - state.paused : 0
   const stop = () => {
     if (!state) return
     const { spec } = state
@@ -61,11 +63,15 @@ export function useChrono(onResult: (result: ChronoResult) => void) {
   const next = () => {
     if (state?.spec.mode !== 'steps') return
     const marks = [...state.marks, elapsed()]
-    if (marks.length < TUG_STEPS.length) { setState({ ...state, marks }); return }
+    navigator.vibrate?.(40)
+    if (marks.length < TUG_STEPS.length) { setState({ ...state, marks }); onResult({ partialSteps: tugStepsFromMarks(marks).steps }); return }
     const result = tugStepsFromMarks(marks)
     onResult({ tug: String(result.total), steps: result.steps })
     setState(null)
   }
-  return { state, now, start, stop, next, cancel: () => setState(null) }
+  // Pause (patient qui s’arrête, consigne à redonner) : le temps s’arrête là où il en est, « Reprendre » repart de là.
+  const pause = () => { if (state && !state.finished && state.pausedAt === undefined) { const time = performance.now(); setNow(time); setState({ ...state, pausedAt: time }) } }
+  const resume = () => { if (state?.pausedAt !== undefined) { const time = performance.now(); setNow(time); setState({ ...state, paused: state.paused + time - state.pausedAt, pausedAt: undefined }) } }
+  return { state, now, start, stop, next, pause, resume, cancel: () => setState(null) }
 }
 export type Chrono = ReturnType<typeof useChrono>

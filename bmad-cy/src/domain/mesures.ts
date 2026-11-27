@@ -4,6 +4,7 @@
 import { hasFlexContent, MARCHE_EQUILIBRE, rubricHtml, rubricText, type FlexInput, type FlexRubric } from './marcheEquilibre'
 import { tinettiScore, type TestRecord } from './tinetti'
 import { catalogFor, formMeasures, hasFormContent, type BilanForm } from './catalog'
+import { parseTugSteps, tugStepsFromForm } from './tug'
 
 export const MEASURE_RUBRICS: FlexRubric[] = MARCHE_EQUILIBRE.flatMap(module => module.rubrics).filter(rubric => rubric.test)
 // Le Tinetti est un test comme les autres (score saisi ou dicté) ; une grille complète du même jour donne aussi son score.
@@ -47,6 +48,13 @@ export function measureHistory(days: MeasureDay[], id: string, before?: string):
   }
   return history
 }
+// Liste des ★ (fiche et bilan, même règle) : pour chaque test, la dernière mesure et le nombre de fois en tout ;
+// les tests faits le plus souvent en haut, à égalité le plus récent d’abord.
+export interface StarItem { test: string; last: Measure; count: number }
+export function starList(history: Record<string, Measure[]>): StarItem[] {
+  return Object.entries(history).filter(([, list]) => list.length).map(([test, list]) => ({ test, last: list[0], count: list.length }))
+    .sort((a, b) => b.count - a.count || b.last.date.localeCompare(a.last.date) || MEASURE_IDS.indexOf(a.test) - MEASURE_IDS.indexOf(b.test))
+}
 // ★ : dernière mesure de chaque test, strictement antérieure à la journée.
 export function latestMeasures(days: MeasureDay[], id: string, date: string): Record<string, Measure> {
   return Object.fromEntries(Object.entries(measureHistory(days, id, date)).map(([test, list]) => [test, list[0]]))
@@ -63,3 +71,19 @@ export function previousMarcheEquilibre(days: MeasureDay[], id: string, date: st
 // Tests rapides du jour : un par test, dans l’ordre du catalogue, une ligne chacun.
 export function filledMeasures(input: FlexInput): string[] { return MEASURE_RUBRICS.filter(rubric => rubricText(rubric.id, input)).map(rubric => rubric.id) }
 export function mesuresHtml(input: FlexInput): string { return filledMeasures(input).map(id => rubricHtml(id, input, true)).join('<br>') }
+
+// ★ de chaque étape du TUG : dernier TUG par étapes antérieur à la journée (repères du bilan, test rapide ou TUG du Tinetti).
+export interface PreviousTugSteps { date: string; steps: number[]; copied: boolean }
+export function previousTugSteps(days: MeasureDay[], id: string, before: string): PreviousTugSteps | null {
+  for (const day of [...days].filter(item => item.date < before).sort((a, b) => b.date.localeCompare(a.date))) {
+    const entry = day.entries[id]
+    if (!entry) continue
+    const found = [
+      [entry.bilanForm ? tugStepsFromForm(entry.bilanForm.values) : null, entry.bilanCopied || !!entry.ns?.tug],
+      [parseTugSteps(entry.tests?.mesures?.values), entry.tests?.mesures?.copied],
+      [parseTugSteps(entry.tests?.tinetti?.values), entry.tests?.tinetti?.copied],
+    ] as const
+    for (const [steps, copied] of found) if (steps) return { date: day.date, steps: steps.steps, copied: !!copied }
+  }
+  return null
+}

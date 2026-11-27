@@ -40,6 +40,12 @@ describe('compte rendu fabriqué par l’application', () => {
     expect(text(lines)).toBe('Contexte : chute récente, évaluation de suivi, demande de la famille')
   })
 
+  it('test des 10 m avec l’aide technique facultative', () => {
+    const values = { 'marche.test_10m.temps': '18', 'marche.test_10m.pas': '33' }
+    expect(text(formLines({ catalog, sex: '', form: form({ values }) }))).toContain('Test des 10m : 18sec et 33 pas')
+    expect(text(formLines({ catalog, sex: '', form: form({ values, choices: [choiceKey('marche.test_10m.aides', 'rollator')] }) }))).toContain('Test des 10m : 18sec et 33 pas, avec rollator')
+  })
+
   it('choix unique, nombre, sections et ordre du bilan prédéfini', () => {
     const lines = formLines({ catalog, sex: 'F', form: form({ preset: 'marche_equilibre', values: { 'contexte.atcd.atcd': 'HTA', 'transferts.tug.temps': '18', 'transferts.assis_debout_30s.passages': '8', 'transferts.assis_debout_30s.accoudoirs': 'sans_accoudoirs' } }) })
     expect(text(lines)).toContain('Antécédents : HTA\nObservations :')

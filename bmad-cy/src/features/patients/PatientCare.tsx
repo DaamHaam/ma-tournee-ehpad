@@ -9,18 +9,23 @@ import { useDoctors } from './useDoctors'
 type TextField = 'rating'
 function shortDate(date: string) { return parseDate(date).toLocaleDateString('fr-FR') }
 
-// Éval et Trans, mis en avant sous le nom : cocher marque le suivi du jour, la dernière date reste visible dessous.
+// Éval, Trans et NS, mis en avant sous le nom : cocher marque le suivi du jour, la dernière date reste visible dessous.
+// NS (test recopié dans NetSoin) se suit à part : la date d’un test NS déjà fait s’ajoute en touchant la date.
 export function FollowUps({ patient }: { patient: Patient }) {
   const { run } = useSave()
   const today = useToday()
-  const followUp = (kind: 'evalDates' | 'transDates', label: string) => {
-    const last = patient[kind].at(-1)
-    return <label className="follow-up"><span className="follow-up-check"><input type="checkbox" checked={patient[kind].includes(today)} onChange={() => void run(() => repository.toggleFollowUp(patient.id, kind, today))} />{label}</span><span className="subtle">{!last ? '—' : last === today ? 'aujourd’hui' : shortDate(last)}</span></label>
+  const toggle = (kind: 'evalDates' | 'transDates' | 'nsDates', date: string) => void run(() => repository.toggleFollowUp(patient.id, kind, date))
+  const followUp = (kind: 'evalDates' | 'transDates' | 'nsDates', label: string) => {
+    const dates = patient[kind] ?? []
+    const last = [...dates].sort().at(-1)
+    const lastText = !last ? '—' : last === today ? 'aujourd’hui' : shortDate(last)
+    return <div className={`follow-up${kind === 'nsDates' ? ' follow-up-ns' : ''}`}><label className="follow-up-check"><input type="checkbox" checked={dates.includes(today)} onChange={() => toggle(kind, today)} />{label}</label>
+      {kind === 'nsDates' ? <label className="subtle ns-date"><span>{lastText}</span><input type="date" aria-label="Ajouter la date d’un test NS déjà fait" max={today} value="" onChange={event => { const date = event.target.value; if (date && !dates.includes(date)) toggle(kind, date) }} /></label> : <span className="subtle">{lastText}</span>}</div>
   }
-  return <div className="follow-ups">{followUp('evalDates', 'Éval')}{followUp('transDates', 'Trans')}</div>
+  return <div className="follow-ups">{followUp('evalDates', 'Éval')}{followUp('transDates', 'Trans')}{followUp('nsDates', 'NS')}</div>
 }
 
-// Prescription en cours, tous champs facultatifs : la fin se calcule dès que la date est connue (1 an sans durée) ; sans date, elle se saisit à la main.
+// Prescription en cours, tous champs facultatifs : saisir la date met d’office 1 an (modifiable) et la fin se calcule ; sans date, elle se saisit à la main.
 function Prescription({ patient, today }: { patient: Patient; today: string }) {
   const { run } = useSave()
   const update = (patch: Parameters<typeof repository.updatePatient>[1]) => void run(() => repository.updatePatient(patient.id, patch))
@@ -36,9 +41,9 @@ function Prescription({ patient, today }: { patient: Patient; today: string }) {
   const status = prescriptionStatus(effectivePrescriptionEnd(patient), today)
   return <div className="prescription">
     <label className="wide">Intitulé de la prescription <input key={`label-${patient.prescriptionLabel}`} autoComplete="off" defaultValue={patient.prescriptionLabel} onBlur={event => void saveLabel(event.currentTarget)} /></label>
-    <label>Date de prescription <input type="date" value={patient.prescriptionDate} onChange={event => update({ prescriptionDate: event.target.value })} /></label>
+    <label>Date de prescription <input type="date" value={patient.prescriptionDate} onChange={event => { const prescriptionDate = event.target.value; update(prescriptionDate && patient.prescriptionDuration === null ? { prescriptionDate, prescriptionDuration: 1, prescriptionUnit: 'years' } : { prescriptionDate }) }} /></label>
     <fieldset className="duration-field"><legend>Durée</legend><div className="duration-inputs">
-      <input type="number" inputMode="numeric" min={1} step={1} aria-label="Durée de la prescription" defaultValue={patient.prescriptionDuration ?? ''} onChange={event => saveDuration(event.currentTarget)} onBlur={event => resetDuration(event.currentTarget)} />
+      <input key={`duration-${patient.prescriptionDate}`} type="number" inputMode="numeric" min={1} step={1} aria-label="Durée de la prescription" defaultValue={patient.prescriptionDuration ?? ''} onChange={event => saveDuration(event.currentTarget)} onBlur={event => resetDuration(event.currentTarget)} />
       <select aria-label="Unité de durée" value={patient.prescriptionUnit} onChange={event => update({ prescriptionUnit: event.target.value as Patient['prescriptionUnit'] })}><option value="weeks">semaines</option><option value="months">mois</option><option value="years">ans</option></select>
     </div>{patient.prescriptionDate && patient.prescriptionDuration === null && <span className="subtle duration-default">par défaut 1 an</span>}</fieldset>
     <label>Fin d’ordonnance <input type="date" value={patient.prescriptionEnd} readOnly={computed} disabled={computed} onChange={event => update({ prescriptionEnd: event.target.value })} />{computed && <span className="subtle">calculée</span>}</label>

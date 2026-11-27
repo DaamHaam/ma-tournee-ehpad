@@ -12,6 +12,8 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [react(), tailwindcss(), VitePWA({
     registerType: 'autoUpdate',
+    // Enregistrement fait à la main (src/app/serviceWorker.ts) : mise à jour vérifiée à chaque retour au premier plan.
+    injectRegister: false,
     includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
     manifest: {
       name: 'Ma tournée EHPAD',

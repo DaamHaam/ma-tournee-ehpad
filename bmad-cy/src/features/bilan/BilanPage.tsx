@@ -8,7 +8,7 @@ import { validDate, type Entry, type Sex } from '../../domain/model'
 import { db } from '../../storage/database'
 import { useAssistant } from './useAssistant'
 import { anonymizeWithMap, correctionRequest, formatRequest, parseCorrectionReply } from './assistant'
-import { filledMeasures, latestMeasures, MEASURE_RUBRICS, type Measure } from '../../domain/mesures'
+import { filledMeasures, latestMeasures, measureHistory, previousTugSteps, starList, type Measure, type PreviousTugSteps, type StarItem } from '../../domain/mesures'
 import { pickRubric, rubricText, withoutRubric, type FlexInput } from '../../domain/marcheEquilibre'
 import { blockHtml, catalogFor, formBlocks, formHash, NS_COMMENT, rubricOfTest, formPlan, formTitle, hasFormContent, previousFormLines, type BilanForm } from '../../domain/catalog'
 import { useLatestCatalog } from '../../storage/catalogStore'
@@ -36,19 +36,18 @@ export function BilanPage() {
   const history = useLiveQuery(async () => {
     if (!valid) return undefined
     const days = await db.days.where('date').below(date).toArray()
-    return { measures: latestMeasures(days, id, date), form: previousFormLines(days, id, date) }
+    return { measures: latestMeasures(days, id, date), stars: starList(measureHistory(days, id, date)), tugSteps: previousTugSteps(days, id, date), form: previousFormLines(days, id, date) }
   }, [date, id, valid])
   if (!valid) return <Navigate replace to="/" />
   if (!day || sex === undefined || atcdKine === undefined || !history) return null
   const entry = day.entries[id]
   if (!entry) return <Navigate replace to={`/?date=${date}`} />
-  return <BilanEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} sex={sex} previous={history.measures} previousForm={history.form} atcdKine={atcdKine} initialTest={new URLSearchParams(location.search).get('test') ?? ''} />
+  return <BilanEditor key={`${date}-${id}`} date={date} id={id} {...target} entry={entry} sex={sex} previous={history.measures} stars={history.stars} tugSteps={history.tugSteps} previousForm={history.form} atcdKine={atcdKine} initialTest={new URLSearchParams(location.search).get('test') ?? ''} />
 }
 
 const snapshotOf = (entry: Entry): BilanSnapshot => ({ bilan: entry.bilan, bilanHtml: entry.bilanHtml, bilanAt: entry.bilanAt, bilanCopied: entry.bilanCopied, bilanEditedAt: entry.bilanEditedAt, bilanMeasures: entry.bilanMeasures, bilanForm: entry.bilanForm })
-const MEASURE_ORDER = MEASURE_RUBRICS.map(rubric => rubric.id)
 
-function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm, atcdKine, initialTest }: { date: string; id: string; back: string; label: string; entry: Entry; sex: Sex; previous: Record<string, Measure>; previousForm: PreviousLines | null; atcdKine: string; initialTest: string }) {
+function BilanEditor({ date, id, back, label, entry, sex, previous, stars, tugSteps, previousForm, atcdKine, initialTest }: { date: string; id: string; back: string; label: string; entry: Entry; sex: Sex; previous: Record<string, Measure>; stars: StarItem[]; tugSteps: PreviousTugSteps | null; previousForm: PreviousLines | null; atcdKine: string; initialTest: string }) {
   const { run } = useSave()
   const navigate = useNavigate()
   const [initial] = useState(() => ({ html: bilanHtml(entry), snapshot: snapshotOf(entry) }))
@@ -137,7 +136,6 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
     setRecognized(null)
     void run(() => repository.setBilanMeasures(date, id, next))
   }
-  const lastMeasures = MEASURE_ORDER.filter(test => previous[test]).map(test => [test, previous[test]] as [string, Measure])
   useKeyboardLost(keyboard, () => toggleKeyboard(false))
   // ✕ : quitte en remettant le bilan tel qu’il était à l’ouverture (texte, repères, mesures).
   const cancel = async () => {
@@ -163,10 +161,10 @@ function BilanEditor({ date, id, back, label, entry, sex, previous, previousForm
     {!keyboard && <div className="pane-dots" role="tablist" aria-label="Volets">{['Bilan', checked ? `Repères · ${checked}` : 'Repères'].map((name, index) => <button key={index} type="button" role="tab" aria-label={name} aria-selected={tab === index} onClick={() => goTo(index)} />)}</div>}
     <div className="panes" ref={panes} onScroll={event => { scrollPanes(event); if (keyboard && event.currentTarget.scrollLeft > 20) toggleKeyboard(false) }}>
       <section className="pane notes-pane" role="tabpanel" aria-label="Bilan">
-        {!keyboard && <LastMeasures measures={lastMeasures} onOpen={openMeasure} />}
+        {!keyboard && <LastMeasures stars={stars} onOpen={openMeasure} />}
         <RichEditor ref={editor} initialHtml={initial.html} label={`Bilan du jour pour ${entry.patient.lastName} ${entry.patient.firstName}`.trim()} onChange={save} onFocus={() => { setKeyboard(true); if (tab !== 0) goTo(0) }} onFormatState={setFormat} />
       </section>
-      <ReperesPane key={focus} catalog={catalog} form={form} measures={previous} previous={previousForm} initialFocus={focus} atcdKine={atcdKine} onChange={changeForm} />
+      <ReperesPane key={focus} catalog={catalog} form={form} measures={previous} tugSteps={tugSteps} previous={previousForm} initialFocus={focus} atcdKine={atcdKine} onChange={changeForm} />
     </div>
     {keyboard
       ? <KeyboardBar dictation={dictation} left={<>{recognizedCount > 0 && <button type="button" className="recognized-count" onPointerDown={event => event.preventDefault()} onClick={() => toggleKeyboard(false)}>{recognizedCount} {recognizedCount > 1 ? 'tests reconnus' : 'test reconnu'}</button>}{aiButton('small')}</>} onHide={() => toggleKeyboard(false)} />

@@ -637,3 +637,48 @@ a.bilan-toggle { border:1px solid var(--line); border-radius:10px; background:va
 .waiting-mark.level-2, .waiting-mark.level-3 { letter-spacing:-.08em; }
 .netsoin-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
 .netsoin-help ol { display:grid; gap:.35rem; margin:.3rem 0; padding-left:1.2rem; font-size:.88rem; }
+/* Plan 2 — journée */
+.session-buttons a.bilan-toggle { box-sizing:border-box; min-width:44px; min-height:44px; border-color:#c8d0d8; }
+.transmission.unknown { color:#c43b33; }
+.day-heading { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.today-badge { padding:.15rem .55rem; border-radius:999px; background:#dff3e4; color:#1f6b3a; font-size:.78rem; font-weight:800; }
+.day-heading.is-today .date-title { color:#1f6b3a; }
+.day-heading.other-day .date-title { color:#b45309; }
+.today-return { min-height:36px; padding:.25rem .6rem; border-color:#e08a1e; color:#b45309; font-size:.8rem; }
+.ns-mark { display:inline-block; margin-left:.35rem; padding:0 .25rem; border:1px solid currentColor; border-radius:5px; color:#2e7a4b; font-size:.62rem; font-weight:800; line-height:1.35; vertical-align:middle; }
+.ns-mark.late { color:#c2410c; }
+.name-line .ns-mark { margin-left:0; flex:none; }
+.tests-star-list li.pending strong { color:#c2410c; }
+/* Plan 2 — fiche patient */
+.back-arrow { min-width:48px; font-size:1.7rem; font-weight:500; line-height:1; }
+.patient-title h1 { margin-bottom:.2rem; }
+.patient-tools { display:flex; align-items:center; gap:.4rem; }
+.patient-tools .tests-star { margin-left:0; }
+.patient-tools .history-toggle { min-width:40px; min-height:36px; margin:0; padding:0 .4rem; justify-content:center; }
+.patient-tools .history-toggle[aria-expanded="true"] { border-color:var(--accent); background:#e8eef3; }
+.fiche-add { display:inline-grid; place-items:center; box-sizing:border-box; min-width:40px; min-height:36px; padding:0 .5rem; border:1px solid #c8d0d8; border-radius:10px; background:var(--paper); color:var(--accent); font-size:1.2rem; font-weight:700; line-height:1; text-decoration:none; }
+.patient-room { margin:.35rem 0 0; color:var(--muted); font-size:.9rem; font-weight:650; }
+.patient-title + .history { margin-top:.2rem; }
+.alert-field { justify-content:flex-start; margin:0 0 .5rem; }
+.alert-reason-input { max-width:16rem; min-height:36px; padding:.3rem .6rem; font-size:.9rem; }
+.follow-ups { gap:1.6rem; }
+.ns-date { position:relative; display:inline-block; text-decoration:underline dotted #9aa7b2; text-underline-offset:.2em; }
+.ns-date input { position:absolute; inset:0; width:100%; height:100%; min-height:0; padding:0; border:0; opacity:0; }
+.history-bilan-row { flex-direction:column; align-items:stretch; gap:.3rem; }
+.history-bilan-row > :first-child { align-self:flex-end; }
+.history-bilan-row .history-bilan { width:100%; }
+/* Plan 2 — chronomètre : pause, étape du TUG en grand */
+.chrono-bar.paused { border-color:#e08a1e; background:#fff3e0; }
+.chrono-bar.paused .chrono-bar-time { color:#b45309; }
+.chrono-bar-step { flex:1 1 100%; display:flex; align-items:baseline; gap:.5rem; color:var(--accent); font-size:1rem; font-weight:750; animation:chrono-step .45s ease-out; }
+.chrono-bar-step strong { font-size:1.9rem; font-weight:900; font-variant-numeric:tabular-nums; }
+@keyframes chrono-step { from { background:#cfe3f0; transform:scale(1.06); } to { background:transparent; transform:none; } }
+.chrono-bar-pause { min-width:48px; min-height:44px; font-size:1.05rem; font-weight:900; }
+.step-star { margin-left:.5rem; color:#9a6b00; font-size:.8rem; white-space:nowrap; }
+.step-star.pending { color:#c2410c; }
+/* Plan 2 — pointage : début de session, B retirés */
+.pointage-session { display:flex; align-items:center; gap:.5rem; margin:0 0 .6rem; font-size:.88rem; font-weight:700; }
+.pointage-session input { max-width:11rem; }
+.pointage-removed { display:inline-grid; place-items:center; min-width:1.15rem; height:1.15rem; margin-left:.3rem; padding:0 .2rem; border-radius:999px; background:#7c2d12; color:#fff; font-size:.68rem; font-weight:800; vertical-align:middle; }
+.patient-name-row { display:flex; flex-wrap:wrap; align-items:center; column-gap:.6rem; row-gap:.3rem; }
+.patient-name-row h1 { margin:0; }
