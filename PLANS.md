@@ -37,13 +37,18 @@ Décisions du 2026-11-27 : « ok pour tout » sur les propositions ci-dessous.
 
 1. **Repères : l'étiquette du bilan prédéfini (ex. « Marche / équilibre ✕ ») recouvre les onglets de domaines** quand on les fait défiler. Il faut la placer autrement (les onglets ont déjà peu de place).
 2. **Bug — EVA : « /10 » ajouté même sans chiffre** (« EVA : Ne sait pas dire, intensité variable/10 »). Le « /10 » ne doit suivre que la valeur chiffrée, pas un commentaire.
-3. **Bilan marche / équilibre : évaluation sommaire de la peur de chuter.**
+3. **Bilan marche / équilibre : inclure la question « peur de chuter »**, qui existe déjà dans le catalogue mais n'est pas dans ce bilan prédéfini.
 4. **Bilan marche / équilibre : ajouter le SPPB.**
-5. **Bilan marche / équilibre : revoir l'ordre** pour regrouper les tests chiffrés (TUG, 10 m, périmètre de marche, SPPB…).
-   - Points 3 à 5 : se règlent dans l'organisateur de bilans (catalogue), sans développement dans l'application.
+   - Points 3 et 4 : se règlent dans l'organisateur de bilans (catalogue), sans développement dans l'application.
+5. **SPPB — cases sans chronomètre** :
+   - pour chaque position d'équilibre (pieds joints, semi-tandem, tandem) : une case « 10 s tenues » (vaut 10 s, sans chronométrer) et une case « impossible » (vaut 0, sans taper 0) ;
+   - pour les 5 levers de chaise : une case « impossible » (pas de temps ; aujourd'hui il existe déjà « Lever impossible bras croisés », à vérifier / simplifier) ;
+   - points et score /12 calculés avec ces cases, compte rendu cohérent.
 
 
 ## Plan 4 — pour plus tard
+
+- **Bilan marche / équilibre : revoir l'ordre** pour regrouper les tests chiffrés (TUG, 10 m, périmètre de marche, SPPB…). Pas maintenant.
 
 - **Mode express** (à porter dans la charte) : pendant les visites, Damien lance des idées sans répondre aux détails ; l'agent note, répond « OK » et garde ses questions pour plus tard.
 
