@@ -64,27 +64,39 @@ export function Journee() {
   // La position de la liste est retenue (par date) pendant le défilement et rétablie au retour d’un bilan ou d’une fiche :
   // la page du bilan bloque le défilement de toute la page, ce qui la remettrait en haut.
   const restored = useRef('')
+  // Au toucher (avant d’ouvrir un bilan ou une fiche), la position est notée et les défilements de la seconde qui suit
+  // sont ignorés : en ouvrant le bilan, la page peut être ramenée en haut sans que ce soit l’utilisateur.
   useEffect(() => {
-    const save = () => { if (restored.current === date && !document.querySelector('.bilan-page')) writeScroll(date, window.scrollY) }
+    let frozenUntil = 0
+    const save = () => { if (restored.current === date && performance.now() > frozenUntil && !document.querySelector('.bilan-page')) writeScroll(date, window.scrollY) }
+    const tap = () => { if (restored.current !== date) return; writeScroll(date, window.scrollY); frozenUntil = performance.now() + 1000 }
     window.addEventListener('scroll', save, { passive: true })
-    return () => window.removeEventListener('scroll', save)
+    window.addEventListener('click', tap, true)
+    return () => { window.removeEventListener('scroll', save); window.removeEventListener('click', tap, true) }
   }, [date])
-  // Rétablie une fois la liste complète affichée (journée et patients chargés) ; tant que la page est trop courte
-  // (Safari peut afficher la liste un peu plus tard), on réessaie brièvement au lieu de rester en haut.
+  // Rétablie une fois la liste complète affichée (journée et patients chargés), puis maintenue un court instant :
+  // Safari peut afficher la liste un peu plus tard ou remettre la page en haut juste après le retour d’un bilan.
+  // Le premier toucher (ou la molette) rend la main tout de suite.
   const ready = !!day && !!patients
   useLayoutEffect(() => {
     if (!ready || restored.current === date) return
     const top = readScroll(date)
     if (!top) { restored.current = date; return }
-    let tries = 0
+    const until = performance.now() + 800
     let frame = 0
-    const apply = () => {
-      window.scrollTo(0, top)
-      if (Math.abs(window.scrollY - top) <= 2 || ++tries > 30) { restored.current = date; return }
-      frame = window.requestAnimationFrame(apply)
+    const done = () => {
+      window.cancelAnimationFrame(frame)
+      restored.current = date
+      for (const type of ['touchstart', 'wheel', 'keydown'] as const) window.removeEventListener(type, done)
     }
-    apply()
-    return () => window.cancelAnimationFrame(frame)
+    for (const type of ['touchstart', 'wheel', 'keydown'] as const) window.addEventListener(type, done, { passive: true })
+    const hold = () => {
+      if (Math.abs(window.scrollY - top) > 2) window.scrollTo(0, top)
+      if (performance.now() > until) { done(); return }
+      frame = window.requestAnimationFrame(hold)
+    }
+    hold()
+    return done
   }, [ready, date])
   const isToday = date === today
   return <>
