@@ -33,7 +33,17 @@ Décisions du 2026-11-27 : « ok pour tout » sur les propositions ci-dessous.
 16. **Bouton Pause sur tous les chronomètres** (TUG simple et par étapes, 10 m, 6 min…), puis reprise.
 17. **Test des 10 m — aide technique facultative** (rollator, déambulateur à roues, canne…), reprise dans le compte rendu (« 18 s, 33 pas, avec rollator ») ; d'abord dans le catalogue de l'organisateur.
 
-## Plan 3 — pour plus tard
+## Plan 3 — en préparation
+
+1. **Repères : l'étiquette du bilan prédéfini (ex. « Marche / équilibre ✕ ») recouvre les onglets de domaines** quand on les fait défiler. Il faut la placer autrement (les onglets ont déjà peu de place).
+2. **Bug — EVA : « /10 » ajouté même sans chiffre** (« EVA : Ne sait pas dire, intensité variable/10 »). Le « /10 » ne doit suivre que la valeur chiffrée, pas un commentaire.
+3. **Bilan marche / équilibre : évaluation sommaire de la peur de chuter.**
+4. **Bilan marche / équilibre : ajouter le SPPB.**
+5. **Bilan marche / équilibre : revoir l'ordre** pour regrouper les tests chiffrés (TUG, 10 m, périmètre de marche, SPPB…).
+   - Points 3 à 5 : se règlent dans l'organisateur de bilans (catalogue), sans développement dans l'application.
+
+
+## Plan 4 — pour plus tard
 
 - **Mode express** (à porter dans la charte) : pendant les visites, Damien lance des idées sans répondre aux détails ; l'agent note, répond « OK » et garde ses questions pour plus tard.
 
