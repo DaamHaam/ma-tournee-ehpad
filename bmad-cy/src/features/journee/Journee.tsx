@@ -69,12 +69,22 @@ export function Journee() {
     window.addEventListener('scroll', save, { passive: true })
     return () => window.removeEventListener('scroll', save)
   }, [date])
-  const ready = !!day
+  // Rétablie une fois la liste complète affichée (journée et patients chargés) ; tant que la page est trop courte
+  // (Safari peut afficher la liste un peu plus tard), on réessaie brièvement au lieu de rester en haut.
+  const ready = !!day && !!patients
   useLayoutEffect(() => {
     if (!ready || restored.current === date) return
-    restored.current = date
     const top = readScroll(date)
-    if (top) window.scrollTo(0, top)
+    if (!top) { restored.current = date; return }
+    let tries = 0
+    let frame = 0
+    const apply = () => {
+      window.scrollTo(0, top)
+      if (Math.abs(window.scrollY - top) <= 2 || ++tries > 30) { restored.current = date; return }
+      frame = window.requestAnimationFrame(apply)
+    }
+    apply()
+    return () => window.cancelAnimationFrame(frame)
   }, [ready, date])
   const isToday = date === today
   return <>
